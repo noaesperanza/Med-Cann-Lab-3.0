@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Login - MedCannLab</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1e293b;
+            color: white;
+        }
+        .test-section {
+            background: #334155;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #059669; }
+        .error { background: #dc2626; }
+        .warning { background: #d97706; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #2563eb; }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border-radius: 4px;
+            border: 1px solid #64748b;
+            background: #475569;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Teste de Login - MedCannLab 3.0</h1>
+    
+    <div class="test-section">
+        <h2>📊 Status do Sistema</h2>
+        <div id="server-status" class="status warning">Verificando servidor...</div>
+        <div id="supabase-status" class="status warning">Verificando Supabase...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔐 Teste de Login</h2>
+        <div>
+            <input type="email" id="email" placeholder="Email" value="eduardoscfaveret@gmail.com">
+            <input type="password" id="password" placeholder="Senha" value="123@456">
+            <button onclick="testLogin()">Testar Login</button>
+        </div>
+        <div id="login-result" class="status" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>👤 Usuários de Teste</h2>
+        <button onclick="testUser('eduardoscfaveret@gmail.com', '123@456')">Dr. Eduardo Faveret</button>
+        <button onclick="testUser('rrvalenca@gmail.com', '123@456')">Dr. Ricardo Valença</button>
+        <button onclick="testUser('profrvalenca@gmail.com', '123@456')">Prof. Ricardo (Paciente)</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🌐 Links Úteis</h2>
+        <button onclick="window.open('http://localhost:3001', '_blank')">Abrir App (3001)</button>
+        <button onclick="window.open('http://localhost:3001/app/eduardo-faveret-dashboard', '_blank')">Dashboard Eduardo</button>
+        <button onclick="window.open('http://localhost:3001/app/dashboard', '_blank')">Dashboard Admin</button>
+    </div>
+
+    <script>
+        // Verificar status do servidor
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('http://localhost:3001');
+                if (response.ok) {
+                    document.getElementById('server-status').innerHTML = '✅ Servidor rodando na porta 3001';
+                    document.getElementById('server-status').className = 'status success';
+                } else {
+                    document.getElementById('server-status').innerHTML = '❌ Servidor com problemas';
+                    document.getElementById('server-status').className = 'status error';
+                }
+            } catch (error) {
+                document.getElementById('server-status').innerHTML = '❌ Servidor não encontrado';
+                document.getElementById('server-status').className = 'status error';
+            }
+        }
+
+        // Testar login
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const resultDiv = document.getElementById('login-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '🔄 Testando login...';
+            resultDiv.className = 'status warning';
+
+            try {
+                // Simular teste de login
+                const response = await fetch('http://localhost:3001/api/test-login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (response.ok) {
+                    resultDiv.innerHTML = '✅ Login bem-sucedido!';
+                    resultDiv.className = 'status success';
+                } else {
+                    resultDiv.innerHTML = '❌ Erro no login';
+                    resultDiv.className = 'status error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '⚠️ Não foi possível testar (normal se não houver endpoint de teste)';
+                resultDiv.className = 'status warning';
+            }
+        }
+
+        // Testar usuário específico
+        function testUser(email, password) {
+            document.getElementById('email').value = email;
+            document.getElementById('password').value = password;
+            testLogin();
+        }
+
+        // Verificar status ao carregar
+        checkServerStatus();
+    </script>
+</body>
+</html>

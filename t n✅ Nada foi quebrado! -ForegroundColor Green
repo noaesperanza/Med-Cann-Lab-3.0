@@ -1,0 +1,20 @@
+[33mfb69047[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m fix: Remover tsc do build para evitar erro 127
+[33m4be5465[m chore: Bump version to 3.0.1 to force Vercel rebuild
+[33m525d427[m fix: Corrigir erros TypeScript - remover DollarSign, adicionar tipos e corrigir vercel.json
+[33m46f4eec[m fix: Remover installCommand do vercel.json para usar instalação padrão
+[33m6f094f7[m fix: Mover typescript para dependencies para corrigir build no Vercel
+[33meaa3ac0[m[33m ([m[1;31morigin/master[m[33m, [m[1;32mmain[m[33m)[m fix: Mover vite para dependencies para corrigir deploy no Vercel
+[33m5f2d944[m fix: Adicionar vercel.json para configurar build corretamente
+[33m76fe5f9[m fix: Corrigir header com título e subtítulo corretos + Adicionar guia de integração de avatar animado
+[33m26156a4[m feat: Integrar Nôa Esperança IA Residente com GPT-4 - Integração completa com OpenAI GPT-4 - Reconhecimento do Dr. Ricardo Valença como coordenador científico - Sistema de fallback inteligente quando API key não disponível - Biblioteca de conhecimento e documentos - Base de conhecimento persistente para a IA - Avatar animado integrado
+[33mf71e87d[m Fix: Usar imagem de public/noa-avatar.png e corrigir importaÃ§Ã£o de Ã­cones
+[33m8e95d54[m Fix: Criar arquivo noa-avatar.png corretamente copiando de avatar-noa.jpg
+[33mb441ae0[m Update: Modificar importaÃ§Ã£o do avatar para usar noa-avatar.png do repositÃ³rio noa-nova-esperanza-app
+[33m006d8ea[m Feat: Unificar chat com IA residente - Avatar centralizado com chat abaixo na pÃ¡gina ChatNoaEsperanca. Onboarding agora navega para pÃ¡gina unificada ao final.
+[33m8534640[m Feature: Criar pÃ¡gina PatientOnboarding com fluxo unificado: NFT Escute-se -> Consentimento -> Valores -> IA Resident (AvaliaÃ§Ã£o IMRE) -> Dashboard Paciente
+[33mf874eac[m Fix: Corrigir scroll automatico na pÃ¡gina PatientChat - manter pÃ¡gina no topo ao carregar e ao trocar de profissional
+[33m7aed185[m Refactor: Remover todos os pacientes ficticios do arquivo Patients.tsx, deixando array vazio para receber dados reais
+[33m73275c6[m Refactor: Remover todos os dados ficticios de pacientes e profissionais dos dashboards - ClinicaDashboard, ProfessionalDashboard e PatientDoctorChat agora esperam dados reais do banco
+[33mbc784c8[m Refactor: Criar constants centralizadas para profissionais e atualizar PatientChat para usar arquivo de constants
+[33m37ef3b0[m Refactor: Substituir profissionais ficticios pelos dois reais no PatientDashboard
+[33ma8b534f[m Refactor: Substituir profissionais fictÃ­cios pelos dois reais (Dr. Ricardo ValenÃ§a e Dr. Eduardo Faveret) no chat do paciente
