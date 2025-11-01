@@ -1,7 +1,7 @@
 /**
  * INTEGRAÇÃO HÍBRIDA - NÔA ESPERANÇA
  * Combina OpenAI Assistant API com sistema local
- * Assistant ID: asst_fN2Fk9fQ7JEyyFUIe50Fo9QD
+ * Assistant ID: asst_CAW142M53uLBLbVzERZMa7HF
  */
 
 import { getPatientDashboardAPI } from './patientDashboardAPI'
@@ -32,7 +32,7 @@ export class NoaAssistantIntegration {
 
   constructor(config: Partial<AssistantConfig>) {
     this.config = {
-      assistantId: config.assistantId || 'asst_fN2Fk9fQ7JEyyFUIe50Fo9QD',
+      assistantId: config.assistantId || 'asst_CAW142M53uLBLbVzERZMa7HF',
       apiKey: config.apiKey || (import.meta as any).env?.VITE_OPENAI_API_KEY || '',
       timeout: config.timeout || 30000
     }
@@ -62,6 +62,7 @@ export class NoaAssistantIntegration {
       }
     } catch (error) {
       console.warn('Assistant API não disponível, usando fallback local:', error)
+      console.info('Verifique se VITE_OPENAI_API_KEY está definido com uma chave válida e se o assistant tem acesso aos arquivos necessários.')
       
       // Fallback para sistema local
       return this.useLocalFallback(message, userCode, currentRoute)
@@ -114,7 +115,8 @@ export class NoaAssistantIntegration {
     })
 
     if (!response.ok) {
-      throw new Error(`Erro ao criar thread: ${response.statusText}`)
+      const errorText = await response.text().catch(() => response.statusText)
+      throw new Error(`Erro ao criar thread: ${response.status} ${errorText}`)
     }
 
     const data = await response.json()
@@ -142,7 +144,8 @@ export class NoaAssistantIntegration {
     )
 
     if (!response.ok) {
-      throw new Error(`Erro ao adicionar mensagem: ${response.statusText}`)
+      const errorText = await response.text().catch(() => response.statusText)
+      throw new Error(`Erro ao adicionar mensagem: ${response.status} ${errorText}`)
     }
   }
 
@@ -167,7 +170,8 @@ export class NoaAssistantIntegration {
     )
 
     if (!response.ok) {
-      throw new Error(`Erro ao executar assistant: ${response.statusText}`)
+      const errorText = await response.text().catch(() => response.statusText)
+      throw new Error(`Erro ao executar assistant: ${response.status} ${errorText}`)
     }
 
     const data = await response.json()
@@ -194,6 +198,11 @@ export class NoaAssistantIntegration {
           }
         }
       )
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => response.statusText)
+        throw new Error(`Erro ao checar execução: ${response.status} ${errorText}`)
+      }
 
       const data = await response.json()
 
@@ -223,6 +232,11 @@ export class NoaAssistantIntegration {
         }
       }
     )
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => response.statusText)
+      throw new Error(`Erro ao obter mensagens: ${response.status} ${errorText}`)
+    }
 
     const data = await response.json()
     const messages = data.data
@@ -556,7 +570,7 @@ let noaAssistantIntegration: NoaAssistantIntegration | null = null
 export const getNoaAssistantIntegration = (): NoaAssistantIntegration => {
   if (!noaAssistantIntegration) {
     noaAssistantIntegration = new NoaAssistantIntegration({
-      assistantId: 'asst_fN2Fk9fQ7JEyyFUIe50Fo9QD'
+      assistantId: 'asst_CAW142M53uLBLbVzERZMa7HF'
     })
   }
   return noaAssistantIntegration

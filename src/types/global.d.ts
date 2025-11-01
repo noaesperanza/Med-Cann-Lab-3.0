@@ -8,6 +8,11 @@ declare module '*.ts' {
   export default content;
 }
 
+declare module '*.md?raw' {
+  const content: string;
+  export default content;
+}
+
 interface Document {
   id: number;
   title: string;

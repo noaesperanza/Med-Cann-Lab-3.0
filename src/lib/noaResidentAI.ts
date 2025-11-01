@@ -1,5 +1,8 @@
 import { supabase } from './supabase'
 import { clinicalReportService, ClinicalReport } from './clinicalReportService'
+import { KnowledgeBaseIntegration } from '../services/knowledgeBaseIntegration'
+import { getNoaAssistantIntegration } from './noaAssistantIntegration'
+import masterDocumentRaw from './data/documentoMestreResumo.md?raw'
 
 export interface AIResponse {
   id: string
@@ -28,12 +31,24 @@ export interface ResidentAIConfig {
   assessmentEnabled: boolean
 }
 
+type AxisKey = 'clinica' | 'ensino' | 'pesquisa'
+
+interface AxisDetails {
+  key: AxisKey
+  label: string
+  summary: string
+  defaultRoute: string
+  knowledgeQuery: string
+}
+
 export class NoaResidentAI {
   private config: ResidentAIConfig
   private memory: AIMemory[] = []
   private conversationContext: any[] = []
   private isProcessing: boolean = false
   private apiKey: string = ''
+  private assistantIntegration = getNoaAssistantIntegration()
+  private readonly masterDocumentDigest = this.buildMasterDocumentDigest()
 
   constructor() {
     this.config = {
@@ -71,6 +86,17 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
       // Detectar intenção da mensagem
       const intent = this.detectIntent(userMessage)
       
+      const assistantResponse = await this.getAssistantResponse(
+        userMessage,
+        intent,
+        platformData,
+        userEmail
+      )
+
+      if (assistantResponse) {
+        return assistantResponse
+      }
+
       let response: AIResponse
       
       switch (intent) {
@@ -88,7 +114,7 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
           break
         case 'general':
         default:
-          response = await this.processGeneralQuery(userMessage, userId, userEmail)
+          response = await this.processGeneralQuery(userMessage, userId, platformData, userEmail)
           break
       }
 
@@ -329,7 +355,7 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
       
     } catch (error) {
       console.error('Erro ao processar consulta da plataforma:', error)
-      return this.createErrorResponse('Erro ao acessar informações da plataforma.')
+      return this.createResponse('Erro ao acessar informações da plataforma.', 0.2, 'error')
     }
   }
 
@@ -360,8 +386,88 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     )
   }
 
-  private async processGeneralQuery(message: string, userId?: string, userEmail?: string): Promise<AIResponse> {
-    // Implementar consulta geral
+  private async processGeneralQuery(
+    message: string,
+    userId?: string,
+    platformData?: any,
+    userEmail?: string
+  ): Promise<AIResponse> {
+    try {
+      const axisDetails = this.getAxisDetails(this.resolveAxisFromPath(platformData?.dashboard?.activeSection))
+      const availableAxes = this.getAvailableAxesForUser(platformData?.user?.user_type)
+      const axisMenu = this.formatAxisMenu(availableAxes)
+      const isAdmin = this.isAdminUser(userEmail, platformData?.user?.user_type)
+      const knowledgeQuery = this.extractKnowledgeQuery(
+        message,
+        isAdmin ? 'documento mestre' : axisDetails.knowledgeQuery
+      )
+      const knowledgeHighlight = await this.getKnowledgeHighlight(knowledgeQuery)
+
+      if (isAdmin && platformData?.user) {
+        const adminLines = [
+          'Dr. Ricardo, conexão administrativa confirmada para a MedCannLab 3.0.',
+          `• Eixo ativo: ${axisDetails.label} — ${axisDetails.summary}`,
+          `• Rotas principais:\n${axisMenu}`,
+        ]
+
+        if (knowledgeHighlight) {
+          adminLines.push(
+            `• Base de conhecimento: ${knowledgeHighlight.title}\n  ${knowledgeHighlight.summary}`
+          )
+        }
+
+        adminLines.push('Posso abrir qualquer eixo ou consultar um protocolo específico para você.')
+
+        return this.createResponse(
+          adminLines.join('\n\n'),
+          0.92,
+          'text',
+          {
+            intent: 'FOLLOW_UP',
+            activeAxis: axisDetails.key,
+            userType: 'admin',
+            knowledgeHighlight: knowledgeHighlight?.id
+          }
+        )
+      }
+
+      if (platformData?.user) {
+        const userName = platformData.user.name || 'Colega'
+        const alternativeAxes = availableAxes.filter(axis => axis !== axisDetails.key)
+        const axisSwitchMessage = alternativeAxes.length > 0
+          ? `Se quiser, posso te levar direto para ${alternativeAxes.map(axis => this.getAxisDetails(axis).label).join(', ')}.`
+          : ''
+
+        const lines = [
+          `${userName}, estou acompanhando você no eixo ${axisDetails.label}. ${axisDetails.summary}`,
+        ]
+
+        if (axisSwitchMessage) {
+          lines.push(axisSwitchMessage)
+        }
+
+        if (knowledgeHighlight) {
+          lines.push(`Conhecimento em foco: ${knowledgeHighlight.title}\n${knowledgeHighlight.summary}`)
+        }
+
+        lines.push('Como posso apoiar sua próxima ação agora?')
+
+        return this.createResponse(
+          lines.join('\n\n'),
+          0.85,
+          'text',
+          {
+            intent: 'FOLLOW_UP',
+            activeAxis: axisDetails.key,
+            userType: platformData.user.user_type,
+            knowledgeHighlight: knowledgeHighlight?.id
+          }
+        )
+      }
+    } catch (error) {
+      console.error('Erro ao personalizar resposta geral:', error)
+    }
+
     return this.createResponse(
       'Olá! Sou Nôa Esperança, sua IA Residente especializada em avaliações clínicas e treinamentos. Como posso ajudá-lo hoje? Posso auxiliar com avaliações clínicas, orientações terapêuticas ou treinamentos especializados.',
       0.8,
@@ -487,12 +593,16 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
         // Salvar na memória da IA
         this.saveToMemory(
           `Relatório clínico gerado para ${patientName} (ID: ${report.id})`,
-          {
-            type: 'assessment_completion',
-            reportId: report.id,
-            patientId: userId,
-            patientName: patientName
-          },
+          this.createResponse(
+            `Relatório clínico gerado (${report.id}) para ${patientName}.`,
+            0.9,
+            'assessment',
+            {
+              reportId: report.id,
+              patientId: userId,
+              patientName
+            }
+          ),
           userId
         )
         
@@ -509,5 +619,234 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
 
   clearMemory(): void {
     this.memory = []
+  }
+
+  private resolveAxisFromPath(path?: string | null): AxisKey | null {
+    if (!path) return null
+    if (path.includes('/clinica/')) return 'clinica'
+    if (path.includes('/ensino/')) return 'ensino'
+    if (path.includes('/pesquisa/')) return 'pesquisa'
+    return null
+  }
+
+  private getAxisDetails(axis: AxisKey | null): AxisDetails {
+    const axisKey: AxisKey = axis ?? 'clinica'
+    const axisMap: Record<AxisKey, AxisDetails> = {
+      clinica: {
+        key: 'clinica',
+        label: 'Clínica',
+        summary: 'Fluxos assistenciais, prontuários integrados e acompanhamento IMRE em tempo real.',
+        defaultRoute: '/app/clinica/profissional/dashboard',
+        knowledgeQuery: 'relatório clínico'
+      },
+      ensino: {
+        key: 'ensino',
+        label: 'Ensino',
+        summary: 'Cursos, trilhas educacionais e a Arte da Entrevista Clínica para capacitação contínua.',
+        defaultRoute: '/app/ensino/aluno/dashboard',
+        knowledgeQuery: 'arte da entrevista clínica'
+      },
+      pesquisa: {
+        key: 'pesquisa',
+        label: 'Pesquisa',
+        summary: 'Projetos científicos, fórum de casos e evidências aplicadas à cannabis medicinal.',
+        defaultRoute: '/app/pesquisa/profissional/dashboard',
+        knowledgeQuery: 'pesquisa nefrologia cannabis'
+      }
+    }
+
+    return axisMap[axisKey]
+  }
+
+  private formatAxisMenu(axes: AxisKey[]): string {
+    const uniqueAxes = [...new Set(axes)]
+    return uniqueAxes
+      .map(axis => {
+        const details = this.getAxisDetails(axis)
+        return `• ${details.label} → ${details.defaultRoute}`
+      })
+      .join('\n')
+  }
+
+  private composeAssistantPrompt(
+    message: string,
+    axisDetails: AxisDetails,
+    axisMenu: string,
+    intent: string,
+    platformData?: any,
+    userEmail?: string
+  ): string {
+    const userName = platformData?.user?.name || this.resolveUserNameFromEmail(userEmail)
+    const email = platformData?.user?.email || userEmail || 'desconhecido'
+    const userType = platformData?.user?.user_type || (this.isAdminUser(userEmail, platformData?.user?.user_type) ? 'admin' : 'profissional')
+    const currentRoute = platformData?.dashboard?.activeSection || 'desconhecido'
+
+    const contextLines = [
+      'Contexto da plataforma:',
+      `- Nome do usuário: ${userName}`,
+      `- Email: ${email}`,
+      `- Tipo de usuário: ${userType}`,
+      `- Eixo ativo: ${axisDetails.label}`,
+      `- Resumo do eixo: ${axisDetails.summary}`,
+      `- Intenção detectada: ${intent}`,
+      '- Cumprimente de forma calorosa e breve apenas uma vez na conversa atual; vá direto ao ponto sem repetir o nome do usuário a cada resposta.'
+    ]
+
+    if (email?.toLowerCase() === 'eduardoscfaveret@gmail.com') {
+      contextLines.push('- Perfil reconhecido: Dr. Eduardo Faveret • Neurologista pediátrico, chefe da área clínica.')
+      contextLines.push('- Foque na visão administrativa e clínica do MedCannLab. Não ofereça grade curricular nem conteúdo de ensino acadêmico; priorize status de pacientes, atendimentos, relatórios e integrações clínicas.')
+      contextLines.push('- Evite iniciar cada resposta com “Dr. Eduardo”. Cumprimente uma única vez se necessário e então trate diretamente dos status e próximos passos clínicos/administrativos.')
+    }
+
+    if (userType === 'professional' && email?.toLowerCase() !== 'eduardoscfaveret@gmail.com') {
+      contextLines.push('- Usuário profissional: destaque dados clínicos, atendimentos, KPIs de pacientes e integrações. Evite falar sobre cronogramas de curso a menos que solicitado explícita e diretamente.')
+      contextLines.push('- Responda de forma objetiva, sem repetir saudação ou nome em excesso.')
+    }
+
+    if (axisMenu) {
+      contextLines.push('- Rotas principais:', axisMenu)
+    }
+
+    contextLines.push(`- Rota atual: ${currentRoute}`)
+
+    const instructions = this.masterDocumentDigest
+
+    return `${contextLines.join('\n')}\n\nInstruções principais (Documento Mestre Plataforma Nôa Esperanza MedCannLab 3.0):\n${instructions}\n\nMensagem do usuário:\n${message}`
+  }
+
+  private resolveUserNameFromEmail(email?: string): string {
+    if (!email) return 'Usuário'
+    const prefix = email.split('@')[0]
+    return prefix.replace(/\./g, ' ')
+  }
+
+  private extractKnowledgeQuery(message: string, fallback: string): string {
+    const lower = message.toLowerCase()
+    if (lower.includes('documento mestre')) return 'documento mestre'
+    if (lower.includes('documento') && lower.includes('sofia')) return 'documento mestre'
+    if (lower.includes('biblioteca') || lower.includes('base de conhecimento')) return 'biblioteca clínica'
+    if (lower.includes('protocolos') && lower.includes('cannabis')) return 'protocolos cannabis'
+    if (lower.includes('nefrologia')) return 'nefrologia'
+    return fallback
+  }
+
+  private getAvailableAxesForUser(userType?: string): AxisKey[] {
+    switch (userType) {
+      case 'patient':
+        return ['clinica']
+      case 'aluno':
+        return ['ensino', 'pesquisa']
+      case 'professional':
+        return ['clinica', 'pesquisa', 'ensino']
+      case 'admin':
+      default:
+        return ['clinica', 'ensino', 'pesquisa']
+    }
+  }
+
+  private isAdminUser(userEmail?: string, platformUserType?: string): boolean {
+    if (platformUserType === 'admin') return true
+    if (!userEmail) return false
+    const adminEmails = [
+      'rrvalenca@gmail.com',
+      'rrvlenca@gmail.com',
+      'profrvalenca@gmail.com'
+    ]
+    return adminEmails.includes(userEmail.toLowerCase())
+  }
+
+  private async getKnowledgeHighlight(query?: string) {
+    if (!query) return null
+    try {
+      const results = await KnowledgeBaseIntegration.semanticSearch(query, {
+        aiLinkedOnly: true,
+        limit: 1
+      })
+
+      const candidate = results && results.length > 0
+        ? results[0]
+        : (await KnowledgeBaseIntegration.semanticSearch(query, {
+            aiLinkedOnly: false,
+            limit: 1
+          }))[0]
+
+      if (candidate) {
+        const summary = candidate.summary || ''
+        const trimmedSummary = summary.length > 220 ? `${summary.slice(0, 217)}...` : summary
+        return {
+          id: candidate.id,
+          title: candidate.title,
+          summary: trimmedSummary
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar destaque da base de conhecimento:', error)
+    }
+
+    return null
+  }
+
+  private async getAssistantResponse(
+    message: string,
+    intent: string,
+    platformData?: any,
+    userEmail?: string
+  ): Promise<AIResponse | null> {
+    try {
+      const axisDetails = this.getAxisDetails(this.resolveAxisFromPath(platformData?.dashboard?.activeSection))
+      const availableAxes = this.getAvailableAxesForUser(platformData?.user?.user_type)
+      const axisMenu = this.formatAxisMenu(availableAxes)
+      const prompt = this.composeAssistantPrompt(
+        message,
+        axisDetails,
+        axisMenu,
+        intent,
+        platformData,
+        userEmail
+      )
+
+      const assistantResult = await this.assistantIntegration.sendMessage(
+        prompt,
+        platformData?.user?.id,
+        platformData?.dashboard?.activeSection
+      )
+
+      if (!assistantResult?.content) {
+        return null
+      }
+
+      return this.createResponse(
+        assistantResult.content,
+        assistantResult.from === 'assistant' ? 0.97 : 0.86,
+        'text',
+        {
+          intent,
+          activeAxis: axisDetails.key,
+          userType: platformData?.user?.user_type,
+          source: assistantResult.from,
+          model: assistantResult.metadata?.model,
+          processingTime: assistantResult.metadata?.processingTime
+        }
+      )
+    } catch (error) {
+      console.warn('❌ Erro ao consultar assistant:', error)
+      return null
+    }
+  }
+
+  private buildMasterDocumentDigest(): string {
+    if (!masterDocumentRaw) {
+      return 'Documento mestre indisponível.'
+    }
+
+    const trimmed = masterDocumentRaw
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .filter((line: string) => line.trim().length > 0)
+      .slice(0, 80)
+      .join('\n')
+
+    const maxChars = 1600
+    return trimmed.length > maxChars ? `${trimmed.slice(0, maxChars)}...` : trimmed
   }
 }

@@ -220,6 +220,10 @@ const NoaAnimatedAvatar: React.FC<NoaAnimatedAvatarProps> = ({
     }
   }, [isListening])
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('noaSoundToggled', { detail: { enabled: somAtivo } }))
+  }, [somAtivo])
+
   return (
     <div className="relative w-48 h-48 mx-auto">
       <div 
@@ -355,7 +359,7 @@ const NoaAnimatedAvatar: React.FC<NoaAnimatedAvatarProps> = ({
           </button>
 
           <button
-            onClick={() => setSomAtivo(!somAtivo)}
+            onClick={() => setSomAtivo(prev => !prev)}
             className={cn(
               "w-14 h-14 rounded-full flex items-center justify-center transition-all",
               somAtivo 

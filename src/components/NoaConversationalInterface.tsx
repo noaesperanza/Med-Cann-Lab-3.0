@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Mic, MicOff, X, Send, Loader2, Activity, BookOpen, Brain, History, RefreshCw } from 'lucide-react'
+import { Mic, MicOff, X, Send, Loader2, Activity, BookOpen, Brain } from 'lucide-react'
 import clsx from 'clsx'
 import NoaAnimatedAvatar from './NoaAnimatedAvatar'
 import { useNoaPlatform } from '../contexts/NoaPlatformContext'
@@ -45,6 +45,13 @@ const getPositionClasses = (position: NoaConversationalInterfaceProps['position'
   }
 }
 
+type RecognitionHandle = {
+  recognition: any
+  timer?: number
+  buffer: string
+  stopped?: boolean
+}
+
 const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
   userCode = 'DR-001',
   userName = 'Dr. Ricardo Valença',
@@ -55,17 +62,26 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
   const [isOpen, setIsOpen] = useState(hideButton || contextIsOpen)
   const [inputValue, setInputValue] = useState('')
   const [isListening, setIsListening] = useState(false)
-  const recognitionRef = useRef<any>(null)
+  const recognitionRef = useRef<RecognitionHandle | null>(null)
 
   const {
     messages,
     sendMessage,
     isProcessing,
+    isSpeaking,
     error,
     triggerQuickCommand,
     usedEndpoints,
     lastIntent
   } = useMedCannLabConversation()
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+    }
+  }, [messages])
 
   useEffect(() => {
     setIsOpen(contextIsOpen || hideButton)
@@ -82,11 +98,117 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
-        recognitionRef.current.stop()
+        recognitionRef.current.stopped = true
+        if (recognitionRef.current.timer) {
+          window.clearTimeout(recognitionRef.current.timer)
+          recognitionRef.current.timer = undefined
+        }
+        recognitionRef.current.recognition.onresult = null
+        recognitionRef.current.recognition.onerror = null
+        recognitionRef.current.recognition.onend = null
+        recognitionRef.current.recognition.stop()
+        const text = recognitionRef.current.buffer.trim()
+        if (text.length > 0) {
+          sendMessage(text, { preferVoice: true })
+        }
         recognitionRef.current = null
       }
     }
-  }, [])
+  }, [sendMessage])
+
+  const stopListening = useCallback(() => {
+    const handle = recognitionRef.current
+    if (handle) {
+      handle.stopped = true
+      if (handle.timer) {
+        window.clearTimeout(handle.timer)
+        handle.timer = undefined
+      }
+      handle.recognition.onresult = null
+      handle.recognition.onerror = null
+      handle.recognition.onend = null
+      handle.recognition.stop()
+      const text = handle.buffer.trim()
+      if (text.length > 0) {
+        sendMessage(text, { preferVoice: true })
+      }
+      recognitionRef.current = null
+    }
+    setIsListening(false)
+  }, [sendMessage])
+
+  const startListening = useCallback(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      console.warn('Reconhecimento de voz não suportado neste navegador.')
+      return
+    }
+
+    window.dispatchEvent(new Event('noaStopSpeech'))
+    stopListening()
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const recognition: any = new SpeechRecognition()
+    recognition.lang = 'pt-BR'
+    recognition.continuous = true
+    recognition.interimResults = true
+
+    const handle: RecognitionHandle = {
+      recognition,
+      buffer: ''
+    }
+    recognitionRef.current = handle
+
+    const flush = () => {
+      const text = handle.buffer.trim()
+      if (text.length > 0) {
+        sendMessage(text, { preferVoice: true })
+        handle.buffer = ''
+      }
+    }
+
+    const scheduleFlush = () => {
+      if (handle.timer) {
+        window.clearTimeout(handle.timer)
+      }
+      handle.timer = window.setTimeout(() => {
+        flush()
+      }, 900)
+    }
+
+    recognition.onresult = (event: any) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i]
+        if (result.isFinal) {
+          handle.buffer += `${result[0].transcript.trim()} `
+          scheduleFlush()
+        }
+      }
+    }
+
+    recognition.onerror = (event: any) => {
+      console.error('Erro no reconhecimento de voz:', event.error)
+      if (handle.timer) {
+        window.clearTimeout(handle.timer)
+        handle.timer = undefined
+      }
+      flush()
+      setIsListening(false)
+      recognitionRef.current = null
+    }
+
+    recognition.onend = () => {
+      if (handle.timer) {
+        window.clearTimeout(handle.timer)
+        handle.timer = undefined
+      }
+      flush()
+      setIsListening(false)
+      recognitionRef.current = null
+    }
+
+    recognition.start()
+    setIsListening(true)
+  }, [sendMessage, stopListening])
 
   const handleSend = useCallback(() => {
     if (!inputValue.trim()) return
@@ -100,44 +222,6 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
       handleSend()
     }
   }, [handleSend])
-
-  const startListening = useCallback(() => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      console.warn('Reconhecimento de voz não suportado neste navegador.')
-      return
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    const recognition = new SpeechRecognition()
-    recognition.lang = 'pt-BR'
-    recognition.continuous = false
-    recognition.interimResults = false
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript
-      sendMessage(transcript, { preferVoice: true })
-    }
-
-    recognition.onerror = (event: any) => {
-      console.error('Erro no reconhecimento de voz:', event.error)
-    }
-
-    recognition.onend = () => {
-      setIsListening(false)
-    }
-
-    recognition.start()
-    recognitionRef.current = recognition
-    setIsListening(true)
-  }, [sendMessage])
-
-  const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop()
-      recognitionRef.current = null
-    }
-    setIsListening(false)
-  }, [])
 
   const toggleListening = useCallback(() => {
     if (isListening) {
@@ -169,7 +253,7 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
         <div className={clsx('fixed z-50 w-[420px] max-w-[92vw] h-[640px] bg-slate-900/95 border border-slate-700 rounded-3xl shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden', positionClasses)}>
           <div className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-sky-500 px-5 py-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <NoaAnimatedAvatar size="md" isListening={isListening} isSpeaking={isProcessing} />
+              <NoaAnimatedAvatar size="md" isListening={isListening} isSpeaking={isSpeaking} />
               <div>
                 <p className="text-sm text-emerald-100">Nôa Esperança • IA Residente</p>
                 <p className="text-xs text-emerald-50/80">{userName} • {userCode}</p>
@@ -180,6 +264,7 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
                 setIsOpen(false)
                 closeChat()
                 stopListening()
+                window.dispatchEvent(new Event('noaChatClosed'))
               }}
               className="p-2 rounded-full text-white/80 hover:bg-white/10 transition"
             >
@@ -189,7 +274,7 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
 
           <div className="border-b border-slate-800 bg-slate-900/80 px-5 py-2 flex items-center justify-between text-xs text-slate-400">
             <span className="flex items-center gap-1"><Activity className="w-3 h-3" /> Último fluxo: {lastIntent ?? 'Exploração'}</span>
-            <span className="flex items-center gap-1"><History className="w-3 h-3" /> {messages.length - 1} interações</span>
+            <span className="flex items-center gap-1 text-slate-400">{messages.length - 1} interações</span>
           </div>
 
           <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800">
@@ -207,7 +292,7 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
             {messages.map(message => (
               <div key={message.id} className={clsx('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}>
                 <div
@@ -236,8 +321,8 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
 
           <div className="border-t border-slate-800 bg-slate-900/80 px-5 py-3 space-y-2">
             {error && (
-              <div className="text-xs text-amber-400 flex items-center gap-2">
-                <RefreshCw className="w-3 h-3" /> {error}
+              <div className="text-xs text-amber-400">
+                {error}
               </div>
             )}
 
