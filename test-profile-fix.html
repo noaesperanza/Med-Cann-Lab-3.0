@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste - Carregamento de Perfil</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Teste - Carregamento de Perfil MedCannLab</h1>
+    
+    <div id="status" class="log info">
+        <strong>Status:</strong> Aguardando teste...
+    </div>
+    
+    <div id="logs"></div>
+    
+    <button onclick="testProfileLoading()">🧪 Testar Carregamento de Perfil</button>
+    <button onclick="clearLogs()">🗑️ Limpar Logs</button>
+    
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2'
+        
+        const supabaseUrl = 'https://itdjkfubfzmvmuxxjoae.supabase.co'
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZGprZnViZnptdm11eHhqb2FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjUyOTAsImV4cCI6MjA3Njc0MTI5MH0.j9Kfff56O2cWs5ocInVHaUFcaNTS7lrUNwsKBh2KIFM'
+        
+        const supabase = createClient(supabaseUrl, supabaseAnonKey)
+        
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs')
+            const logDiv = document.createElement('div')
+            logDiv.className = `log ${type}`
+            logDiv.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`
+            logsDiv.appendChild(logDiv)
+            logsDiv.scrollTop = logsDiv.scrollHeight
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status')
+            statusDiv.className = `log ${type}`
+            statusDiv.innerHTML = `<strong>Status:</strong> ${message}`
+        }
+        
+        async function testProfileLoading() {
+            updateStatus('Iniciando teste...', 'info')
+            log('🔍 Iniciando teste de carregamento de perfil...', 'info')
+            
+            try {
+                // 1. Verificar usuário atual
+                log('👤 Verificando usuário autenticado...', 'info')
+                const { data: { user }, error: userError } = await supabase.auth.getUser()
+                
+                if (userError) {
+                    log(`❌ Erro ao obter usuário: ${userError.message}`, 'error')
+                    updateStatus('Erro na autenticação', 'error')
+                    return
+                }
+                
+                if (!user) {
+                    log('❌ Nenhum usuário autenticado', 'error')
+                    updateStatus('Usuário não autenticado', 'error')
+                    return
+                }
+                
+                log(`✅ Usuário encontrado: ${user.id}`, 'success')
+                log(`📧 Email: ${user.email}`, 'info')
+                
+                // 2. Verificar perfil na tabela profiles
+                log('🔍 Verificando perfil na tabela profiles...', 'info')
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .maybeSingle()
+                
+                if (profileError) {
+                    log(`❌ Erro ao consultar perfil: ${profileError.message}`, 'error')
+                    updateStatus('Erro ao consultar perfil', 'error')
+                    return
+                }
+                
+                if (!profileData) {
+                    log('➕ Perfil não encontrado, criando automaticamente...', 'info')
+                    
+                    const newProfile = {
+                        id: user.id,
+                        name: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
+                        email: user.email,
+                        user_type: user.user_metadata?.user_type || 'admin',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }
+                    
+                    const { data: insertData, error: insertError } = await supabase
+                        .from('profiles')
+                        .insert([newProfile])
+                        .select()
+                        .single()
+                    
+                    if (insertError) {
+                        log(`❌ Erro ao criar perfil: ${insertError.message}`, 'error')
+                        updateStatus('Erro ao criar perfil', 'error')
+                        return
+                    }
+                    
+                    log('✅ Perfil criado com sucesso!', 'success')
+                    log(`📋 Dados do perfil: ${JSON.stringify(insertData, null, 2)}`, 'info')
+                } else {
+                    log('✅ Perfil encontrado!', 'success')
+                    log(`📋 Dados do perfil: ${JSON.stringify(profileData, null, 2)}`, 'info')
+                }
+                
+                // 3. Testar consulta final
+                log('🧪 Testando consulta final...', 'info')
+                const { data: finalData, error: finalError } = await supabase
+                    .from('profiles')
+                    .select('id, name, email, user_type')
+                    .eq('id', user.id)
+                    .single()
+                
+                if (finalError) {
+                    log(`❌ Erro na consulta final: ${finalError.message}`, 'error')
+                    updateStatus('Erro na consulta final', 'error')
+                    return
+                }
+                
+                log('✅ Consulta final bem-sucedida!', 'success')
+                log(`📊 Dados finais: ${JSON.stringify(finalData, null, 2)}`, 'info')
+                
+                updateStatus('Teste concluído com sucesso!', 'success')
+                
+            } catch (error) {
+                log(`❌ Erro geral: ${error.message}`, 'error')
+                updateStatus('Erro geral no teste', 'error')
+            }
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = ''
+            updateStatus('Logs limpos', 'info')
+        }
+        
+        // Auto-testar ao carregar a página
+        window.addEventListener('load', () => {
+            log('🚀 Página carregada, pronto para teste', 'info')
+        })
+    </script>
+</body>
+</html>

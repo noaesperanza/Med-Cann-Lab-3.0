@@ -1,0 +1,521 @@
+/* CSS Responsivo Global para MedCannLab 3.0 */
+
+/* Reset e configurações básicas para mobile */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 14px; /* Base menor para mobile */
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px; /* Tamanho normal para desktop */
+  }
+}
+
+/* Melhorias para touch em dispositivos móveis */
+button, 
+input, 
+select, 
+textarea,
+[role="button"] {
+  min-height: 44px; /* Tamanho mínimo recomendado para touch */
+  min-width: 44px;
+}
+
+/* Scroll suave */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Melhorias para texto em mobile */
+body {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Container responsivo global */
+.container-responsive {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    padding: 0 2rem;
+  }
+}
+
+/* Grid responsivo melhorado */
+.grid-responsive {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .grid-responsive {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Cards responsivos */
+.card-responsive {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  transition: all 0.3s ease;
+}
+
+@media (min-width: 768px) {
+  .card-responsive {
+    padding: 1.5rem;
+  }
+}
+
+.card-responsive:hover {
+  background: rgba(30, 41, 59, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* Botões responsivos */
+.btn-responsive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+@media (min-width: 768px) {
+  .btn-responsive {
+    padding: 1rem 2rem;
+    font-size: 1rem;
+  }
+}
+
+.btn-responsive:active {
+  transform: scale(0.98);
+}
+
+/* Inputs responsivos */
+.input-responsive {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  background: rgba(30, 41, 59, 0.8);
+  color: white;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+@media (min-width: 768px) {
+  .input-responsive {
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+  }
+}
+
+.input-responsive:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Texto responsivo */
+.text-responsive-xs {
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.text-responsive-sm {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 768px) {
+  .text-responsive-sm {
+    font-size: 1rem;
+  }
+}
+
+.text-responsive-base {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+@media (min-width: 768px) {
+  .text-responsive-base {
+    font-size: 1rem;
+  }
+}
+
+.text-responsive-lg {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+@media (min-width: 768px) {
+  .text-responsive-lg {
+    font-size: 1.125rem;
+  }
+}
+
+.text-responsive-xl {
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+@media (min-width: 768px) {
+  .text-responsive-xl {
+    font-size: 1.25rem;
+  }
+}
+
+.text-responsive-2xl {
+  font-size: 1.25rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 768px) {
+  .text-responsive-2xl {
+    font-size: 1.5rem;
+  }
+}
+
+.text-responsive-3xl {
+  font-size: 1.5rem;
+  line-height: 1.4;
+}
+
+@media (min-width: 768px) {
+  .text-responsive-3xl {
+    font-size: 1.875rem;
+  }
+}
+
+/* Espaçamento responsivo */
+.space-responsive {
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 768px) {
+  .space-responsive {
+    margin-bottom: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .space-responsive {
+    margin-bottom: 2rem;
+  }
+}
+
+/* Sidebar responsiva */
+.sidebar-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 280px;
+  z-index: 50;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+
+.sidebar-mobile.open {
+  transform: translateX(0);
+}
+
+@media (min-width: 1024px) {
+  .sidebar-mobile {
+    position: static;
+    transform: translateX(0);
+    height: auto;
+  }
+}
+
+/* Overlay para mobile */
+.mobile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 40;
+}
+
+@media (min-width: 1024px) {
+  .mobile-overlay {
+    display: none;
+  }
+}
+
+/* Header responsivo */
+.header-mobile {
+  height: 4rem;
+  padding: 0 1rem;
+}
+
+@media (min-width: 768px) {
+  .header-mobile {
+    height: 5rem;
+    padding: 0 1.5rem;
+  }
+}
+
+/* Main content responsivo */
+.main-mobile {
+  padding: 1rem;
+  margin-left: 0;
+}
+
+@media (min-width: 1024px) {
+  .main-mobile {
+    padding: 1.5rem;
+    margin-left: 20rem; /* Largura da sidebar */
+  }
+}
+
+/* Tabelas responsivas */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+  min-width: 600px;
+}
+
+/* Modais responsivos */
+.modal-responsive {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-responsive .modal-content {
+  width: 100%;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@media (min-width: 768px) {
+  .modal-responsive .modal-content {
+    max-width: 600px;
+  }
+}
+
+/* Loading responsivo */
+.loading-responsive {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.loading-responsive .spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid rgba(59, 130, 246, 0.2);
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@media (min-width: 768px) {
+  .loading-responsive .spinner {
+    width: 3rem;
+    height: 3rem;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Utilitários para mobile */
+.mobile-only {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none;
+  }
+}
+
+.desktop-only {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .desktop-only {
+    display: block;
+  }
+}
+
+/* Melhorias para acessibilidade em mobile */
+@media (max-width: 767px) {
+  /* Aumentar área de toque para elementos interativos */
+  button, 
+  input[type="button"], 
+  input[type="submit"], 
+  input[type="reset"],
+  a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Melhorar legibilidade do texto */
+  body {
+    line-height: 1.6;
+  }
+  
+  /* Otimizar espaçamento para touch */
+  .space-y-4 > * + * {
+    margin-top: 1rem;
+  }
+  
+  .space-y-6 > * + * {
+    margin-top: 1.5rem;
+  }
+  
+  .space-y-8 > * + * {
+    margin-top: 2rem;
+  }
+}
+
+/* Animações suaves para mobile */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  .animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from { 
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Melhorias específicas para o MedCannLab */
+.dashboard-mobile {
+  padding: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .dashboard-mobile {
+    padding: 1rem;
+  }
+}
+
+.kpi-card-mobile {
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 768px) {
+  .kpi-card-mobile {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+}
+
+.patient-list-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .patient-list-mobile {
+    gap: 1rem;
+  }
+}
+
+.chat-mobile {
+  height: calc(100vh - 8rem);
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .chat-mobile {
+    height: calc(100vh - 10rem);
+    padding: 1.5rem;
+  }
+}

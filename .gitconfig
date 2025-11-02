@@ -1,0 +1,11 @@
+[user]
+    email = iaianoaesperanza@gmail.com
+    name = Nôa Esperança - IA Residente
+
+[remote "origin"]
+    url = https://github.com/noaesperanza/medcanlab1.0.git
+    fetch = +refs/heads/*:refs/remotes/origin/*
+
+[core]
+    editor = code --wait
+    autocrlf = true
