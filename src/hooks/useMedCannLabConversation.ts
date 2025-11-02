@@ -92,11 +92,20 @@ export const useMedCannLabConversation = () => {
   const [voicesReady, setVoicesReady] = useState(false)
 
   const updateMessageContent = useCallback((messageId: string, content: string) => {
-    setMessages(prev => prev.map(message => (
-      message.id === messageId
-        ? { ...message, content }
-        : message
-    )))
+    setMessages(prev => {
+      let changed = false
+      const next = prev.map(message => {
+        if (message.id === messageId) {
+          if (message.content === content) {
+            return message
+          }
+          changed = true
+          return { ...message, content }
+        }
+        return message
+      })
+      return changed ? next : prev
+    })
   }, [setMessages])
 
   const stopSpeech = useCallback(() => {
