@@ -95,10 +95,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const profileType = profile.tipo || profile.user_type || profile.type
                 const profileName = profile.nome || profile.name
                 
-                if (profileType && ['patient', 'professional', 'aluno', 'admin'].includes(profileType)) {
-                  userType = profileType as 'patient' | 'professional' | 'aluno' | 'admin'
+                console.log('🔍 Dados do perfil:', { profileType, profileName, profile })
+                
+                // Validar tipo - deve ser um dos tipos válidos
+                if (profileType && typeof profileType === 'string' && ['patient', 'professional', 'aluno', 'admin'].includes(profileType.toLowerCase())) {
+                  userType = profileType.toLowerCase() as 'patient' | 'professional' | 'aluno' | 'admin'
                 }
-                if (profileName) {
+                // Validar nome - não deve ser um tipo
+                if (profileName && typeof profileName === 'string' && !['patient', 'professional', 'aluno', 'admin', 'Escute-se', 'Escute se'].includes(profileName)) {
                   userName = String(profileName)
                 }
                 
@@ -142,11 +146,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               // SOLUÇÃO TEMPORÁRIA: Forçar admin apenas para emails específicos
               userType = 'admin'
             } else if (session.user.user_metadata?.type) {
-              userType = session.user.user_metadata.type
+              const metadataType = String(session.user.user_metadata.type).toLowerCase()
+              if (['patient', 'professional', 'aluno', 'admin'].includes(metadataType)) {
+                userType = metadataType as 'patient' | 'professional' | 'aluno' | 'admin'
+              }
             } else if (session.user.user_metadata?.user_type) {
-              userType = session.user.user_metadata.user_type
+              const metadataUserType = String(session.user.user_metadata.user_type).toLowerCase()
+              if (['patient', 'professional', 'aluno', 'admin'].includes(metadataUserType)) {
+                userType = metadataUserType as 'patient' | 'professional' | 'aluno' | 'admin'
+              }
             } else if (session.user.user_metadata?.role) {
-              userType = session.user.user_metadata.role
+              const metadataRole = String(session.user.user_metadata.role).toLowerCase()
+              if (['patient', 'professional', 'aluno', 'admin'].includes(metadataRole)) {
+                userType = metadataRole as 'patient' | 'professional' | 'aluno' | 'admin'
+              }
+            }
+            
+            // Garantir que o nome não seja um tipo válido
+            if (userName && ['patient', 'professional', 'aluno', 'admin'].includes(userName.toLowerCase())) {
+              console.warn('⚠️ Nome detectado como tipo, corrigindo...', userName)
+              userName = email.split('@')[0] || 'Usuário'
+            }
+            
+            // Garantir que o tipo seja válido
+            if (!['patient', 'professional', 'aluno', 'admin'].includes(userType)) {
+              console.warn('⚠️ Tipo inválido detectado, usando padrão:', userType)
+              userType = 'patient' // Padrão seguro
             }
             
             const debugUser: User = {
