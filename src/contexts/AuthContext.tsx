@@ -85,8 +85,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               userName = session.user.user_metadata?.name || email.split('@')[0] || 'Usuário'
             }
             
-            // SOLUÇÃO TEMPORÁRIA: Forçar admin apenas para emails específicos
-            if (email === 'rrvalenca@gmail.com' || email === 'rrvlenca@gmail.com' || email === 'profrvalenca@gmail.com') {
+            // MODO DE TESTE: Permitir forçar tipo de usuário via localStorage (útil para testes)
+            const testUserType = localStorage.getItem('test_user_type')
+            if (testUserType && ['patient', 'professional', 'aluno', 'admin'].includes(testUserType)) {
+              console.log(`🧪 MODO DE TESTE: Forçando tipo de usuário: ${testUserType}`)
+              userType = testUserType as 'patient' | 'professional' | 'aluno' | 'admin'
+            } else if (email === 'rrvalenca@gmail.com' || email === 'rrvlenca@gmail.com' || email === 'profrvalenca@gmail.com') {
+              // SOLUÇÃO TEMPORÁRIA: Forçar admin apenas para emails específicos
               userType = 'admin'
             } else if (session.user.user_metadata?.type) {
               userType = session.user.user_metadata.type

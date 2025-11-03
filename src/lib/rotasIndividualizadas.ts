@@ -251,7 +251,7 @@ export const getUserRoutes = (eixo: string, tipo: string): UserRoute | null => {
 export const getDefaultRoute = (userType: string): string => {
   switch (userType) {
     case 'admin':
-      return '/app/dashboard'
+      return '/app/clinica/profissional/dashboard'
     case 'professional':
       return '/app/clinica/profissional/dashboard'
     case 'patient':
@@ -259,7 +259,7 @@ export const getDefaultRoute = (userType: string): string => {
     case 'aluno':
       return '/app/ensino/aluno/dashboard'
     default:
-      return '/app/dashboard'
+      return '/app/clinica/profissional/dashboard'
   }
 }
 

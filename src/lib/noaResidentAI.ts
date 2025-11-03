@@ -128,7 +128,8 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
         userMessage,
         intent,
         platformData,
-        userEmail
+        userEmail,
+        userId
       )
 
       if (assistantResponse) {
@@ -1200,20 +1201,34 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     axisMenu: string,
     intent: string,
     platformData?: any,
-    userEmail?: string
+    userEmail?: string,
+    userId?: string
   ): string {
     const userName = platformData?.user?.name || this.resolveUserNameFromEmail(userEmail)
     const email = platformData?.user?.email || userEmail || 'desconhecido'
     const userType = platformData?.user?.user_type || (this.isAdminUser(userEmail, platformData?.user?.user_type) ? 'admin' : 'profissional')
     const currentRoute = platformData?.dashboard?.activeSection || 'desconhecido'
+    const userID = userId || platformData?.user?.id || 'desconhecido'
+
+    // Detectar eixo atual baseado na rota
+    let currentAxis = 'indefinido'
+    if (currentRoute.includes('clinica') || currentRoute.includes('paciente')) {
+      currentAxis = 'clínica'
+    } else if (currentRoute.includes('ensino') || currentRoute.includes('aluno')) {
+      currentAxis = 'ensino'
+    } else if (currentRoute.includes('pesquisa')) {
+      currentAxis = 'pesquisa'
+    }
 
     const contextLines = [
       'Contexto da plataforma:',
+      `- ID do usuário: ${userID}`,
       `- Nome do usuário: ${userName}`,
       `- Email: ${email}`,
       `- Tipo de usuário: ${userType}`,
-      `- Eixo ativo: ${axisDetails.label}`,
+      `- Eixo ativo: ${axisDetails.label} (${currentAxis})`,
       `- Resumo do eixo: ${axisDetails.summary}`,
+      `- Rota atual: ${currentRoute}`,
       `- Intenção detectada: ${intent}`,
       '- Cumprimente de forma calorosa e breve apenas uma vez na conversa atual; vá direto ao ponto sem repetir o nome do usuário a cada resposta.'
     ]

@@ -61,10 +61,10 @@ const Landing: React.FC = () => {
     if (user && !authLoading) {
       console.log('🔄 Usuário logado detectado, redirecionando...', user.type)
       
-      // Redirecionar baseado no tipo de usuário
+      // Redirecionar baseado no tipo de usuário usando rotas organizadas por eixo
       switch (user.type) {
         case 'admin':
-          navigate('/app/dashboard')
+          navigate('/app/clinica/profissional/dashboard')
           break
         case 'professional':
           // Redirecionamento especial para Dr. Eduardo Faveret - usando a mesma estrutura organizada
@@ -76,14 +76,14 @@ const Landing: React.FC = () => {
           }
           break
         case 'patient':
-          navigate('/app/patient-dashboard')
+          navigate('/app/clinica/paciente/dashboard')
           break
         case 'aluno':
-          navigate('/app/aluno-dashboard')
+          navigate('/app/ensino/aluno/dashboard')
           break
         default:
           console.warn('⚠️ Tipo de usuário não reconhecido:', user.type)
-          navigate('/app/dashboard')
+          navigate('/app/clinica/profissional/dashboard')
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -125,15 +125,15 @@ const Landing: React.FC = () => {
         confirmPassword: '',
         userType: 'professional'
       })
-      // Redirecionar baseado no tipo de usuário
+      // Redirecionar baseado no tipo de usuário usando rotas organizadas por eixo
       if (registerData.userType === 'admin') {
-        navigate('/app/dashboard')
+        navigate('/app/clinica/profissional/dashboard')
       } else if (registerData.userType === 'patient') {
-        navigate('/app/patient-dashboard')
-        } else if (registerData.userType === 'aluno') {
-          navigate('/app/aluno-dashboard')
-        } else {
-        navigate('/app/professional-dashboard')
+        navigate('/app/clinica/paciente/dashboard')
+      } else if (registerData.userType === 'aluno') {
+        navigate('/app/ensino/aluno/dashboard')
+      } else {
+        navigate('/app/clinica/profissional/dashboard')
       }
     } catch (err) {
       error('Erro ao criar conta. Tente novamente.')
@@ -226,17 +226,9 @@ const Landing: React.FC = () => {
   ]
 
   const partners = [
-    { name: 'Hospital São Paulo', logo: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjYwIiB2aWV3Qm94PSIwIDAgMTIwIDYwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjOEI1Q0Y2Ii8+Cjx0ZXh0IHg9IjYwIiB5PSIzNSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE4IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuKdpDwvdGV4dD4KPC9zdmc+', type: 'Hospital' },
-    { name: 'Clínica MedCann', logo: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjYwIiB2aWV3Qm94PSIwIDAgMTIwIDYwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjOEI1Q0Y2Ii8+Cjx0ZXh0IHg9IjYwIiB5PSIzNSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE4IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuKdpDwvdGV4dD4KPC9zdmc+', type: 'Clínica' },
-    { name: 'Universidade Federal', logo: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjYwIiB2aWV3Qm94PSIwIDAgMTIwIDYwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjOEI1Q0Y2Ii8+Cjx0ZXh0IHg9IjYwIiB5PSIzNSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE4IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuKdpDwvdGV4dD4KPC9zdmc+', type: 'Universidade' },
-    { name: 'Instituto de Pesquisa', logo: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjYwIiB2aWV3Qm94PSIwIDAgMTIwIDYwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjOEI1Q0Y2Ii8+Cjx0ZXh0IHg9IjYwIiB5PSIzNSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE4IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuKdpDwvdGV4dD4KPC9zdmc+', type: 'Pesquisa' }
-  ]
-
-  const stats = [
-    { number: '2.5K+', label: 'Profissionais Ativos' },
-    { number: '15K+', label: 'Pacientes Atendidos' },
-    { number: '240+', label: 'Artigos Científicos' },
-    { number: '99.9%', label: 'Satisfação' }
+    { name: 'Remederi', logo: '/logos/remederi.png', type: 'Empresa' },
+    { name: 'Alessandra LLC', logo: '/logos/alessandra-llc.png', type: 'Empresa' },
+    { name: 'IEP Remederi', logo: '/logos/iep-remederi.png', type: 'Instituto' }
   ]
 
   if (authLoading) {
@@ -267,8 +259,15 @@ const Landing: React.FC = () => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#00C16A' }}> {/* Verde principal */}
-                <span className="text-white font-bold text-xl">M</span>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#00C16A' }}>
+                <img 
+                  src="/brain.png" 
+                  alt="MedCannLab Logo" 
+                  className="w-full h-full object-contain p-1"
+                  style={{
+                    filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.3)) brightness(1.2) contrast(1.1)'
+                  }}
+                />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">
@@ -278,32 +277,9 @@ const Landing: React.FC = () => {
               </div>
             </div>
 
-            {/* Navigation */}
-            <nav className="hidden md:flex space-x-8">
-              <a href="#features" className="text-slate-200 hover:text-green-300 font-medium transition-colors">Recursos</a>
-              <a href="#partners" className="text-slate-200 hover:text-green-300 font-medium transition-colors">Parceiros</a>
-              <a href="#about" className="text-slate-200 hover:text-green-300 font-medium transition-colors">Sobre</a>
-              <a href="#contact" className="text-slate-200 hover:text-green-300 font-medium transition-colors">Contato</a>
-            </nav>
-
-            {/* Botão de Login Admin - sempre visível */}
-            <div className="flex items-center space-x-2 bg-gradient-to-r from-yellow-600/20 to-red-600/20 border border-yellow-500/30 px-3 py-2 rounded-lg">
-              <button
-                onClick={() => {
-                  console.log('🔑 Login Admin clicado - abrindo modal')
-                  setShowAdminLogin(true)
-                }}
-                className="flex items-center space-x-2 text-white hover:text-yellow-300 transition-colors"
-              >
-                <Shield className="w-4 h-4 text-yellow-400" />
-                <span className="text-sm font-medium">
-                  👑 Login Admin
-                </span>
-              </button>
-            </div>
-
-            {/* CTA */}
+            {/* Botões do Header */}
             <div className="flex items-center space-x-4">
+              {/* Botão Entre */}
               <button
                 onClick={() => {
                   // Scroll para a seção de perfis
@@ -311,99 +287,72 @@ const Landing: React.FC = () => {
                 }}
                 className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 shadow-lg hover:shadow-xl"
               >
-                Começar Agora
+                Entre
               </button>
+
+              {/* Botão de Login Admin - sempre visível */}
+              <div className="flex items-center space-x-2 bg-gradient-to-r from-yellow-600/20 to-red-600/20 border border-yellow-500/30 px-3 py-2 rounded-lg">
+                <button
+                  onClick={() => {
+                    console.log('🔑 Login Admin clicado - abrindo modal')
+                    setShowAdminLogin(true)
+                  }}
+                  className="flex items-center space-x-2 text-white hover:text-yellow-300 transition-colors"
+                >
+                  <Shield className="w-4 h-4 text-yellow-400" />
+                  <span className="text-sm font-medium">
+                    👑 Login Admin
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="py-12 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0A192F 0%, #1a365d 50%, #2d5a3d 100%)' }}> {/* Compactado */}
+      <section className="py-8 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0A192F 0%, #1a365d 50%, #2d5a3d 100%)' }}>
         {/* Background Effects */}
         <div className="absolute inset-0 bg-gradient-to-r from-green-800/30 via-slate-800/30 to-yellow-800/30"></div>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="flex flex-col mx-auto" style={{ transform: 'translateY(-30%)', maxWidth: '1000px' }}>
-            {/* Imagem do Cérebro com Glow - ACIMA */}
-            <div className="relative flex justify-center mb-8" style={{ transform: 'translateX(38%) translateY(103%) scale(1.44)' }}>
-              <div className="relative">
-                <img 
-                  src="/brain.png" 
-                  alt="Cérebro com IA" 
-                  className="w-80 h-80 object-contain drop-shadow-2xl"
-                  style={{
-                    filter: 'drop-shadow(0 0 15px rgba(0, 193, 106, 0.2)) drop-shadow(0 0 30px rgba(255, 211, 61, 0.1)) brightness(1.1) contrast(1.1)'
-                  }}
-                />
-              </div>
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-8 py-4">
+            {/* Texto Principal */}
+            <div className="flex-1 text-center lg:text-left max-w-2xl">
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
+                Med Cann Lab
+              </h1>
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-4" style={{ color: '#FFD33D' }}>
+                Plataforma Nôa Esperanza
+              </h2>
+              <p className="text-lg text-white/90">
+                Pesquisa pioneira da cannabis medicinal aplicada à nefrologia e neurologia, utilizando a metodologia AEC 
+                para identificar benefícios terapêuticos e avaliar impactos na função renal.
+              </p>
             </div>
-
-            <div className="flex flex-col lg:flex-row items-center justify-between mb-8">
-              <div className="text-center lg:text-left max-w-2xl mb-8 lg:mb-0">
-                        <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
-                          Medicina do <span style={{ color: '#FFD33D' }}>Futuro</span> {/* Amarelo com moderação */}
-                          <br />Hoje
-                        </h1>
-                <p className="text-xl text-white/90 mb-8">
-                  Plataforma médica completa com IA, avaliação clínica avançada e 
-                  metodologia AEC para profissionais e pacientes.
-                </p>
-                
-                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
-                  <button
-                    onClick={() => {
-                      // Scroll para a seção de perfis
-                      document.getElementById('profiles')?.scrollIntoView({ behavior: 'smooth' })
-                    }}
-                    className="text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 inline-flex items-center justify-center shadow-xl hover:shadow-2xl" 
-                    style={{ 
-                      backgroundColor: '#00C16A', 
-                      boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
-                      borderRadius: '12px'
-                    }}
-                    onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#00A85A'}
-                    onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#00C16A'}
-                  >
-                    Começar Gratuitamente
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </button>
-                  <button className="border-2 border-slate-200 text-slate-200 hover:bg-slate-700/50 hover:text-white backdrop-blur-sm px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300">
-                    Ver Demonstração
-                  </button>
-                </div>
-              </div>
-              
-              {/* Espaço vazio para balancear o layout */}
-              <div className="hidden lg:block w-80"></div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 w-full">
-              {stats.map((stat, index) => (
-                <div key={index} className="text-center backdrop-blur-sm rounded-xl p-6" 
-                     style={{ 
-                       backgroundColor: 'rgba(255,255,255,0.03)', 
-                       border: '1px solid rgba(255,255,255,0.1)',
-                       borderRadius: '12px',
-                       boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
-                     }}> {/* Opacidade reduzida, borda sutil */}
-                  <div className="text-3xl font-bold mb-2" style={{ color: '#00A85A' }}>{stat.number}</div> {/* Verde suave */}
-                  <div style={{ color: '#C8D6E5' }}>{stat.label}</div> {/* Texto secundário mais claro */}
-                </div>
-              ))}
+            
+            {/* Imagem do Cérebro - Redimensionada */}
+            <div className="flex-shrink-0">
+              <img 
+                src="/brain.png" 
+                alt="Cérebro com IA" 
+                className="w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 object-contain drop-shadow-2xl"
+                style={{
+                  filter: 'drop-shadow(0 0 15px rgba(0, 193, 106, 0.2)) drop-shadow(0 0 30px rgba(255, 211, 61, 0.1)) brightness(1.1) contrast(1.1)'
+                }}
+              />
             </div>
           </div>
         </div>
       </section>
 
       {/* Profile Selection */}
-      <section id="profiles" className="py-6" style={{ backgroundColor: '#0A192F' }}> {/* Compactado */}
+      <section id="profiles" className="py-8" style={{ backgroundColor: '#0A192F' }}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-6"> {/* Compactado */}
-            <h2 className="text-4xl font-bold text-white mb-4">
+          <div className="text-center mb-6">
+            <h2 className="text-3xl font-bold text-white mb-3">
               Escolha seu Perfil
             </h2>
-            <p className="text-xl text-slate-200 max-w-3xl mx-auto mb-4">
+            <p className="text-lg text-slate-200 max-w-3xl mx-auto mb-2">
               Acesse funcionalidades personalizadas para seu tipo de usuário
             </p>
             <p className="text-sm text-slate-300">
@@ -411,7 +360,7 @@ const Landing: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"> {/* Compactado */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             {profiles.map((profile) => (
               <div
                 key={profile.id}
@@ -419,7 +368,7 @@ const Landing: React.FC = () => {
                   setActiveProfile(profile.id as any)
                   setRegisterData(prev => ({ ...prev, userType: profile.id as any }))
                 }}
-                className={`p-6 cursor-pointer transition-all duration-300 group`} // Reduzido 25% (p-8 → p-6)
+                className={`p-4 cursor-pointer transition-all duration-300 group`}
                 style={{
                   backgroundColor: activeProfile === profile.id ? 'rgba(0, 193, 106, 0.1)' : 'rgba(255,255,255,0.03)',
                   border: activeProfile === profile.id ? '2px solid #00C16A' : '1px solid rgba(255,255,255,0.1)',
@@ -429,23 +378,25 @@ const Landing: React.FC = () => {
                 }}
               >
                 <div className="text-center">
-                  <div className={`w-16 h-16 bg-gradient-to-r ${profile.color} rounded-xl flex items-center justify-center text-white mx-auto mb-4 relative`}>
-                    {profile.icon}
+                  <div className={`w-12 h-12 bg-gradient-to-r ${profile.color} rounded-xl flex items-center justify-center text-white mx-auto mb-3 relative`}>
+                    <div className="scale-75">
+                      {profile.icon}
+                    </div>
                     {activeProfile === profile.id && (
-                      <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: '#00C16A' }}>
-                        <CheckCircle className="w-4 h-4 text-white" />
+                      <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: '#00C16A' }}>
+                        <CheckCircle className="w-3 h-3 text-white" />
                       </div>
                     )}
                   </div>
-                  <h3 className="text-xl font-semibold text-white mb-2">
+                  <h3 className="text-lg font-semibold text-white mb-1">
                     {profile.title}
                   </h3>
-                  <p className="text-slate-300 mb-6">{profile.subtitle}</p>
-                  <ul className="space-y-2 text-left">
+                  <p className="text-sm text-slate-300 mb-4">{profile.subtitle}</p>
+                  <ul className="space-y-1.5 text-left text-sm">
                     {profile.features.map((feature, index) => (
                       <li key={index} className="flex items-center text-slate-200">
-                        <CheckCircle className="w-4 h-4 text-green-400 mr-2" />
-                        {feature}
+                        <CheckCircle className="w-3 h-3 text-green-400 mr-2 flex-shrink-0" />
+                        <span className="text-xs">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -636,34 +587,47 @@ const Landing: React.FC = () => {
       </section>
 
       {/* Partners Section */}
-      <section id="partners" className="py-8" style={{ backgroundColor: '#0A192F' }}> {/* Compactado */}
+      <section id="partners" className="py-6" style={{ backgroundColor: '#0A192F' }}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              Nossos Parceiros
+          <div className="text-center mb-6">
+            <h2 className="text-3xl font-bold text-white mb-3">
+              Nossos Colaboradores
             </h2>
-            <p className="text-xl text-slate-200 max-w-3xl mx-auto">
-              Instituições de saúde que confiam na nossa plataforma
+            <p className="text-lg text-slate-200 max-w-3xl mx-auto">
+              Instituições que confiam na nossa plataforma
             </p>
           </div>
 
           {/* Carrossel de Parceiros */}
           <div className="relative overflow-hidden">
-            <div className="flex animate-scroll space-x-8">
+            <div className="flex animate-scroll space-x-6">
               {[...partners, ...partners].map((partner, index) => (
-                <div key={index} className="flex-shrink-0 w-64 p-6 hover:shadow-xl transition-all duration-300" 
+                <div key={index} className="flex-shrink-0 w-56 p-5 hover:shadow-xl transition-all duration-300" 
                      style={{ 
                        backgroundColor: 'rgba(255,255,255,0.03)', 
                        border: '1px solid rgba(255,255,255,0.1)',
                        borderRadius: '12px',
                        boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
-                     }}> {/* Nova paleta de cores */}
+                     }}>
                   <div className="text-center">
-                    <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#00C16A' }}>
-                      <span className="text-white font-bold text-lg">{partner.name.charAt(0)}</span>
+                    <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+                      <img 
+                        src={partner.logo} 
+                        alt={partner.name}
+                        className="max-w-full max-h-full object-contain"
+                        onError={(e) => {
+                          // Fallback se a imagem não carregar
+                          const target = e.target as HTMLImageElement
+                          target.style.display = 'none'
+                          const parent = target.parentElement
+                          if (parent) {
+                            parent.innerHTML = `<div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background-color: #00C16A;"><span class="text-white font-bold text-lg">${partner.name.charAt(0)}</span></div>`
+                          }
+                        }}
+                      />
                     </div>
                     <h3 className="font-semibold text-white mb-2">{partner.name}</h3>
-                    <p className="text-sm mb-3" style={{ color: '#C8D6E5' }}>{partner.type}</p> {/* Texto mais claro */}
+                    <p className="text-sm mb-3" style={{ color: '#C8D6E5' }}>{partner.type}</p>
                     <div className="flex justify-center">
                       <Star className="w-4 h-4 text-yellow-400 fill-current" />
                       <Star className="w-4 h-4 text-yellow-400 fill-current" />
@@ -679,14 +643,20 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-
       {/* Footer Profissional - Simplificado */}
       <footer className="text-white py-2" style={{ background: 'linear-gradient(135deg, #2d5a3d 0%, #1a365d 50%, #0A192F 100%)' }}> {/* Mesma cor do background dos parceiros */}
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#00C16A' }}>
-                <span className="text-white font-bold text-sm">M</span>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#00C16A' }}>
+                <img 
+                  src="/brain.png" 
+                  alt="MedCannLab Logo" 
+                  className="w-full h-full object-contain p-1"
+                  style={{
+                    filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.3)) brightness(1.2) contrast(1.1)'
+                  }}
+                />
               </div>
               <span className="text-lg font-bold">MedCannLab</span>
             </div>

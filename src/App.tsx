@@ -112,6 +112,7 @@ function App() {
                 <Route path="clinica/paciente/dashboard" element={<PatientDashboard />} />
                 <Route path="clinica/paciente/avaliacao-clinica" element={<ClinicalAssessment />} />
                 <Route path="clinica/paciente/relatorios" element={<Reports />} />
+                <Route path="clinica/paciente/agendamentos" element={<PatientAppointments />} />
                 <Route path="clinica/paciente/agenda" element={<PatientAgenda />} />
                 <Route path="clinica/paciente/chat-profissional" element={<PatientDoctorChat />} />
                 
@@ -123,6 +124,7 @@ function App() {
                 
                 <Route path="ensino/aluno/dashboard" element={<AlunoDashboard />} />
                 <Route path="ensino/aluno/cursos" element={<Courses />} />
+                <Route path="ensino/aluno/inscricao-cursos" element={<Courses />} />
                 <Route path="ensino/aluno/biblioteca" element={<Library />} />
                 <Route path="ensino/aluno/gamificacao" element={<Gamificacao />} />
                 
