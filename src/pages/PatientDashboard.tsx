@@ -19,7 +19,6 @@ import {
   BookOpen,
   Pill,
   Leaf,
-  Droplets,
   Apple,
   Zap,
   Users,
@@ -297,7 +296,16 @@ const PatientDashboard: React.FC = () => {
             <p className="text-slate-400 text-xs">Fundamentos e aplicações clínicas</p>
           </div>
           <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <Droplets className="w-8 h-8 text-blue-400 mb-2" />
+            <div className="w-8 h-8 mb-2 flex items-center justify-center">
+              <img 
+                src="/brain.png" 
+                alt="MedCannLab Logo" 
+                className="w-full h-full object-contain"
+                style={{
+                  filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.4)) brightness(1.1)'
+                }}
+              />
+            </div>
             <h4 className="text-white font-semibold mb-1">Saúde Renal</h4>
             <p className="text-slate-400 text-xs">Fatores tradicionais e não tradicionais</p>
           </div>
@@ -535,7 +543,16 @@ const PatientDashboard: React.FC = () => {
       {/* Saúde Renal */}
       <div className="bg-slate-800 rounded-xl p-6">
         <div className="flex items-center space-x-3 mb-4">
-          <Droplets className="w-8 h-8 text-blue-400" />
+          <div className="w-8 h-8 flex items-center justify-center">
+            <img 
+              src="/brain.png" 
+              alt="MedCannLab Logo" 
+              className="w-full h-full object-contain"
+              style={{
+                filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.4)) brightness(1.1)'
+              }}
+            />
+          </div>
           <h3 className="text-xl font-semibold text-white">Saúde Renal - Fatores Tradicionais e Não Tradicionais</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
