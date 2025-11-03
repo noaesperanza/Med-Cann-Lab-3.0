@@ -78,11 +78,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // Tentar buscar perfil do banco de dados
             try {
+              console.log('🔍 Buscando perfil no banco de dados para usuário:', session.user.id)
               const { data: profileData, error: profileError } = await supabase
                 .from('usuarios')
                 .select('*')
                 .eq('id', session.user.id)
                 .maybeSingle()
+              
+              if (profileError) {
+                console.warn('⚠️ Erro ao buscar perfil do banco:', profileError.message, profileError)
+              }
               
               if (!profileError && profileData) {
                 // Verificar tipos com segurança
@@ -112,6 +117,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setUser(dbUser)
                 setIsLoading(false)
                 return
+              } else {
+                console.log('ℹ️ Perfil não encontrado no banco de dados, usando metadados do auth')
               }
             } catch (error) {
               console.warn('⚠️ Erro ao buscar perfil do banco de dados, usando metadados:', error)
@@ -151,16 +158,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               cro: session.user.user_metadata?.cro
             }
             
-            console.log('✅ Usuário debug criado:', debugUser)
+            console.log('✅ Usuário criado com metadados:', debugUser)
+            console.log('📧 Email:', email)
+            console.log('👤 Tipo detectado:', userType)
+            console.log('📝 Nome:', userName)
             setUser(debugUser)
+            setIsLoading(false)
           }
         } else {
           console.log('❌ Nenhum usuário no auth state change - fazendo logout')
           setUser(null)
+          setIsLoading(false)
         }
-        
-        console.log('🔄 Auth state change - definindo isLoading como false')
-        setIsLoading(false)
       }
     })
 
