@@ -48,7 +48,10 @@ import ProfessionalDashboard from './pages/ProfessionalDashboard'
 import AlunoDashboard from './pages/AlunoDashboard'
 import ClinicaDashboard from './pages/ClinicaDashboard'
 import EnsinoDashboard from './pages/EnsinoDashboard'
+import GestaoAlunos from './pages/GestaoAlunos'
 import PesquisaDashboard from './pages/PesquisaDashboard'
+import CidadeAmigaDosRins from './pages/CidadeAmigaDosRins'
+import MedCannLab from './pages/MedCannLab'
 import AdminDashboard from './pages/AdminDashboard'
 import MedCannLabStructure from './pages/MedCannLabStructure'
 import NotFound from './pages/NotFound'
@@ -99,7 +102,8 @@ function App() {
                 
                 {/* Rotas Individualizadas por Eixo e Tipo */}
                 {/* EIXO CLÍNICA */}
-                <Route path="clinica/profissional/dashboard" element={<ProfessionalDashboard />} />
+                <Route path="clinica/profissional/dashboard" element={<RicardoValencaDashboard />} />
+                <Route path="clinica/profissional/dashboard-eduardo" element={<EduardoFaveretDashboard />} />
                 <Route path="clinica/profissional/pacientes" element={<PatientsManagement />} />
                 <Route path="clinica/profissional/agendamentos" element={<ProfessionalScheduling />} />
                 <Route path="clinica/profissional/relatorios" element={<Reports />} />
@@ -115,6 +119,7 @@ function App() {
                 <Route path="ensino/profissional/dashboard" element={<EnsinoDashboard />} />
                 <Route path="ensino/profissional/preparacao-aulas" element={<LessonPreparation />} />
                 <Route path="ensino/profissional/arte-entrevista-clinica" element={<ArteEntrevistaClinica />} />
+                <Route path="ensino/profissional/gestao-alunos" element={<GestaoAlunos />} />
                 
                 <Route path="ensino/aluno/dashboard" element={<AlunoDashboard />} />
                 <Route path="ensino/aluno/cursos" element={<Courses />} />
@@ -124,6 +129,8 @@ function App() {
                 {/* EIXO PESQUISA */}
                 <Route path="pesquisa/profissional/dashboard" element={<PesquisaDashboard />} />
                 <Route path="pesquisa/profissional/forum-casos" element={<ForumCasosClinicos />} />
+                <Route path="pesquisa/profissional/cidade-amiga-dos-rins" element={<CidadeAmigaDosRins />} />
+                <Route path="pesquisa/profissional/medcann-lab" element={<MedCannLab />} />
                 
                 <Route path="pesquisa/aluno/dashboard" element={<PesquisaDashboard />} />
                 <Route path="pesquisa/aluno/forum-casos" element={<ForumCasosClinicos />} />

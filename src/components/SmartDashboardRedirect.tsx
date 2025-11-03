@@ -13,10 +13,10 @@ const SmartDashboardRedirect: React.FC = () => {
     return <Navigate to="/" replace />
   }
 
-  // Redirecionamento especial para Dr. Eduardo Faveret
+  // Redirecionamento especial para Dr. Eduardo Faveret - usando a mesma estrutura organizada
   if (user.email === 'eduardoscfaveret@gmail.com' || user.name === 'Dr. Eduardo Faveret') {
-    console.log('🎯 Redirecionando Dr. Eduardo Faveret para dashboard personalizado')
-    return <Navigate to="/app/eduardo-faveret-dashboard" replace />
+    console.log('🎯 Redirecionando Dr. Eduardo Faveret para dashboard organizado')
+    return <Navigate to="/app/clinica/profissional/dashboard-eduardo" replace />
   }
 
   // Redirecionamento especial para Dr. Ricardo Valença (Admin)

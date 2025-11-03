@@ -122,7 +122,7 @@ const Layout: React.FC = () => {
             {/* Main Content - sem sidebar externa */}
             <div className="flex flex-col min-h-screen">
               <Header />
-              <NavegacaoIndividualizada />
+              {/* NavegacaoIndividualizada removida - botões dos eixos já estão na sidebar */}
               <main className={`flex-1 bg-slate-900 ${isMobile ? 'px-2 py-2' : 'px-4 py-4'}`}>
                 <Outlet />
               </main>
@@ -141,6 +141,8 @@ const Layout: React.FC = () => {
   }
 
   // Layout padrão para outros tipos de usuário (com sidebar)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
   return (
     <ProtectedRoute>
       <MobileResponsiveWrapper onMobileMenuToggle={setIsSidebarOpen}>
@@ -151,14 +153,18 @@ const Layout: React.FC = () => {
             isMobile={isMobile}
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
+            onCollapseChange={setIsSidebarCollapsed}
           />
           
           {/* Main Content */}
-          <div className={`flex flex-col min-h-screen transition-all duration-300 ${
-            isMobile ? 'ml-0' : 'lg:ml-80'
-          }`}>
+          <div 
+            className="flex flex-col min-h-screen transition-all duration-300"
+            style={{
+              marginLeft: isMobile ? '0' : isSidebarCollapsed ? '80px' : '320px'
+            }}
+          >
             <Header />
-            <NavegacaoIndividualizada />
+            {/* NavegacaoIndividualizada removida - botões dos eixos já estão na sidebar */}
             <main className={`flex-1 bg-slate-900 ${isMobile ? 'px-2 py-2' : 'px-4 py-4 lg:ml-4'}`}>
               <Outlet />
             </main>

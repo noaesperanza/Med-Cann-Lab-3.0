@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { BookOpen, FileText, Users, Clock, Search, Plus, Video, Presentation, Edit, Save, Globe, Book, Upload, Download } from 'lucide-react'
+import { 
+  BookOpen, FileText, Users, Clock, Search, Plus, Video, Presentation, 
+  Edit, Save, Globe, Book, Upload, Download, ArrowLeft, 
+  RotateCcw, HelpCircle, CheckCircle, XCircle, Image, File, 
+  Layout, Type, Sparkles
+} from 'lucide-react'
 
 interface Case {
   id: string
@@ -22,6 +28,7 @@ interface Lesson {
 }
 
 export function LessonPreparation() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [cases, setCases] = useState<Case[]>([])
   const [lessons, setLessons] = useState<Lesson[]>([])
@@ -29,7 +36,27 @@ export function LessonPreparation() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showNewLesson, setShowNewLesson] = useState(false)
   const [selectedCase, setSelectedCase] = useState<Case | null>(null)
-  const [activeTab, setActiveTab] = useState<'cases' | 'lessons' | 'editor'>('cases')
+  const [activeTab, setActiveTab] = useState<'cases' | 'lessons' | 'editor' | 'slides' | 'flipped' | 'quizzes'>('cases')
+  
+  // Slides states
+  const [slides, setSlides] = useState<any[]>([])
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [slideTitle, setSlideTitle] = useState('')
+  const [slideContent, setSlideContent] = useState('')
+  
+  // Flipped Classroom states
+  const [flippedLessons, setFlippedLessons] = useState<any[]>([])
+  const [newFlippedLesson, setNewFlippedLesson] = useState({
+    title: '',
+    preClassMaterial: '',
+    inClassActivity: '',
+    postClassActivity: ''
+  })
+  
+  // Quiz states
+  const [quizzes, setQuizzes] = useState<any[]>([])
+  const [currentQuiz, setCurrentQuiz] = useState<any>(null)
+  const [quizQuestions, setQuizQuestions] = useState<any[]>([])
   
   // Editor states
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null)
@@ -206,13 +233,22 @@ export function LessonPreparation() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">
-              🎓 Editor Científico de Aulas
-            </h1>
-            <p className="text-gray-300">
-              Crie artigos e relatos de caso a partir de casos clínicos reais
-            </p>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate('/app/ensino/profissional/dashboard')}
+              className="flex items-center space-x-2 text-slate-300 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Voltar</span>
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                📝 Ferramentas Pedagógicas
+              </h1>
+              <p className="text-gray-300">
+                Produza relatos de caso e crie aulas a partir de casos clínicos reais
+              </p>
+            </div>
           </div>
           <div className="flex gap-3">
             {editingLesson && (
@@ -237,7 +273,7 @@ export function LessonPreparation() {
         </div>
 
         {/* Search */}
-        {activeTab !== 'editor' && (
+        {activeTab !== 'editor' && activeTab !== 'slides' && activeTab !== 'flipped' && activeTab !== 'quizzes' && (
           <div className="mb-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -274,6 +310,36 @@ export function LessonPreparation() {
               }`}
             >
               📚 Minhas Aulas ({lessons.length})
+            </button>
+            <button 
+              onClick={() => setActiveTab('slides')}
+              className={`pb-3 px-4 font-semibold transition-colors ${
+                activeTab === 'slides'
+                  ? 'text-blue-400 border-b-2 border-blue-400'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              📊 Preparação de Slides ({slides.length})
+            </button>
+            <button 
+              onClick={() => setActiveTab('flipped')}
+              className={`pb-3 px-4 font-semibold transition-colors ${
+                activeTab === 'flipped'
+                  ? 'text-blue-400 border-b-2 border-blue-400'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              🔄 Sala de Aula Invertida ({flippedLessons.length})
+            </button>
+            <button 
+              onClick={() => setActiveTab('quizzes')}
+              className={`pb-3 px-4 font-semibold transition-colors ${
+                activeTab === 'quizzes'
+                  ? 'text-blue-400 border-b-2 border-blue-400'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              📝 Geração de Quizzes ({quizzes.length})
             </button>
             {editingLesson && (
               <button 
@@ -551,6 +617,494 @@ export function LessonPreparation() {
                 Publicar no Curso de Pós-graduação
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Slides Tab */}
+        {activeTab === 'slides' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Preparação de Slides</h2>
+              <button
+                onClick={() => {
+                  const newSlide = {
+                    id: Date.now().toString(),
+                    title: `Slide ${slides.length + 1}`,
+                    content: '',
+                    order: slides.length
+                  }
+                  setSlides([...slides, newSlide])
+                  setCurrentSlide(slides.length)
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+              >
+                <Plus size={18} />
+                Novo Slide
+              </button>
+            </div>
+
+            {slides.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Slides List */}
+                <div className="lg:col-span-1 bg-slate-800 rounded-xl p-4">
+                  <h3 className="text-lg font-semibold text-white mb-4">Slides</h3>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {slides.map((slide, index) => (
+                      <div
+                        key={slide.id}
+                        onClick={() => setCurrentSlide(index)}
+                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                          currentSlide === index
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-700 hover:bg-slate-600 text-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{slide.title}</span>
+                          <span className="text-xs">#{index + 1}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Slide Editor */}
+                <div className="lg:col-span-2 bg-slate-800 rounded-xl p-6">
+                  {slides[currentSlide] && (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">Título do Slide</label>
+                        <input
+                          type="text"
+                          value={slides[currentSlide].title}
+                          onChange={(e) => {
+                            const updated = [...slides]
+                            updated[currentSlide].title = e.target.value
+                            setSlides(updated)
+                          }}
+                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Digite o título do slide..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">Conteúdo</label>
+                        <textarea
+                          value={slides[currentSlide].content}
+                          onChange={(e) => {
+                            const updated = [...slides]
+                            updated[currentSlide].content = e.target.value
+                            setSlides(updated)
+                          }}
+                          rows={12}
+                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Digite o conteúdo do slide..."
+                        />
+                      </div>
+                      <div className="flex gap-3">
+                        <button 
+                          onClick={() => {
+                            // TODO: Implementar exportação PPT
+                            alert('Funcionalidade de exportação PPT será implementada em breve!')
+                          }}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
+                        >
+                          <Download size={18} />
+                          Exportar PPT
+                        </button>
+                        <button 
+                          onClick={() => {
+                            // TODO: Integrar com IA para gerar conteúdo do slide
+                            const slideContent = `Baseado no contexto do curso, aqui está um conteúdo sugerido para o slide "${slides[currentSlide].title}".`
+                            const updated = [...slides]
+                            updated[currentSlide].content = slideContent
+                            setSlides(updated)
+                            alert('Conteúdo gerado com IA! (Demo)')
+                          }}
+                          className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
+                        >
+                          <Sparkles size={18} />
+                          Gerar com IA
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-800 rounded-xl p-12 text-center">
+                <Presentation className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-400 mb-4">Nenhum slide criado ainda</p>
+                <button
+                  onClick={() => {
+                    const newSlide = {
+                      id: Date.now().toString(),
+                      title: 'Slide 1',
+                      content: '',
+                      order: 0
+                    }
+                    setSlides([newSlide])
+                    setCurrentSlide(0)
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold"
+                >
+                  Criar Primeiro Slide
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Flipped Classroom Tab */}
+        {activeTab === 'flipped' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Sala de Aula Invertida</h2>
+                <p className="text-gray-400 mt-2">Organize materiais pré-aula, atividades em sala e pós-aula</p>
+              </div>
+              <button
+                onClick={() => {
+                  if (!newFlippedLesson.title.trim()) {
+                    alert('Por favor, preencha o título da aula antes de criar.')
+                    return
+                  }
+                  const newLesson = {
+                    id: Date.now().toString(),
+                    title: newFlippedLesson.title,
+                    preClassMaterial: newFlippedLesson.preClassMaterial,
+                    inClassActivity: newFlippedLesson.inClassActivity,
+                    postClassActivity: newFlippedLesson.postClassActivity,
+                    createdAt: new Date().toISOString()
+                  }
+                  setFlippedLessons([...flippedLessons, newLesson])
+                  setNewFlippedLesson({ title: '', preClassMaterial: '', inClassActivity: '', postClassActivity: '' })
+                  alert('Aula invertida criada com sucesso!')
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+              >
+                <Plus size={18} />
+                Nova Aula
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-300 mb-2">Título da Aula</label>
+              <input
+                type="text"
+                value={newFlippedLesson.title}
+                onChange={(e) => setNewFlippedLesson({ ...newFlippedLesson, title: e.target.value })}
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Digite o título da aula..."
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Pre-Class Material */}
+              <div className="bg-slate-800 rounded-xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <BookOpen className="w-5 h-5 text-blue-400" />
+                  <h3 className="text-lg font-semibold text-white">Material Pré-Aula</h3>
+                </div>
+                <textarea
+                  value={newFlippedLesson.preClassMaterial}
+                  onChange={(e) => setNewFlippedLesson({ ...newFlippedLesson, preClassMaterial: e.target.value })}
+                  rows={8}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Vídeos, leituras e materiais que os alunos devem estudar antes da aula..."
+                />
+              </div>
+
+              {/* In-Class Activity */}
+              <div className="bg-slate-800 rounded-xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Users className="w-5 h-5 text-green-400" />
+                  <h3 className="text-lg font-semibold text-white">Atividade em Sala</h3>
+                </div>
+                <textarea
+                  value={newFlippedLesson.inClassActivity}
+                  onChange={(e) => setNewFlippedLesson({ ...newFlippedLesson, inClassActivity: e.target.value })}
+                  rows={8}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Exercícios práticos, discussões e atividades presenciais..."
+                />
+              </div>
+
+              {/* Post-Class Activity */}
+              <div className="bg-slate-800 rounded-xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <RotateCcw className="w-5 h-5 text-purple-400" />
+                  <h3 className="text-lg font-semibold text-white">Atividade Pós-Aula</h3>
+                </div>
+                <textarea
+                  value={newFlippedLesson.postClassActivity}
+                  onChange={(e) => setNewFlippedLesson({ ...newFlippedLesson, postClassActivity: e.target.value })}
+                  rows={8}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Revisões, exercícios e avaliações para consolidar o aprendizado..."
+                />
+              </div>
+            </div>
+
+            {/* Existing Flipped Lessons */}
+            {flippedLessons.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-xl font-semibold text-white mb-4">Aulas Criadas</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {flippedLessons.map((lesson) => (
+                    <div key={lesson.id} className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                      <h4 className="text-lg font-semibold text-white mb-4">{lesson.title}</h4>
+                      <div className="space-y-3 text-sm">
+                        <div>
+                          <span className="text-blue-400 font-medium">Pré-Aula:</span>
+                          <p className="text-gray-300 mt-1 line-clamp-2">{lesson.preClassMaterial || 'Não definido'}</p>
+                        </div>
+                        <div>
+                          <span className="text-green-400 font-medium">Em Sala:</span>
+                          <p className="text-gray-300 mt-1 line-clamp-2">{lesson.inClassActivity || 'Não definido'}</p>
+                        </div>
+                        <div>
+                          <span className="text-purple-400 font-medium">Pós-Aula:</span>
+                          <p className="text-gray-300 mt-1 line-clamp-2">{lesson.postClassActivity || 'Não definido'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Quizzes Tab */}
+        {activeTab === 'quizzes' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Geração de Quizzes</h2>
+                <p className="text-gray-400 mt-2">Crie questões interativas para avaliar seus alunos</p>
+              </div>
+              <button
+                onClick={() => {
+                  const newQuiz = {
+                    id: Date.now().toString(),
+                    title: 'Novo Quiz',
+                    questions: [],
+                    createdAt: new Date().toISOString()
+                  }
+                  setQuizzes([...quizzes, newQuiz])
+                  setCurrentQuiz(newQuiz)
+                  setQuizQuestions([])
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+              >
+                <Plus size={18} />
+                Novo Quiz
+              </button>
+            </div>
+
+            {quizzes.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Quiz List */}
+                <div className="lg:col-span-1 bg-slate-800 rounded-xl p-4">
+                  <h3 className="text-lg font-semibold text-white mb-4">Meus Quizzes</h3>
+                  <div className="space-y-2">
+                    {quizzes.map((quiz) => (
+                      <div
+                        key={quiz.id}
+                        onClick={() => {
+                          setCurrentQuiz(quiz)
+                          setQuizQuestions(quiz.questions || [])
+                        }}
+                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                          currentQuiz?.id === quiz.id
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-700 hover:bg-slate-600 text-gray-300'
+                        }`}
+                      >
+                        <div className="font-medium">{quiz.title}</div>
+                        <div className="text-xs mt-1">
+                          {quiz.questions?.length || 0} questões
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quiz Editor */}
+                <div className="lg:col-span-2 bg-slate-800 rounded-xl p-6">
+                  {currentQuiz && (
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">Título do Quiz</label>
+                        <input
+                          type="text"
+                          value={currentQuiz.title}
+                          onChange={(e) => {
+                            const updated = quizzes.map(q => q.id === currentQuiz.id ? { ...q, title: e.target.value } : q)
+                            setQuizzes(updated)
+                            setCurrentQuiz({ ...currentQuiz, title: e.target.value })
+                          }}
+                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-semibold text-white">Questões</h3>
+                          <button
+                            onClick={() => {
+                              const newQuestion = {
+                                id: Date.now().toString(),
+                                question: '',
+                                options: ['', '', '', ''],
+                                correctAnswer: 0
+                              }
+                              setQuizQuestions([...quizQuestions, newQuestion])
+                            }}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"
+                          >
+                            <Plus size={16} />
+                            Adicionar Questão
+                          </button>
+                        </div>
+
+                        {quizQuestions.map((question, qIndex) => (
+                          <div key={question.id} className="bg-slate-700 rounded-lg p-4">
+                            <div className="mb-4">
+                              <label className="block text-sm font-semibold text-gray-300 mb-2">
+                                Questão {qIndex + 1}
+                              </label>
+                              <textarea
+                                value={question.question}
+                                onChange={(e) => {
+                                  const updated = [...quizQuestions]
+                                  updated[qIndex].question = e.target.value
+                                  setQuizQuestions(updated)
+                                }}
+                                rows={2}
+                                className="w-full px-4 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Digite a pergunta..."
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              {question.options.map((option, oIndex) => (
+                                <div key={oIndex} className="flex items-center gap-2">
+                                  <input
+                                    type="radio"
+                                    name={`question-${qIndex}`}
+                                    checked={question.correctAnswer === oIndex}
+                                    onChange={() => {
+                                      const updated = [...quizQuestions]
+                                      updated[qIndex].correctAnswer = oIndex
+                                      setQuizQuestions(updated)
+                                    }}
+                                    className="w-4 h-4 text-blue-600"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={option}
+                                    onChange={(e) => {
+                                      const updated = [...quizQuestions]
+                                      updated[qIndex].options[oIndex] = e.target.value
+                                      setQuizQuestions(updated)
+                                    }}
+                                    className="flex-1 px-4 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder={`Alternativa ${oIndex + 1}...`}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                            <button
+                              onClick={() => {
+                                const updated = quizQuestions.filter((_, i) => i !== qIndex)
+                                setQuizQuestions(updated)
+                              }}
+                              className="mt-3 text-red-400 hover:text-red-300 text-sm font-medium"
+                            >
+                              Remover Questão
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex gap-3 pt-4 border-t border-slate-700">
+                        <button 
+                          onClick={() => {
+                            if (!currentQuiz.title.trim()) {
+                              alert('Por favor, preencha o título do quiz.')
+                              return
+                            }
+                            if (quizQuestions.length === 0) {
+                              alert('Adicione pelo menos uma questão ao quiz.')
+                              return
+                            }
+                            const updated = quizzes.map(q => 
+                              q.id === currentQuiz.id 
+                                ? { ...q, questions: quizQuestions }
+                                : q
+                            )
+                            setQuizzes(updated)
+                            setCurrentQuiz(updated.find(q => q.id === currentQuiz.id))
+                            alert('Quiz salvo com sucesso!')
+                          }}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
+                        >
+                          <Save size={18} />
+                          Salvar Quiz
+                        </button>
+                        <button 
+                          onClick={() => {
+                            // TODO: Integrar com IA para gerar questões automaticamente
+                            if (!currentQuiz.title.trim()) {
+                              alert('Por favor, preencha o título do quiz primeiro.')
+                              return
+                            }
+                            const generatedQuestion = {
+                              id: Date.now().toString(),
+                              question: `Questão gerada com IA sobre "${currentQuiz.title}"`,
+                              options: [
+                                'Alternativa A (correta)',
+                                'Alternativa B',
+                                'Alternativa C',
+                                'Alternativa D'
+                              ],
+                              correctAnswer: 0
+                            }
+                            setQuizQuestions([...quizQuestions, generatedQuestion])
+                            alert('Questão gerada com IA adicionada! (Demo)')
+                          }}
+                          className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
+                        >
+                          <Sparkles size={18} />
+                          Gerar com IA
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-800 rounded-xl p-12 text-center">
+                <HelpCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-400 mb-4">Nenhum quiz criado ainda</p>
+                <button
+                  onClick={() => {
+                    const newQuiz = {
+                      id: Date.now().toString(),
+                      title: 'Novo Quiz',
+                      questions: [],
+                      createdAt: new Date().toISOString()
+                    }
+                    setQuizzes([newQuiz])
+                    setCurrentQuiz(newQuiz)
+                    setQuizQuestions([])
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold"
+                >
+                  Criar Primeiro Quiz
+                </button>
+              </div>
+            )}
           </div>
         )}
 

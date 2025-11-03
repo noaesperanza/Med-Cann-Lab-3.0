@@ -22,7 +22,8 @@ import {
   BarChart3,
   Activity,
   FlaskConical,
-  Users
+  Users,
+  FileText
 } from 'lucide-react'
 import { useNoa } from '../contexts/NoaContext'
 import NoaAnimatedAvatar from '../components/NoaAnimatedAvatar'
@@ -65,8 +66,10 @@ const EnsinoDashboard: React.FC = () => {
   }
 
   const handleJoinClass = (courseTitle: string) => {
-    if (courseTitle.includes('Cannabis Medicinal')) {
+    if (courseTitle.includes('Cannabis Medicinal') || courseTitle.includes('Pós-Graduação')) {
       navigate('/curso-eduardo-faveret')
+    } else if (courseTitle.includes('Arte da Entrevista') || courseTitle.includes('Entrevista Clínica') || courseTitle.includes('AEC')) {
+      navigate('/app/arte-entrevista-clinica')
     } else if (courseTitle.includes('IMRE')) {
       navigate('/app/arte-entrevista-clinica')
     } else {
@@ -190,161 +193,112 @@ const EnsinoDashboard: React.FC = () => {
               <span>Voltar</span>
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-white">🎓 Curso Cannabis Medicinal</h1>
-              <p className="text-slate-400">Pós-Graduação em Cannabis Medicinal Integrativa - Dr. Eduardo Faveret</p>
-            </div>
-          </div>
-          
-          {/* Student Profile */}
-          <div className="flex items-center space-x-3 bg-slate-700 p-3 rounded-lg">
-            <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-teal-500 rounded-full flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-white">🎓 Aluno</p>
-              <p className="text-sm text-slate-400">Pós-Graduação</p>
+              <h1 className="text-2xl font-bold text-white">🎓 Gestão de Ensino</h1>
+              <p className="text-slate-400">Gerenciamento de cursos, alunos e materiais educacionais</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <div className="w-64 bg-slate-800 border-r border-slate-700 min-h-screen">
-          <div className="p-6">
-            <nav className="space-y-2">
-              <button onClick={() => handleNavigate('/app/ensino-dashboard')} className="w-full flex items-center space-x-3 p-3 rounded-lg bg-slate-700 text-white">
-                <BarChart3 className="w-5 h-5" />
-                <span>🎓 Dashboard Aluno</span>
-              </button>
-              <button onClick={() => handleNavigate('/app/library')} className="w-full flex items-center space-x-3 p-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
-                <BookOpen className="w-5 h-5" />
-                <span>📚 Biblioteca Médica</span>
-              </button>
+      {/* Navigation Buttons - Horizontal */}
+      <div className="bg-slate-800 border-b border-slate-700 p-4">
+        <nav className="flex flex-wrap gap-2 justify-center">
+          <button onClick={() => handleNavigate('/app/ensino/profissional/gestao-alunos')} className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors">
+            <Users className="w-5 h-5" />
+            <span>👥 Gestão de Alunos</span>
+          </button>
+          <button onClick={() => handleNavigate('/app/ensino/profissional/preparacao-aulas')} className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+            <FileText className="w-5 h-5" />
+            <span>📝 Ferramentas Pedagógicas</span>
+          </button>
+          <button onClick={() => handleNavigate('/app/library')} className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+            <BookOpen className="w-5 h-5" />
+            <span>📚 Biblioteca Médica</span>
+          </button>
+          <button onClick={() => handleNavigate('/app/ensino-dashboard')} className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+            <Calendar className="w-5 h-5" />
+            <span>📅 Calendário do Curso</span>
+          </button>
+        </nav>
+      </div>
 
-              <button onClick={() => handleNavigate('/app/ensino-dashboard')} className="w-full flex items-center space-x-3 p-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
-                <Calendar className="w-5 h-5" />
-                <span>📅 Calendário do Curso</span>
-              </button>
-              <button onClick={() => handleNavigate('/app/library')} className="w-full flex items-center space-x-3 p-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
-                <Award className="w-5 h-5" />
-                <span>🏆 Certificados</span>
-              </button>
-            </nav>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 p-6">
-          <div className="max-w-7xl mx-auto">
-            {/* Course Header */}
-            <div className="bg-gradient-to-r from-green-600 to-teal-500 rounded-xl p-6 mb-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-2">Curso Eduardo Faveret - Cannabis Medicinal</h2>
-                  <p className="text-white/90 mb-2">
-                    Curso completo de cannabis medicinal com metodologia prática e casos clínicos reais. 
-                    Desenvolvido pelo Dr. Eduardo Faveret, especialista em medicina integrativa.
-                  </p>
-                  <div className="flex items-center space-x-4 text-sm text-white/80">
-                    <span>Dr. Eduardo Faveret</span>
-                    <span>•</span>
-                    <span>2 meses / 60 horas</span>
-                    <span>•</span>
-                    <span>1247 alunos</span>
-                    <span>•</span>
-                    <span>⭐ 4.9</span>
-                  </div>
-                </div>
+      {/* Main Content */}
+      <div className="p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Cursos Disponíveis */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* Curso Arte da Entrevista Clínica */}
+            <div 
+              onClick={() => handleJoinClass('Arte da Entrevista Clínica')}
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold text-white">🎭 Arte da Entrevista Clínica</h3>
+                <Heart className="w-8 h-8 text-white" />
               </div>
+              <p className="text-white/90 mb-4">
+                Metodologia completa de entrevista clínica aplicada à Cannabis Medicinal. 
+                Desenvolva habilidades de comunicação e avaliação clínica.
+              </p>
+              <div className="flex items-center space-x-4 text-sm text-white/80 mb-4">
+                <span>Dr. Ricardo Valença</span>
+                <span>•</span>
+                <span>40 horas</span>
+                <span>•</span>
+                <span>⭐ 5.0</span>
+              </div>
+              <button className="w-full bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                Acessar Curso
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Video Player Section */}
-              <div className="lg:col-span-2">
-                {selectedModule ? (
-                  <div className="bg-slate-800 rounded-xl p-6">
-                    <div className="mb-6">
-                      <h3 className="text-xl font-semibold text-white mb-2">
-                        {courseModules.find(m => m.id === selectedModule)?.title}
-                      </h3>
-                      <p className="text-slate-400 text-sm">
-                        {courseModules.find(m => m.id === selectedModule)?.description}
-                      </p>
-                    </div>
-                    
-                    {/* Video Player */}
-                    <div className="bg-black rounded-lg aspect-video mb-6 flex items-center justify-center">
-                      <div className="text-center">
-                        <Play className="w-16 h-16 text-white mb-4" />
-                        <p className="text-white text-lg">Player de Vídeo</p>
-                        <p className="text-gray-400 text-sm">Aula será carregada aqui</p>
-                      </div>
-                    </div>
-
-                    {/* Lesson List */}
-                    <div className="space-y-3">
-                      <h4 className="text-lg font-semibold text-white mb-4">Aulas do Módulo</h4>
-                      {Array.from({ length: courseModules.find(m => m.id === selectedModule)?.lessons || 0 }, (_, i) => (
-                        <div key={i} className="flex items-center justify-between p-4 bg-slate-700 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                              <CheckCircle className="w-4 h-4 text-white" />
-                            </div>
-                            <div>
-                              <p className="text-white font-medium">Aula {i + 1}: Título da Aula</p>
-                              <p className="text-slate-400 text-sm">Duração: 45 min</p>
-                            </div>
-                          </div>
-                          <button className="p-2 bg-slate-600 rounded-lg hover:bg-slate-500 transition-colors">
-                            <Play className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-slate-800 rounded-xl p-6">
-                    <div className="text-center py-12">
-                      <Play className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-semibold text-white mb-2">Selecione um Módulo</h3>
-                      <p className="text-slate-400">Escolha um módulo abaixo para começar a assistir às aulas</p>
-                    </div>
-                  </div>
-                )}
+            {/* Curso Pós-Graduação Cannabis Medicinal */}
+            <div 
+              onClick={() => handleJoinClass('Pós-Graduação Cannabis Medicinal')}
+              className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold text-white">🌿 Pós-Graduação Cannabis Medicinal</h3>
+                <GraduationCap className="w-8 h-8 text-white" />
               </div>
+              <p className="text-white/90 mb-4">
+                Curso completo de cannabis medicinal com metodologia prática e casos clínicos reais. 
+                Desenvolvido pelo Dr. Eduardo Faveret, especialista em medicina integrativa.
+              </p>
+              <div className="flex items-center space-x-4 text-sm text-white/80 mb-4">
+                <span>Dr. Eduardo Faveret</span>
+                <span>•</span>
+                <span>360 horas</span>
+                <span>•</span>
+                <span>1247 alunos</span>
+                <span>•</span>
+                <span>⭐ 4.9</span>
+              </div>
+              <button className="w-full bg-white text-green-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                Acessar Curso
+              </button>
+            </div>
+          </div>
 
-              {/* Course Modules Sidebar */}
-              <div className="lg:col-span-1">
-                <div className="bg-slate-800 rounded-xl p-6">
-                  <h3 className="text-xl font-semibold text-white mb-6">Módulos do Curso</h3>
-                  
-                  <div className="space-y-4 max-h-[700px] overflow-y-auto">
-                    {courseModules.map((module) => (
-                      <div 
-                        key={module.id}
-                        onClick={() => setSelectedModule(module.id)}
-                        className={`p-4 rounded-lg cursor-pointer transition-all ${
-                          selectedModule === module.id 
-                            ? 'bg-slate-700 border-2 border-green-500' 
-                            : 'bg-slate-700/50 hover:bg-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-semibold text-white">{module.title}</h4>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(module.status)}`}>
-                            {module.status}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 mb-2">{module.description}</p>
-                        <div className="flex items-center justify-between text-xs text-slate-500">
-                          <span>{module.duration}</span>
-                          <span>{module.lessons} aulas</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+          {/* Informações Adicionais */}
+          <div className="bg-slate-800 rounded-xl p-6">
+            <h3 className="text-xl font-semibold text-white mb-4">Informações sobre os Cursos</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-700 rounded-lg p-4">
+                <h4 className="font-semibold text-white mb-2">🎭 Arte da Entrevista Clínica</h4>
+                <p className="text-slate-300 text-sm mb-2">
+                  Metodologia desenvolvida pelo Dr. Ricardo Valença para entrevistas clínicas eficazes, 
+                  com foco em comunicação empática e avaliação completa do paciente.
+                </p>
+                <p className="text-slate-400 text-xs">Inclui: Módulos práticos, casos clínicos, certificação</p>
+              </div>
+              <div className="bg-slate-700 rounded-lg p-4">
+                <h4 className="font-semibold text-white mb-2">🌿 Pós-Graduação Cannabis Medicinal</h4>
+                <p className="text-slate-300 text-sm mb-2">
+                  Programa completo de especialização em Cannabis Medicinal com metodologia prática 
+                  e casos clínicos reais desenvolvidos pelo Dr. Eduardo Faveret.
+                </p>
+                <p className="text-slate-400 text-xs">Inclui: Certificação, casos práticos, comunidade de alunos</p>
               </div>
             </div>
           </div>

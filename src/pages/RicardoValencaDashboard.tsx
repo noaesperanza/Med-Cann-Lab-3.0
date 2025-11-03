@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import PatientManagementAdvanced from './PatientManagementAdvanced'
 import ProfessionalChatSystem from '../components/ProfessionalChatSystem'
 import VideoCall from '../components/VideoCall'
+import IntegrativePrescriptions from '../components/IntegrativePrescriptions'
+import ClinicalReports from '../components/ClinicalReports'
 import { 
   Brain, 
   Users, 
@@ -52,6 +54,7 @@ interface Patient {
 const RicardoValencaDashboard: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [patientSearch, setPatientSearch] = useState('')
   const [clinicalNotes, setClinicalNotes] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null)
@@ -60,7 +63,7 @@ const RicardoValencaDashboard: React.FC = () => {
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false)
   const [isAudioCallOpen, setIsAudioCallOpen] = useState(false)
   const [callType, setCallType] = useState<'video' | 'audio'>('video')
-  const [activeSection, setActiveSection] = useState<'dashboard' | 'agendamentos' | 'pacientes' | 'aulas' | 'financeiro' | 'atendimento' | 'avaliacao' | 'biblioteca' | 'perfil' | 'chat-pacientes' | 'kpis-admin'>('dashboard')
+  const [activeSection, setActiveSection] = useState<'dashboard' | 'agendamentos' | 'pacientes' | 'aulas' | 'financeiro' | 'atendimento' | 'avaliacao' | 'biblioteca' | 'perfil' | 'chat-pacientes' | 'kpis-admin' | 'newsletter' | 'prescricoes' | 'relatorios-clinicos'>('dashboard')
   
   // KPIs Administrativos Personalizados
   const [kpis, setKpis] = useState({
@@ -220,51 +223,233 @@ const RicardoValencaDashboard: React.FC = () => {
 
   const renderDashboard = () => (
     <>
-      {/* Status Cards Personalizados - Integrados com 3 Camadas de KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        {/* KPI Administrativo - Pacientes Neurológicos */}
-        <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all cursor-pointer" onClick={() => setActiveSection('kpis-admin')}>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium opacity-90">Pacientes Administrativos</h3>
-            <Users className="w-6 h-6" />
+      {/* Navegação por Eixos */}
+      <div className="space-y-8 mb-8">
+        {/* 🏥 EIXO CLÍNICA */}
+        <div>
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+            <Stethoscope className="w-6 h-6 mr-2 text-blue-400" />
+            <span>🏥 Eixo Clínica</span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button
+              onClick={() => navigate('/app/patients')}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">👥 Gestão de Pacientes</h3>
+                <Users className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Prontuário eletrônico</p>
+            </button>
+            
+            <button
+              onClick={() => navigate('/app/clinica/profissional/agendamentos')}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">📅 Agendamentos</h3>
+                <Calendar className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Agenda completa</p>
+            </button>
+            
+            <button
+              onClick={() => setActiveSection('relatorios-clinicos')}
+              className="bg-gradient-to-r from-amber-600 to-orange-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">📊 Relatórios Clínicos</h3>
+                <BarChart3 className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Relatórios da IA</p>
+            </button>
+            
+            <button
+              onClick={() => navigate('/app/patient-onboarding')}
+              className="bg-gradient-to-r from-pink-600 to-rose-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">📝 Nova Avaliação</h3>
+                <FileText className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Avaliação clínica inicial</p>
+            </button>
+            
+            <button
+              onClick={() => setActiveSection('atendimento')}
+              className="bg-gradient-to-r from-red-600 to-orange-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">Atendimento</h3>
+                <Stethoscope className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Sala de atendimento</p>
+            </button>
+            
+            <button
+              onClick={() => setActiveSection('prescricoes')}
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">💊 Prescrições</h3>
+                <FileText className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Prescrições integrativas</p>
+            </button>
           </div>
-          <p className="text-3xl font-bold">{kpis.administrativos.totalPacientes || patients.length}</p>
-          <p className="text-sm opacity-75 mt-1">Sistema completo</p>
-          <div className="mt-2 text-xs opacity-60">📊 KPI Administrativo</div>
         </div>
-        
-        {/* KPI Administrativo - Protocolos AEC */}
-        <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all cursor-pointer" onClick={() => setActiveSection('kpis-admin')}>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium opacity-90">Protocolos AEC</h3>
-            <Stethoscope className="w-6 h-6" />
+
+        {/* OUTROS */}
+        <div>
+          <h2 className="text-xl font-bold text-white mb-4">Outros</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button
+              onClick={() => setActiveSection('financeiro')}
+              className="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">💰 Gestão Financeira</h3>
+                <DollarSign className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Controle financeiro</p>
+            </button>
+            
+            <button
+              onClick={() => navigate('/app/profile')}
+              className="bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">👤 Meu Perfil</h3>
+                <User className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Configurações pessoais</p>
+            </button>
           </div>
-          <p className="text-3xl font-bold">{kpis.administrativos.protocolosAEC || 18}</p>
-          <p className="text-sm opacity-75 mt-1">Avaliações completas</p>
-          <div className="mt-2 text-xs opacity-60">📊 KPI Administrativo</div>
         </div>
-        
-        {/* KPI Semântico - Qualidade Ensino */}
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all cursor-pointer" onClick={() => setActiveSection('kpis-admin')}>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium opacity-90">Qualidade Ensino</h3>
-            <GraduationCap className="w-6 h-6" />
+
+        {/* 🔧 FUNCIONALIDADES ADMINISTRATIVAS */}
+        {user?.type === 'admin' && (
+          <div>
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+              <Settings className="w-6 h-6 mr-2 text-orange-400" />
+              <span>🔧 Funcionalidades Administrativas</span>
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <button className="bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium opacity-90">👥 Usuários</h3>
+                  <Users className="w-6 h-6" />
+                </div>
+                <p className="text-xs opacity-75 mt-1">Gestão de usuários do sistema</p>
+              </button>
+              
+              <button className="bg-gradient-to-r from-green-500 to-teal-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium opacity-90">🎓 Cursos</h3>
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <p className="text-xs opacity-75 mt-1">Gestão de cursos e materiais</p>
+              </button>
+              
+              <button className="bg-gradient-to-r from-emerald-500 to-green-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium opacity-90">💰 Financeiro</h3>
+                  <DollarSign className="w-6 h-6" />
+                </div>
+                <p className="text-xs opacity-75 mt-1">Controle financeiro e pagamentos</p>
+              </button>
+              
+              <button className="bg-gradient-to-r from-cyan-500 to-blue-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium opacity-90">💬 Chat Global + Moderação</h3>
+                  <MessageCircle className="w-6 h-6" />
+                </div>
+                <p className="text-xs opacity-75 mt-1">Moderação de chats e conversas</p>
+              </button>
+              
+              <button className="bg-gradient-to-r from-orange-500 to-red-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium opacity-90">🏛️ Moderação Fórum</h3>
+                  <MessageCircle className="w-6 h-6" />
+                </div>
+                <p className="text-xs opacity-75 mt-1">Gestão e moderação do fórum</p>
+              </button>
+              
+              <button className="bg-gradient-to-r from-yellow-500 to-orange-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium opacity-90">🏆 Ranking & Gamificação</h3>
+                  <Activity className="w-6 h-6" />
+                </div>
+                <p className="text-xs opacity-75 mt-1">Sistema de pontos e rankings</p>
+              </button>
+              
+              <button className="bg-gradient-to-r from-indigo-500 to-purple-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium opacity-90">📁 Upload</h3>
+                  <Upload className="w-6 h-6" />
+                </div>
+                <p className="text-xs opacity-75 mt-1">Upload de documentos e arquivos</p>
+              </button>
+              
+              <button className="bg-gradient-to-r from-pink-500 to-rose-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium opacity-90">📊 Analytics</h3>
+                  <BarChart3 className="w-6 h-6" />
+                </div>
+                <p className="text-xs opacity-75 mt-1">Análise de dados e relatórios</p>
+              </button>
+              
+              <button className="bg-gradient-to-r from-red-500 to-pink-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium opacity-90">🫀 Função Renal</h3>
+                  <Activity className="w-6 h-6" />
+                </div>
+                <p className="text-xs opacity-75 mt-1">Monitoramento de função renal</p>
+              </button>
+              
+              <button className="bg-gradient-to-r from-slate-500 to-gray-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium opacity-90">⚙️ Sistema</h3>
+                  <Settings className="w-6 h-6" />
+                </div>
+                <p className="text-xs opacity-75 mt-1">Configurações do sistema</p>
+              </button>
+              
+              <button className="bg-gradient-to-r from-teal-500 to-cyan-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium opacity-90">📚 Biblioteca</h3>
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <p className="text-xs opacity-75 mt-1">Biblioteca médica e documentos</p>
+              </button>
+              
+              <button className="bg-gradient-to-r from-violet-500 to-purple-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium opacity-90">🤖 Chat IA Documentos</h3>
+                  <Brain className="w-6 h-6" />
+                </div>
+                <p className="text-xs opacity-75 mt-1">IA para análise de documentos</p>
+              </button>
+            </div>
+
+            {/* System Info */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                <p className="text-sm text-slate-400 mb-1">Sistema Online</p>
+                <p className="text-2xl font-bold text-green-400">99.9%</p>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                <p className="text-sm text-slate-400 mb-1">Usuários Ativos</p>
+                <p className="text-2xl font-bold text-blue-400">1,234</p>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                <p className="text-sm text-slate-400 mb-1">Avaliações Hoje</p>
+                <p className="text-2xl font-bold text-purple-400">156</p>
+              </div>
+            </div>
           </div>
-          <p className="text-3xl font-bold">{kpis.semanticos.qualidadeEnsino}%</p>
-          <p className="text-sm opacity-75 mt-1">Metodologia AEC</p>
-          <div className="mt-2 text-xs opacity-60">🧠 KPI Semântico</div>
-        </div>
-        
-        {/* KPI Clínico - Consultórios Ativos */}
-        <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all cursor-pointer" onClick={() => setActiveSection('kpis-admin')}>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium opacity-90">Consultórios Ativos</h3>
-            <Activity className="w-6 h-6" />
-          </div>
-          <p className="text-3xl font-bold">{kpis.administrativos.consultoriosAtivos || 3}</p>
-          <p className="text-sm opacity-75 mt-1">Rede integrada</p>
-          <div className="mt-2 text-xs opacity-60">🏥 KPI Clínico</div>
-        </div>
+        )}
       </div>
 
       {/* Conteúdo do Dashboard */}
@@ -981,7 +1166,7 @@ const RicardoValencaDashboard: React.FC = () => {
           <div className="space-y-4">
             <h4 className="font-semibold text-white">Próximos Atendimentos</h4>
             <div className="space-y-3">
-              <div className="bg-slate-700 rounded-lg p-3">
+              <div className={`rounded-lg p-3 ${selectedPatient === 'maria-santos' ? 'bg-red-700 border-2 border-red-400' : 'bg-slate-700'}`}>
                 <div className="flex items-center justify-between">
                   <div>
                     <h5 className="font-semibold text-white">Maria Santos</h5>
@@ -989,13 +1174,28 @@ const RicardoValencaDashboard: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-white font-medium">09:00</p>
-                    <button className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition-colors">
-                      Iniciar
+                    <button 
+                      onClick={() => {
+                        // Encontrar o paciente Maria Santos na lista ou criar um ID temporário
+                        const mariaPatient = patients.find(p => p.name.includes('Maria')) || patients[0]
+                        if (mariaPatient) {
+                          setSelectedPatient(mariaPatient.id)
+                        } else {
+                          setSelectedPatient('maria-santos')
+                        }
+                      }}
+                      className={`px-3 py-1 rounded text-xs transition-colors ${
+                        selectedPatient === 'maria-santos' || (selectedPatient && patients.find(p => p.id === selectedPatient)?.name.includes('Maria'))
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-red-600 hover:bg-red-700 text-white'
+                      }`}
+                    >
+                      {selectedPatient === 'maria-santos' || (selectedPatient && patients.find(p => p.id === selectedPatient)?.name.includes('Maria')) ? 'Em Atendimento' : 'Iniciar'}
                     </button>
                   </div>
                 </div>
               </div>
-              <div className="bg-slate-700 rounded-lg p-3">
+              <div className={`rounded-lg p-3 ${selectedPatient === 'joao-silva' ? 'bg-red-700 border-2 border-red-400' : 'bg-slate-700'}`}>
                 <div className="flex items-center justify-between">
                   <div>
                     <h5 className="font-semibold text-white">João Silva</h5>
@@ -1003,8 +1203,23 @@ const RicardoValencaDashboard: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-white font-medium">14:00</p>
-                    <button className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition-colors">
-                      Iniciar
+                    <button 
+                      onClick={() => {
+                        // Encontrar o paciente João Silva na lista ou criar um ID temporário
+                        const joaoPatient = patients.find(p => p.name.includes('João')) || patients[1]
+                        if (joaoPatient) {
+                          setSelectedPatient(joaoPatient.id)
+                        } else {
+                          setSelectedPatient('joao-silva')
+                        }
+                      }}
+                      className={`px-3 py-1 rounded text-xs transition-colors ${
+                        selectedPatient === 'joao-silva' || (selectedPatient && patients.find(p => p.id === selectedPatient)?.name.includes('João'))
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-red-600 hover:bg-red-700 text-white'
+                      }`}
+                    >
+                      {selectedPatient === 'joao-silva' || (selectedPatient && patients.find(p => p.id === selectedPatient)?.name.includes('João')) ? 'Em Atendimento' : 'Iniciar'}
                     </button>
                   </div>
                 </div>
@@ -1014,19 +1229,77 @@ const RicardoValencaDashboard: React.FC = () => {
           <div className="space-y-4">
             <h4 className="font-semibold text-white">Ferramentas de Atendimento</h4>
             <div className="grid grid-cols-2 gap-3">
-              <button className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 transition-colors">
+              <button 
+                onClick={() => {
+                  if (selectedPatient) {
+                    setCallType('video')
+                    setIsVideoCallOpen(true)
+                  } else {
+                    alert('Por favor, inicie um atendimento primeiro selecionando um paciente.')
+                  }
+                }}
+                disabled={!selectedPatient}
+                className={`rounded-lg p-3 transition-colors ${
+                  selectedPatient 
+                    ? 'bg-slate-700 hover:bg-slate-600 cursor-pointer' 
+                    : 'bg-slate-800 opacity-50 cursor-not-allowed'
+                }`}
+              >
                 <Video className="w-6 h-6 mx-auto mb-2 text-white" />
                 <span className="font-semibold text-white text-sm">Video Call</span>
               </button>
-              <button className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 transition-colors">
+              <button 
+                onClick={() => {
+                  if (selectedPatient) {
+                    setCallType('audio')
+                    setIsVideoCallOpen(true)
+                  } else {
+                    alert('Por favor, inicie um atendimento primeiro selecionando um paciente.')
+                  }
+                }}
+                disabled={!selectedPatient}
+                className={`rounded-lg p-3 transition-colors ${
+                  selectedPatient 
+                    ? 'bg-slate-700 hover:bg-slate-600 cursor-pointer' 
+                    : 'bg-slate-800 opacity-50 cursor-not-allowed'
+                }`}
+              >
                 <Phone className="w-6 h-6 mx-auto mb-2 text-white" />
                 <span className="font-semibold text-white text-sm">Audio Call</span>
               </button>
-              <button className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 transition-colors">
+              <button 
+                onClick={() => {
+                  if (selectedPatient) {
+                    setActiveSection('chat-pacientes')
+                  } else {
+                    alert('Por favor, inicie um atendimento primeiro selecionando um paciente.')
+                  }
+                }}
+                disabled={!selectedPatient}
+                className={`rounded-lg p-3 transition-colors ${
+                  selectedPatient 
+                    ? 'bg-slate-700 hover:bg-slate-600 cursor-pointer' 
+                    : 'bg-slate-800 opacity-50 cursor-not-allowed'
+                }`}
+              >
                 <MessageCircle className="w-6 h-6 mx-auto mb-2 text-white" />
                 <span className="font-semibold text-white text-sm">Chat</span>
               </button>
-              <button className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 transition-colors">
+              <button 
+                onClick={() => {
+                  if (selectedPatient) {
+                    navigate(`/app/patients?patientId=${selectedPatient}`)
+                  } else {
+                    alert('Por favor, inicie um atendimento primeiro selecionando um paciente.')
+                  }
+                }}
+                disabled={!selectedPatient}
+                className={`rounded-lg p-3 transition-colors ${
+                  selectedPatient 
+                    ? 'bg-slate-700 hover:bg-slate-600 cursor-pointer' 
+                    : 'bg-slate-800 opacity-50 cursor-not-allowed'
+                }`}
+              >
                 <FileText className="w-6 h-6 mx-auto mb-2 text-white" />
                 <span className="font-semibold text-white text-sm">Prontuário</span>
               </button>
@@ -1254,6 +1527,98 @@ const RicardoValencaDashboard: React.FC = () => {
     </div>
   )
 
+  const renderNewsletter = () => (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-cyan-800 to-cyan-700 rounded-lg p-6">
+        <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
+          <BookOpen className="w-6 h-6" />
+          <span>📰 Newsletter Científico</span>
+        </h2>
+        <p className="text-cyan-200">
+          Artigos e atualizações científicas sobre Cannabis Medicinal e metodologias clínicas
+        </p>
+      </div>
+
+      {/* Artigos Recentes */}
+      <div className="space-y-4">
+        <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
+          <h4 className="font-semibold text-white mb-2 text-lg">Cannabis Medicinal em Epilepsia Refratária</h4>
+          <p className="text-slate-400 mb-2 text-sm">Novos estudos sobre eficácia do CBD em crianças com síndrome de Dravet mostram redução significativa de convulsões...</p>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500">Nature Medicine • Janeiro 2024</span>
+            <button className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+              Ler mais
+            </button>
+          </div>
+        </div>
+        <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
+          <h4 className="font-semibold text-white mb-2 text-lg">Protocolos IMRE em TEA</h4>
+          <p className="text-slate-400 mb-2 text-sm">Implementação da metodologia IMRE para avaliação de pacientes com TEA demonstra melhorias na qualidade da entrevista clínica...</p>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500">Journal of Autism • Dezembro 2023</span>
+            <button className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+              Ler mais
+            </button>
+          </div>
+        </div>
+        <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
+          <h4 className="font-semibold text-white mb-2 text-lg">Arte da Entrevista Clínica - Metodologia AEC</h4>
+          <p className="text-slate-400 mb-2 text-sm">Técnicas avançadas de escuta ativa e comunicação empática na prática clínica com Cannabis Medicinal...</p>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500">Medical Education Review • Novembro 2023</span>
+            <button className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+              Ler mais
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderPrescricoes = () => (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-emerald-800 to-emerald-700 rounded-lg p-6">
+        <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
+          <FileText className="w-6 h-6" />
+          <span>💊 Prescrições Integrativas</span>
+        </h2>
+        <p className="text-emerald-200">
+          Sistema de Prescrições Integrativas conforme Diretrizes CFM + Práticas Integrativas
+        </p>
+      </div>
+
+      <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h4 className="font-semibold text-blue-900 mb-2">Conforme Diretrizes CFM + Práticas Integrativas</h4>
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>• Assinatura Digital com Certificado ICP Brasil</li>
+            <li>• Validação no Portal do ITI</li>
+            <li>• Envio por Email e SMS com QR Code</li>
+            <li>• Cinco racionalidades médicas integradas</li>
+            <li>• Camadas clínicas de leitura dos dados primários</li>
+            <li>• NFT e Blockchain para rastreabilidade</li>
+          </ul>
+        </div>
+        <IntegrativePrescriptions />
+      </div>
+    </div>
+  )
+
+  const renderRelatoriosClinicos = () => (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-amber-800 to-amber-700 rounded-lg p-6">
+        <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
+          <BarChart3 className="w-6 h-6" />
+          <span>📊 Relatórios Clínicos</span>
+        </h2>
+        <p className="text-amber-200">
+          Visualize e gerencie relatórios clínicos gerados pela IA Residente Nôa Esperança
+        </p>
+      </div>
+      <ClinicalReports />
+    </div>
+  )
+
   const renderChatPacientes = () => (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-blue-800 to-blue-700 rounded-lg p-6">
@@ -1424,114 +1789,6 @@ const RicardoValencaDashboard: React.FC = () => {
             <p className="text-blue-200 text-xs">👑 Administrador • Visão completa do sistema</p>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto px-6 py-3 flex flex-wrap gap-2">
-          <button
-            onClick={() => setActiveSection('kpis-admin')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-              activeSection === 'kpis-admin' 
-                ? 'bg-indigo-600 text-white' 
-                : 'bg-blue-700 text-blue-200 hover:bg-blue-600'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>📊 KPIs Admin</span>
-          </button>
-          <button
-            onClick={() => setActiveSection('agendamentos')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-              activeSection === 'agendamentos' 
-                ? 'bg-purple-600 text-white' 
-                : 'bg-blue-700 text-blue-200 hover:bg-blue-600'
-            }`}
-          >
-            <Calendar className="w-4 h-4" />
-            <span>📅 Agendamentos</span>
-          </button>
-          <button
-            onClick={() => navigate('/app/patient-management-advanced')}
-            className="flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm bg-green-600 hover:bg-green-700 text-white"
-          >
-            <Users className="w-4 h-4" />
-            <span>👥 Meus Pacientes</span>
-          </button>
-          <button
-            onClick={() => setActiveSection('aulas')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-              activeSection === 'aulas' 
-                ? 'bg-yellow-600 text-white' 
-                : 'bg-blue-700 text-blue-200 hover:bg-blue-600'
-            }`}
-          >
-            <GraduationCap className="w-4 h-4" />
-            <span>🎓 Preparação de Aulas</span>
-          </button>
-          <button
-            onClick={() => setActiveSection('financeiro')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-              activeSection === 'financeiro' 
-                ? 'bg-orange-600 text-white' 
-                : 'bg-blue-700 text-blue-200 hover:bg-blue-600'
-            }`}
-          >
-            <DollarSign className="w-4 h-4" />
-            <span>💰 Gestão Financeira</span>
-          </button>
-          <button
-            onClick={() => setActiveSection('atendimento')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-              activeSection === 'atendimento' 
-                ? 'bg-red-600 text-white' 
-                : 'bg-blue-700 text-blue-200 hover:bg-blue-600'
-            }`}
-          >
-            <Stethoscope className="w-4 h-4" />
-            <span>Atendimento</span>
-          </button>
-          <button
-            onClick={() => setActiveSection('avaliacao')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-              activeSection === 'avaliacao' 
-                ? 'bg-pink-600 text-white' 
-                : 'bg-blue-700 text-blue-200 hover:bg-blue-600'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>📝 Nova Avaliação</span>
-          </button>
-          <button
-            onClick={() => setActiveSection('biblioteca')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-              activeSection === 'biblioteca' 
-                ? 'bg-teal-600 text-white' 
-                : 'bg-blue-700 text-blue-200 hover:bg-blue-600'
-            }`}
-          >
-            <Library className="w-4 h-4" />
-            <span>📚 Biblioteca</span>
-          </button>
-          <button
-            onClick={() => setActiveSection('chat-profissionais')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-              activeSection === 'chat-profissionais' 
-                ? 'bg-indigo-600 text-white' 
-                : 'bg-blue-700 text-blue-200 hover:bg-blue-600'
-            }`}
-          >
-            <MessageCircle className="w-4 h-4" />
-            <span>Chat Profissionais</span>
-          </button>
-          <button
-            onClick={() => setActiveSection('chat-pacientes')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-              activeSection === 'chat-pacientes' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-blue-700 text-blue-200 hover:bg-blue-600'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Chat com Pacientes</span>
-          </button>
-        </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -1562,6 +1819,9 @@ const RicardoValencaDashboard: React.FC = () => {
         {activeSection === 'atendimento' && renderAtendimento()}
         {activeSection === 'avaliacao' && renderAvaliacao()}
         {activeSection === 'biblioteca' && renderBiblioteca()}
+        {activeSection === 'newsletter' && renderNewsletter()}
+        {activeSection === 'prescricoes' && renderPrescricoes()}
+        {activeSection === 'relatorios-clinicos' && renderRelatoriosClinicos()}
         
         {activeSection === 'perfil' && (
           <div className="text-center py-12">

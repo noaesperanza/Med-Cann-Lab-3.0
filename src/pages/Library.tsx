@@ -16,9 +16,12 @@ import {
   AlertCircle,
   User,
   Heart,
-  RefreshCw,
   TrendingUp,
-  BarChart3
+  BarChart3,
+  Trash2,
+  Share2,
+  Link as LinkIcon,
+  XCircle
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -311,11 +314,31 @@ const Library: React.FC = () => {
         targetAudience = ['professional', 'student']
       }
 
+      // Criar signed URL para o arquivo (para bucket privado)
+      let finalUrl = publicUrl
+      if (bucketName === 'documents') {
+        // Para bucket privado, criar signed URL válida por 30 dias
+        try {
+          const { data: signedUrlData, error: signedError } = await supabase.storage
+            .from('documents')
+            .createSignedUrl(fileName, 2592000) // 30 dias
+          
+          if (!signedError && signedUrlData) {
+            finalUrl = signedUrlData.signedUrl
+            console.log('✅ Signed URL criada para documento privado')
+          } else {
+            console.warn('⚠️ Erro ao criar signed URL, usando public URL:', signedError)
+          }
+        } catch (signedError) {
+          console.warn('⚠️ Erro ao criar signed URL:', signedError)
+        }
+      }
+
       const documentMetadata = {
         title: file.name,
-        content: `Documento: ${file.name}\nTipo: ${fileExt}\nTamanho: ${(file.size / 1024 / 1024).toFixed(2)} MB\nEnviado em: ${new Date().toLocaleDateString('pt-BR')}`,
+        content: '', // Deixar vazio para extrair depois
         file_type: fileExt || 'unknown',
-        file_url: publicUrl,
+        file_url: finalUrl,
         file_size: file.size,
         author: user?.name || 'Usuário',
         category: documentCategory,
@@ -883,7 +906,7 @@ const Library: React.FC = () => {
                 {/* Icon */}
                 <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
                   <div className="text-3xl">
-                    {getTypeIcon(doc.file_type || doc.type)}
+                    {getTypeIcon(doc.file_type)}
                   </div>
                 </div>
 
@@ -902,11 +925,11 @@ const Library: React.FC = () => {
                         <span>•</span>
                         <span className="flex items-center gap-1">
                           <FileText className="w-3 h-3" />
-                          {formatFileSize(doc.file_size || doc.size)}
+                          {formatFileSize(doc.file_size || 0)}
                         </span>
                         <span>•</span>
                         <span className="flex items-center gap-1">
-                          📅 {formatDate(doc.created_at || doc.uploadDate)}
+                          📅 {formatDate(doc.created_at)}
                         </span>
                       </div>
                     </div>
@@ -967,7 +990,65 @@ const Library: React.FC = () => {
                     
                     <div className="flex items-center gap-2">
                       <button 
-                        onClick={() => window.open(doc.file_url, '_blank')}
+                        onClick={async () => {
+                          try {
+                            let viewUrl = doc.file_url
+                            
+                            // Se não tiver URL ou URL não funcionar, criar signed URL
+                            if (!viewUrl || viewUrl.includes('Bucket not found') || viewUrl.includes('404')) {
+                              // Tentar encontrar o arquivo no Storage pelo título
+                              const fileName = doc.title || ''
+                              const { data: files } = await supabase.storage
+                                .from('documents')
+                                .list('', { limit: 100 })
+                              
+                              if (files) {
+                                const file = files.find(f => 
+                                  f.name.toLowerCase().includes(fileName.toLowerCase().split('.')[0]) ||
+                                  fileName.toLowerCase().includes(f.name.toLowerCase().split('.')[0])
+                                )
+                                
+                                if (file) {
+                                  // Criar signed URL
+                                  const { data: signedData, error: signedError } = await supabase.storage
+                                    .from('documents')
+                                    .createSignedUrl(file.name, 3600)
+                                  
+                                  if (!signedError && signedData) {
+                                    viewUrl = signedData.signedUrl
+                                    // Atualizar file_url no documento
+                                    await supabase
+                                      .from('documents')
+                                      .update({ file_url: signedData.signedUrl })
+                                      .eq('id', doc.id)
+                                  }
+                                }
+                              }
+                            } else if (viewUrl.includes('supabase.co/storage')) {
+                              // Se for URL do Supabase mas não funcionar, tentar criar signed URL
+                              const pathMatch = viewUrl.match(/\/storage\/v1\/object\/[^\/]+\/(.+)$/)
+                              if (pathMatch) {
+                                const filePath = decodeURIComponent(pathMatch[1])
+                                const { data: signedData, error: signedError } = await supabase.storage
+                                  .from('documents')
+                                  .createSignedUrl(filePath, 3600)
+                                
+                                if (!signedError && signedData) {
+                                  viewUrl = signedData.signedUrl
+                                }
+                              }
+                            }
+                            
+                            if (viewUrl) {
+                              window.open(viewUrl, '_blank')
+                            } else {
+                              alert('Não foi possível acessar o arquivo. Verifique se o arquivo existe no Storage.')
+                            }
+                          } catch (error) {
+                            console.error('Erro ao visualizar:', error)
+                            alert('Erro ao visualizar o arquivo. Verifique as permissões do Storage.')
+                          }
+                        }}
                         className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
                       >
                         <Eye className="w-4 h-4" />
@@ -975,21 +1056,58 @@ const Library: React.FC = () => {
                       </button>
                       <button 
                         onClick={async () => {
-                          if (doc.file_url) {
-                            try {
+                          try {
+                            let downloadUrl = doc.file_url
+                            
+                            // Se não tiver URL ou URL não funcionar, criar signed URL
+                            if (!downloadUrl || downloadUrl.includes('Bucket not found') || downloadUrl.includes('404')) {
+                              // Tentar encontrar o arquivo no Storage
+                              const fileName = doc.title || ''
+                              const { data: files } = await supabase.storage
+                                .from('documents')
+                                .list('', { limit: 100 })
+                              
+                              if (files) {
+                                const file = files.find(f => 
+                                  f.name.toLowerCase().includes(fileName.toLowerCase().split('.')[0]) ||
+                                  fileName.toLowerCase().includes(f.name.toLowerCase().split('.')[0])
+                                )
+                                
+                                if (file) {
+                                  const { data: signedData, error: signedError } = await supabase.storage
+                                    .from('documents')
+                                    .createSignedUrl(file.name, 3600)
+                                  
+                                  if (!signedError && signedData) {
+                                    downloadUrl = signedData.signedUrl
+                                  }
+                                }
+                              }
+                            } else if (downloadUrl.includes('supabase.co/storage')) {
+                              // Tentar criar signed URL se necessário
+                              const pathMatch = downloadUrl.match(/\/storage\/v1\/object\/[^\/]+\/(.+)$/)
+                              if (pathMatch) {
+                                const filePath = decodeURIComponent(pathMatch[1])
+                                const { data: signedData } = await supabase.storage
+                                  .from('documents')
+                                  .createSignedUrl(filePath, 3600)
+                                
+                                if (signedData) {
+                                  downloadUrl = signedData.signedUrl
+                                }
+                              }
+                            }
+                            
+                            if (downloadUrl) {
                               // Incrementar contador de downloads
-                              const { error: updateError } = await supabase
+                              await supabase
                                 .from('documents')
                                 .update({ downloads: (doc.downloads || 0) + 1 })
                                 .eq('id', doc.id)
                               
-                              if (updateError) {
-                                console.error('Erro ao atualizar downloads:', updateError)
-                              }
-                              
                               // Fazer download
                               const link = document.createElement('a')
-                              link.href = doc.file_url
+                              link.href = downloadUrl
                               link.download = doc.title
                               link.target = '_blank'
                               link.click()
@@ -998,18 +1116,158 @@ const Library: React.FC = () => {
                               setRealDocuments(prev => prev.map(d => 
                                 d.id === doc.id ? { ...d, downloads: (d.downloads || 0) + 1 } : d
                               ))
-                              
-                            } catch (error) {
-                              console.error('Erro no download:', error)
-                              alert('Erro ao fazer download do arquivo')
+                            } else {
+                              alert('Não foi possível fazer download. Verifique se o arquivo existe no Storage.')
                             }
-                          } else {
-                            alert('URL do arquivo não disponível')
+                          } catch (error) {
+                            console.error('Erro no download:', error)
+                            alert('Erro ao fazer download do arquivo')
                           }
                         }}
                         className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
                       >
                         ⬇️ Baixar
+                      </button>
+                      {doc.isLinkedToAI ? (
+                        <button 
+                          onClick={async () => {
+                            if (!confirm(`Tem certeza que deseja desvincular o documento "${doc.title}" da IA residente?`)) {
+                              return
+                            }
+                            
+                            try {
+                              const success = await KnowledgeBaseIntegration.unlinkDocumentFromAI(doc.id)
+                              
+                              if (success) {
+                                // Atualizar estado local
+                                setRealDocuments(prev => prev.map(d => 
+                                  d.id === doc.id ? { ...d, isLinkedToAI: false, aiRelevance: 0 } : d
+                                ))
+                                
+                                // Recarregar estatísticas
+                                const stats = await KnowledgeBaseIntegration.getKnowledgeStats()
+                                setKnowledgeStats(stats)
+                                
+                                alert('Documento desvinculado da IA residente com sucesso!')
+                              } else {
+                                alert('Erro ao desvincular documento da IA.')
+                              }
+                            } catch (error) {
+                              console.error('Erro ao desvincular documento:', error)
+                              alert('Erro ao desvincular documento da IA.')
+                            }
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                          title="Desvincular da IA residente"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          Desvincular IA
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={async () => {
+                            try {
+                              const success = await KnowledgeBaseIntegration.linkDocumentToAI(doc.id, 5)
+                              
+                              if (success) {
+                                // Atualizar estado local
+                                setRealDocuments(prev => prev.map(d => 
+                                  d.id === doc.id ? { ...d, isLinkedToAI: true, aiRelevance: 5 } : d
+                                ))
+                                
+                                // Recarregar estatísticas
+                                const stats = await KnowledgeBaseIntegration.getKnowledgeStats()
+                                setKnowledgeStats(stats)
+                                
+                                alert('Documento vinculado à IA residente com sucesso!')
+                              } else {
+                                alert('Erro ao vincular documento à IA.')
+                              }
+                            } catch (error) {
+                              console.error('Erro ao vincular documento:', error)
+                              alert('Erro ao vincular documento à IA.')
+                            }
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                          title="Atribuir à IA residente"
+                        >
+                          <LinkIcon className="w-4 h-4" />
+                          Atribuir à IA
+                        </button>
+                      )}
+                      <button 
+                        onClick={async () => {
+                          if (!confirm(`Tem certeza que deseja excluir o documento "${doc.title}"? Esta ação não pode ser desfeita.`)) {
+                            return
+                          }
+                          
+                          try {
+                            // Extrair nome do arquivo da URL ou título
+                            let fileName: string | null = null
+                            
+                            if (doc.file_url) {
+                              const pathMatch = doc.file_url.match(/\/storage\/v1\/object\/[^\/]+\/(.+)$/)
+                              if (pathMatch) {
+                                fileName = decodeURIComponent(pathMatch[1])
+                              }
+                            }
+                            
+                            // Se não encontrou na URL, tentar encontrar no Storage
+                            if (!fileName) {
+                              const { data: files } = await supabase.storage
+                                .from('documents')
+                                .list('', { limit: 100 })
+                              
+                              if (files) {
+                                const file = files.find(f => 
+                                  f.name.toLowerCase().includes(doc.title.toLowerCase().split('.')[0]) ||
+                                  doc.title.toLowerCase().includes(f.name.toLowerCase().split('.')[0])
+                                )
+                                
+                                if (file) {
+                                  fileName = file.name
+                                }
+                              }
+                            }
+                            
+                            // Deletar do Storage se encontrou o arquivo
+                            if (fileName) {
+                              const { error: storageError } = await supabase.storage
+                                .from('documents')
+                                .remove([fileName])
+                              
+                              if (storageError) {
+                                console.warn('Erro ao deletar arquivo do Storage (pode não existir):', storageError)
+                              } else {
+                                console.log('✅ Arquivo deletado do Storage:', fileName)
+                              }
+                            }
+                            
+                            // Deletar do banco de dados
+                            const { error: dbError } = await supabase
+                              .from('documents')
+                              .delete()
+                              .eq('id', doc.id)
+                            
+                            if (dbError) {
+                              throw dbError
+                            }
+                            
+                            // Remover da lista local
+                            setRealDocuments(prev => prev.filter(d => d.id !== doc.id))
+                            setTotalDocs(prev => Math.max(0, prev - 1))
+                            
+                            alert('Documento excluído com sucesso!')
+                          } catch (error) {
+                            console.error('Erro ao excluir documento:', error)
+                            alert('Erro ao excluir documento. Verifique as permissões.')
+                          }
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                        title="Excluir documento"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Excluir
                       </button>
                     </div>
                   </div>

@@ -47,6 +47,7 @@ interface Assignment {
 const CursoEduardoFaveret: React.FC = () => {
   const [activeModule, setActiveModule] = useState<string | null>(null)
   const [showAssignments, setShowAssignments] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
 
   const courseInfo = {
     title: 'Curso Eduardo Faveret - Cannabis Medicinal',
@@ -535,28 +536,28 @@ const CursoEduardoFaveret: React.FC = () => {
   const totalProgress = modules.reduce((acc, module) => acc + module.progress, 0) / modules.length
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-slate-900 text-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Course Header */}
-        <div className="card p-8 mb-8">
+        <div className="bg-slate-800 rounded-xl p-8 mb-8">
           <div className="flex flex-col lg:flex-row gap-8">
             <div className="lg:w-2/3">
               <div className="flex items-center space-x-2 mb-4">
-                <span className="px-3 py-1 bg-primary-100 dark:bg-primary-900/20 text-primary-800 dark:text-primary-200 text-sm rounded-full">
+                <span className="px-3 py-1 bg-green-900/20 text-green-400 text-sm rounded-full">
                   {courseInfo.level}
                 </span>
-                <span className="px-3 py-1 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200 text-sm rounded-full">
+                <span className="px-3 py-1 bg-green-900/20 text-green-400 text-sm rounded-full">
                   Certificado
                 </span>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+              <h1 className="text-3xl font-bold text-white mb-4">
                 {courseInfo.title}
               </h1>
-              <p className="text-gray-600 dark:text-gray-300 mb-6">
+              <p className="text-gray-300 mb-6">
                 Curso completo de cannabis medicinal com metodologia prática e casos clínicos reais. 
                 Desenvolvido pelo Dr. Eduardo Faveret, especialista em medicina integrativa.
               </p>
-              <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center space-x-6 text-sm text-gray-400">
                 <div className="flex items-center space-x-1">
                   <User className="w-4 h-4" />
                   <span>{courseInfo.instructor}</span>
@@ -576,23 +577,23 @@ const CursoEduardoFaveret: React.FC = () => {
               </div>
             </div>
             <div className="lg:w-1/3">
-              <div className="bg-gradient-to-br from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20 p-6 rounded-lg">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              <div className="bg-gradient-to-br from-green-900/20 to-teal-900/20 p-6 rounded-lg">
+                <h3 className="text-lg font-semibold text-white mb-4">
                   Progresso do Curso
                 </h3>
                 <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300 mb-2">
+                  <div className="flex justify-between text-sm text-gray-300 mb-2">
                     <span>Progresso Geral</span>
                     <span>{Math.round(totalProgress)}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
+                  <div className="w-full bg-gray-700 rounded-full h-3">
                     <div
-                      className="bg-primary-600 h-3 rounded-full transition-all duration-300"
+                      className="bg-green-600 h-3 rounded-full transition-all duration-300"
                       style={{ width: `${totalProgress}%` }}
                     />
                   </div>
                 </div>
-                <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                <div className="space-y-2 text-sm text-gray-300">
                   <div className="flex justify-between">
                     <span>Módulos Concluídos:</span>
                     <span>{modules.filter(m => m.isCompleted).length}/{modules.length}</span>
@@ -603,7 +604,7 @@ const CursoEduardoFaveret: React.FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span>Certificado:</span>
-                    <span className="text-green-600">Disponível</span>
+                    <span className="text-green-400">Disponível</span>
                   </div>
                 </div>
               </div>
@@ -615,14 +616,14 @@ const CursoEduardoFaveret: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Modules List */}
           <div className="lg:col-span-2">
-            <div className="card p-6">
+            <div className="bg-slate-800 rounded-xl p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h2 className="text-xl font-semibold text-white">
                   Módulos do Curso
                 </h2>
                 <button
                   onClick={() => setShowAssignments(!showAssignments)}
-                  className="btn-secondary text-sm"
+                  className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 text-sm transition-colors"
                 >
                   {showAssignments ? 'Ver Módulos' : 'Ver Atividades'}
                 </button>
@@ -635,35 +636,35 @@ const CursoEduardoFaveret: React.FC = () => {
                       key={module.id}
                       className={`p-4 border rounded-lg cursor-pointer transition-colors duration-200 ${
                         activeModule === module.id
-                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                          ? 'border-green-500 bg-green-900/20'
+                          : 'border-slate-700 hover:border-slate-600'
                       }`}
                       onClick={() => setActiveModule(activeModule === module.id ? null : module.id)}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                        <h3 className="font-semibold text-white">
                           {module.title}
                         </h3>
                         <div className="flex items-center space-x-2">
                           {module.isCompleted && (
                             <CheckCircle className="w-5 h-5 text-green-500" />
                           )}
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                          <span className="text-sm text-gray-400">
                             {module.duration}
                           </span>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                      <p className="text-sm text-gray-300 mb-3">
                         {module.description}
                       </p>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center space-x-4 text-sm text-gray-400">
                           <span>{module.lessonCount} aulas</span>
                           <span>{module.lessons.filter(l => l.isCompleted).length} concluídas</span>
                         </div>
-                        <div className="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                        <div className="w-24 bg-gray-700 rounded-full h-2">
                           <div
-                            className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                            className="bg-green-600 h-2 rounded-full transition-all duration-300"
                             style={{ width: `${module.progress}%` }}
                           />
                         </div>
@@ -671,17 +672,17 @@ const CursoEduardoFaveret: React.FC = () => {
 
                       {/* Module Lessons */}
                       {activeModule === module.id && (
-                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="mt-4 pt-4 border-t border-slate-700">
                           <div className="space-y-2">
                             {module.lessons.map((lesson) => (
                               <div
                                 key={lesson.id}
                                 className={`flex items-center justify-between p-3 rounded-lg ${
                                   lesson.isCompleted
-                                    ? 'bg-green-50 dark:bg-green-900/20'
+                                    ? 'bg-green-900/20'
                                     : lesson.isLocked
-                                    ? 'bg-gray-50 dark:bg-gray-800 opacity-60'
-                                    : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    ? 'bg-slate-700 opacity-60'
+                                    : 'bg-slate-700 hover:bg-slate-600'
                                 }`}
                               >
                                 <div className="flex items-center space-x-3">
@@ -689,10 +690,10 @@ const CursoEduardoFaveret: React.FC = () => {
                                     {getLessonIcon(lesson.type)}
                                   </div>
                                   <div>
-                                    <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                                    <h4 className="text-sm font-medium text-white">
                                       {lesson.title}
                                     </h4>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    <p className="text-xs text-gray-400">
                                       {lesson.duration} • {lesson.points} pontos
                                     </p>
                                   </div>
@@ -715,30 +716,30 @@ const CursoEduardoFaveret: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  <h3 className="text-lg font-semibold text-white mb-4">
                     Atividades e Atribuições
                   </h3>
                   {assignments.map((assignment) => (
-                    <div key={assignment.id} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div key={assignment.id} className="p-4 border border-slate-700 rounded-lg">
                       <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-semibold text-gray-900 dark:text-white">
+                        <h4 className="font-semibold text-white">
                           {assignment.title}
                         </h4>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                        <span className="text-sm text-gray-400">
                           {assignment.points} pontos
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                      <p className="text-sm text-gray-300 mb-3">
                         {assignment.description}
                       </p>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center space-x-4 text-sm text-gray-400">
                           <span>Prazo: {formatDate(assignment.dueDate)}</span>
-                          <span className={assignment.isSubmitted ? 'text-green-600' : 'text-orange-600'}>
+                          <span className={assignment.isSubmitted ? 'text-green-400' : 'text-orange-400'}>
                             {assignment.isSubmitted ? 'Entregue' : 'Pendente'}
                           </span>
                         </div>
-                        <button className="btn-primary text-sm">
+                        <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm transition-colors">
                           {assignment.isSubmitted ? 'Ver Feedback' : 'Entregar'}
                         </button>
                       </div>
@@ -752,83 +753,184 @@ const CursoEduardoFaveret: React.FC = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Course Stats */}
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-slate-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">
                 Estatísticas
               </h3>
               <div className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">Tempo Estudado:</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">24h 30min</span>
+                  <span className="text-sm text-gray-300">Tempo Estudado:</span>
+                  <span className="text-sm font-medium text-white">24h 30min</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">Aulas Concluídas:</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">12/48</span>
+                  <span className="text-sm text-gray-300">Aulas Concluídas:</span>
+                  <span className="text-sm font-medium text-white">12/48</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">Pontos Ganhos:</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">1,250</span>
+                  <span className="text-sm text-gray-300">Pontos Ganhos:</span>
+                  <span className="text-sm font-medium text-white">1,250</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">Ranking:</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">#45</span>
+                  <span className="text-sm text-gray-300">Ranking:</span>
+                  <span className="text-sm font-medium text-white">#45</span>
                 </div>
               </div>
             </div>
 
             {/* Resources */}
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-slate-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">
                 Recursos
               </h3>
               <div className="space-y-3">
-                <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
-                  <FileText className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm text-gray-900 dark:text-white">Material Didático</span>
+                <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-slate-700 rounded-lg transition-colors duration-200">
+                  <FileText className="w-5 h-5 text-blue-400" />
+                  <span className="text-sm text-white">Material Didático</span>
                 </button>
-                <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
-                  <Video className="w-5 h-5 text-green-600" />
-                  <span className="text-sm text-gray-900 dark:text-white">Aulas Gravadas</span>
+                <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-slate-700 rounded-lg transition-colors duration-200">
+                  <Video className="w-5 h-5 text-green-400" />
+                  <span className="text-sm text-white">Aulas Gravadas</span>
                 </button>
-                <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
-                  <MessageCircle className="w-5 h-5 text-purple-600" />
-                  <span className="text-sm text-gray-900 dark:text-white">Fórum de Discussão</span>
+                <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-slate-700 rounded-lg transition-colors duration-200">
+                  <MessageCircle className="w-5 h-5 text-purple-400" />
+                  <span className="text-sm text-white">Fórum de Discussão</span>
                 </button>
-                <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
-                  <Award className="w-5 h-5 text-orange-600" />
-                  <span className="text-sm text-gray-900 dark:text-white">Certificado</span>
+                <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-slate-700 rounded-lg transition-colors duration-200">
+                  <Award className="w-5 h-5 text-orange-400" />
+                  <span className="text-sm text-white">Certificado</span>
                 </button>
               </div>
             </div>
 
             {/* Instructor */}
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-slate-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">
                 Instrutor
               </h3>
               <div className="flex items-center space-x-3 mb-4">
-                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
-                  <User className="w-6 h-6 text-primary-600" />
+                <div className="w-12 h-12 bg-green-900 rounded-full flex items-center justify-center">
+                  <User className="w-6 h-6 text-green-400" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white">
+                  <h4 className="font-medium text-white">
                     {courseInfo.instructor}
                   </h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                  <p className="text-sm text-gray-300">
                     Especialista em Medicina Integrativa
                   </p>
                 </div>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              <p className="text-sm text-gray-300 mb-4">
                 Médico com mais de 15 anos de experiência em cannabis medicinal e medicina integrativa.
               </p>
-              <button className="w-full btn-secondary text-sm">
+              <button 
+              onClick={() => setShowProfileModal(true)}
+              className="w-full px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 text-sm transition-colors">
                 Ver Perfil
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal de Perfil do Dr. Eduardo Faveret */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-center space-x-4">
+                <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-teal-500 rounded-full flex items-center justify-center">
+                  <User className="w-10 h-10 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-1">Dr. Eduardo Faveret</h2>
+                  <p className="text-green-400 font-medium">Neuropediatra</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Formação */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-green-400" />
+                  Formação e Credenciais
+                </h3>
+                <div className="bg-slate-700 rounded-lg p-4 space-y-2 text-sm text-gray-300">
+                  <p><strong className="text-white">PhD em Epilepsia</strong></p>
+                  <p><strong className="text-white">Neuropediatra</strong></p>
+                  <p className="text-green-400 font-medium">Pioneiro na prescrição de cannabis medicinal no Brasil</p>
+                </div>
+              </div>
+
+              {/* Experiência */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-blue-400" />
+                  Experiência Profissional
+                </h3>
+                <div className="bg-slate-700 rounded-lg p-4 space-y-3 text-sm text-gray-300">
+                  <p>
+                    <strong className="text-white">Mais de 15 anos de experiência</strong> em cannabis medicinal e medicina integrativa.
+                  </p>
+                  <p>
+                    Especialista em tratamento de epilepsia com cannabis medicinal, com atuação pioneira no desenvolvimento 
+                    de protocolos terapêuticos e na formação de profissionais da saúde.
+                  </p>
+                  <p>
+                    Desenvolvedor de metodologias práticas para aplicação clínica de cannabis medicinal, com foco em casos 
+                    clínicos reais e resultados efetivos.
+                  </p>
+                </div>
+              </div>
+
+              {/* Contribuições */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-400" />
+                  Contribuições e Realizações
+                </h3>
+                <div className="bg-slate-700 rounded-lg p-4 space-y-2 text-sm text-gray-300">
+                  <p>• Pioneiro na prescrição de cannabis medicinal no Brasil</p>
+                  <p>• Criador do curso de Pós-Graduação em Cannabis Medicinal com metodologia prática</p>
+                  <p>• Desenvolvedor de protocolos de tratamento baseados em evidências</p>
+                  <p>• Formador de profissionais da saúde em cannabis medicinal</p>
+                  <p>• Especialista em casos clínicos complexos de epilepsia</p>
+                </div>
+              </div>
+
+              {/* Contato */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-purple-400" />
+                  Contato e Informações
+                </h3>
+                <div className="bg-slate-700 rounded-lg p-4 space-y-2 text-sm text-gray-300">
+                  <p><strong className="text-white">Área de Atuação:</strong> Neuropediatria, Epilepsia, Cannabis Medicinal</p>
+                  <p><strong className="text-white">Especialização:</strong> Medicina Integrativa</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

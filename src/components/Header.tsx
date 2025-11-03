@@ -68,8 +68,15 @@ const Header: React.FC = () => {
           {/* Logo e Título */}
           <div className="flex items-center space-x-2 md:space-x-3">
             <Link to="/" className="flex items-center space-x-2 md:space-x-3">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-primary-600 to-accent-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg md:text-xl">M</span>
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-primary-600 to-accent-500 rounded-lg flex items-center justify-center overflow-hidden">
+                <img 
+                  src="/brain.png" 
+                  alt="MedCannLab Logo" 
+                  className="w-full h-full object-contain p-1"
+                  style={{
+                    filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.3)) brightness(1.2) contrast(1.1)'
+                  }}
+                />
               </div>
               <div className="hidden sm:block">
                 <div className="text-white font-bold text-base md:text-lg">MedCannLab 3.0</div>

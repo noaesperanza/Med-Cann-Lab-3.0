@@ -24,7 +24,7 @@ import {
   Users,
   Heart,
   Brain,
-  Microscope,
+  FlaskConical as Microscope,
   Activity
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -218,151 +218,195 @@ const EduardoFaveretDashboard: React.FC = () => {
     setClinicalNotes('')
   }
 
-  return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      
-      {/* Header Personalizado para Dr. Eduardo Faveret */}
-      <div className="bg-gradient-to-r from-green-800 to-emerald-700 border-b border-green-600/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2 flex items-center space-x-3">
-                <Award className="w-8 h-8 text-yellow-400" />
-                <span>Dr. Eduardo Faveret</span>
-              </h1>
-              <p className="text-green-200">Neurologista Pediátrico • Especialista em Epilepsia e Cannabis Medicinal</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-green-200">Conectado como</p>
-                <p className="font-semibold text-white">Dr. Eduardo Faveret</p>
-                <p className="text-xs text-green-300">CRM: 123456 • CRO: 654321</p>
+  // Renderizar dashboard principal com cards organizados
+  const renderDashboard = () => {
+    return (
+      <div className="space-y-8">
+        {/* 🏥 EIXO CLÍNICA */}
+        <div>
+          <h2 className="text-xl font-bold text-white mb-4">🏥 Eixo Clínica</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button
+              onClick={() => navigate('/app/clinica/profissional/pacientes')}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">👥 Gestão de Pacientes</h3>
+                <Users className="w-6 h-6" />
               </div>
-              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                <Award className="w-6 h-6 text-white" />
+              <p className="text-xs opacity-75 mt-1">Prontuário eletrônico</p>
+            </button>
+            
+            <button
+              onClick={() => navigate('/app/clinica/profissional/agendamentos')}
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">📅 Agendamentos</h3>
+                <Calendar className="w-6 h-6" />
               </div>
-            </div>
-          </div>
-          
-          {/* Navigation Tabs Personalizadas */}
-          <div className="flex flex-wrap gap-2 mt-4">
+              <p className="text-xs opacity-75 mt-1">Agenda completa</p>
+            </button>
+            
             <button
               onClick={() => setActiveSection('kpis-personalizados')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-                activeSection === 'kpis-personalizados' 
-                  ? 'bg-indigo-600 text-white' 
-                  : 'bg-green-700 text-green-200 hover:bg-green-600'
-              }`}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
-              <Brain className="w-4 h-4" />
-              <span>KPIs TEA</span>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">📊 KPIs TEA</h3>
+                <Brain className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Monitoramento neurológico</p>
             </button>
-            <button
-              onClick={() => setActiveSection('research')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-                activeSection === 'research' 
-                  ? 'bg-purple-600 text-white' 
-                  : 'bg-green-700 text-green-200 hover:bg-green-600'
-              }`}
-            >
-              <Microscope className="w-4 h-4" />
-              <span>Pesquisa</span>
-            </button>
-            <button
-              onClick={() => setActiveSection('newsletter')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-                activeSection === 'newsletter' 
-                  ? 'bg-orange-600 text-white' 
-                  : 'bg-green-700 text-green-200 hover:bg-green-600'
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>Publicações</span>
-            </button>
-            <button
-              onClick={() => setActiveSection('scheduling')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-                activeSection === 'scheduling' 
-                  ? 'bg-emerald-600 text-white' 
-                  : 'bg-green-700 text-green-200 hover:bg-green-600'
-              }`}
-            >
-              <Calendar className="w-4 h-4" />
-              <span>Agendamento</span>
-            </button>
-            <button
-              onClick={() => setActiveSection('coordenacao')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-                activeSection === 'coordenacao' 
-                  ? 'bg-purple-600 text-white' 
-                  : 'bg-green-700 text-green-200 hover:bg-green-600'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Coordenação</span>
-            </button>
-            <button
-              onClick={() => setActiveSection('cursos')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-                activeSection === 'cursos' 
-                  ? 'bg-indigo-600 text-white' 
-                  : 'bg-green-700 text-green-200 hover:bg-green-600'
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>Cursos</span>
-            </button>
+            
             <button
               onClick={() => setActiveSection('neurologia')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-                activeSection === 'neurologia' 
-                  ? 'bg-purple-600 text-white' 
-                  : 'bg-green-700 text-green-200 hover:bg-green-600'
-              }`}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
-              <Brain className="w-4 h-4" />
-              <span>Neurologia</span>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">🧠 Neurologia Pediátrica</h3>
+                <Brain className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Epilepsia e Cannabis Medicinal</p>
             </button>
+            
             <button
               onClick={() => setActiveSection('wearables')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-                activeSection === 'wearables' 
-                  ? 'bg-cyan-600 text-white' 
-                  : 'bg-green-700 text-green-200 hover:bg-green-600'
-              }`}
+              className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
-              <Activity className="w-4 h-4" />
-              <span>Wearables</span>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">📱 Monitoramento Wearables</h3>
+                <Activity className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Monitoramento 24/7</p>
             </button>
+            
             <button
-              onClick={() => setActiveSection('chat-profissionais')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-                activeSection === 'chat-profissionais' 
-                  ? 'bg-indigo-600 text-white' 
-                  : 'bg-green-700 text-green-200 hover:bg-green-600'
-              }`}
+              onClick={() => setActiveSection('scheduling')}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
-              <MessageCircle className="w-4 h-4" />
-              <span>Chat Profissionais</span>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">📅 Agendamento Personalizado</h3>
+                <Calendar className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Sistema de agendamento</p>
             </button>
+          </div>
+        </div>
+
+        {/* 🎓 EIXO ENSINO */}
+        <div>
+          <h2 className="text-xl font-bold text-white mb-4">🎓 Eixo Ensino</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <button
-              onClick={() => setActiveSection('chat-pacientes')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-                activeSection === 'chat-pacientes' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-green-700 text-green-200 hover:bg-green-600'
-              }`}
+              onClick={() => navigate('/app/ensino/profissional/dashboard')}
+              className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
-              <Users className="w-4 h-4" />
-              <span>Chat com Pacientes</span>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">🎓 Gestão de Ensino</h3>
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Gerenciamento de cursos</p>
             </button>
+            
+            <button
+              onClick={() => setActiveSection('cursos')}
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">📚 Gestão de Cursos</h3>
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Pós-graduação Cannabis Medicinal</p>
+            </button>
+          </div>
+        </div>
+
+        {/* 🔬 EIXO PESQUISA */}
+        <div>
+          <h2 className="text-xl font-bold text-white mb-4">🔬 Eixo Pesquisa</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button
+              onClick={() => navigate('/app/pesquisa/profissional/dashboard')}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">🔬 Dashboard de Pesquisa</h3>
+                <Microscope className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Centro de pesquisa AEC</p>
+            </button>
+            
+            <button
+              onClick={() => setActiveSection('research')}
+              className="bg-gradient-to-r from-violet-600 to-purple-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">📊 Pesquisa AEC</h3>
+                <Microscope className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Estudos e publicações</p>
+            </button>
+            
+            <button
+              onClick={() => setActiveSection('newsletter')}
+              className="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">📰 Publicações</h3>
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Newsletter científico</p>
+            </button>
+          </div>
+        </div>
+
+        {/* Outros */}
+        <div>
+          <h2 className="text-xl font-bold text-white mb-4">Outros</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button
+              onClick={() => setActiveSection('coordenacao')}
+              className="bg-gradient-to-r from-slate-600 to-gray-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium opacity-90">👥 Coordenação Médica</h3>
+                <Users className="w-6 h-6" />
+              </div>
+              <p className="text-xs opacity-75 mt-1">Gestão de equipes</p>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Header Personalizado para Dr. Eduardo Faveret */}
+      <div className="bg-gradient-to-r from-green-800 to-emerald-700 border-b border-green-600/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+              <Award className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Dr. Eduardo Faveret</h1>
+              <p className="text-green-200 text-sm">Neurologista Pediátrico • Especialista em Epilepsia e Cannabis Medicinal</p>
+            </div>
+          </div>
+          <div className="mt-4 md:mt-0 text-right">
+            <p className="text-green-300 text-sm">Conectado como</p>
+            <p className="text-white font-semibold">{user?.name || 'Convidado'}</p>
+            <p className="text-green-200 text-xs">CRM: 123456 • CRO: 654321</p>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Renderizar seção ativa */}
-        {activeSection === 'dashboard' && (
+        {activeSection === 'dashboard' && renderDashboard()}
+        {activeSection !== 'dashboard' && (
           <>
             {/* Status Cards Personalizados - Integrados com 3 Camadas de KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -910,7 +954,7 @@ const EduardoFaveretDashboard: React.FC = () => {
                           {patient.assessments?.length || 0} avaliações
                         </span>
                         <span className="text-xs bg-slate-600 px-2 py-1 rounded">
-                          {patient.condition}
+                          {patient.status}
                         </span>
                       </div>
                     </div>

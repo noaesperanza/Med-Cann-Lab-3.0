@@ -381,7 +381,7 @@ const PatientsManagement: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate('/app/professional-dashboard')}
+                onClick={() => navigate('/app/clinica/profissional/dashboard')}
                 className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
               >
                 <ArrowLeft className="w-5 h-5 text-white" />
@@ -675,17 +675,11 @@ const PatientsManagement: React.FC = () => {
                       <span>Novo Agendamento</span>
                     </button>
                     <button
-                      onClick={() => navigate('/app/professional-scheduling')}
+                      onClick={() => navigate('/app/clinica/profissional/agendamentos')}
                       className="flex items-center space-x-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
                     >
                       <Calendar className="w-4 h-4" />
                       <span>Ver Agenda Completa</span>
-                    </button>
-                    <button
-                      className="flex items-center space-x-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Exportar Agenda</span>
                     </button>
                   </div>
                 </div>
@@ -1009,18 +1003,12 @@ const PatientsManagement: React.FC = () => {
                               <span>Novo Agendamento</span>
                             </button>
                             <button
-                              onClick={() => navigate('/app/professional-scheduling')}
+                              onClick={() => navigate('/app/clinica/profissional/agendamentos')}
                               className="flex items-center space-x-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
                             >
                               <Calendar className="w-4 h-4" />
                               <span>Ver Agenda Completa</span>
                             </button>
-                        <button
-                              className="flex items-center space-x-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-                        >
-                              <Download className="w-4 h-4" />
-                              <span>Exportar Agenda</span>
-                        </button>
                           </div>
                         </div>
                       </div>

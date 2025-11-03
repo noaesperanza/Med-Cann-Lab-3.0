@@ -155,7 +155,7 @@ const Prescriptions: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate('/app/professional-dashboard')}
+                onClick={() => navigate('/app/clinica/profissional/dashboard')}
                 className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
               >
                 <ArrowLeft className="w-5 h-5 text-white" />

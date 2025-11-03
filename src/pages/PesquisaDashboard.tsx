@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { 
   ArrowLeft, 
   Heart, 
@@ -20,28 +21,23 @@ import {
   Brain,
   FlaskConical,
   FileText,
-  Users
+  Users,
+  BookOpen,
+  GraduationCap,
+  Stethoscope,
+  Link2,
+  Zap,
+  Play,
+  Video,
+  FileText as FileTextIcon,
+  Globe,
+  MapPin,
+  Sparkles
 } from 'lucide-react'
-import { useNoa } from '../contexts/NoaContext'
-import NoaAnimatedAvatar from '../components/NoaAnimatedAvatar'
 
 const PesquisaDashboard: React.FC = () => {
-  const { isOpen, toggleChat, messages, isTyping, isListening, isSpeaking, sendMessage } = useNoa()
-  const [inputMessage, setInputMessage] = useState('')
-
-  const handleSendMessage = () => {
-    if (inputMessage.trim()) {
-      sendMessage(inputMessage.trim())
-      setInputMessage('')
-    }
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
-    }
-  }
+  const navigate = useNavigate()
+  const [showAllStudies, setShowAllStudies] = useState(false)
 
   const researchData = [
     {
@@ -76,8 +72,44 @@ const PesquisaDashboard: React.FC = () => {
       startDate: '2023-09-01',
       endDate: '2024-08-31',
       color: 'from-purple-500 to-pink-500'
+    },
+    {
+      id: 4,
+      title: 'Protocolos de Dosagem Personalizados',
+      description: 'Desenvolvimento de protocolos individualizados baseados em dados clínicos',
+      status: 'Em Andamento',
+      progress: 45,
+      participants: 32,
+      startDate: '2024-06-01',
+      endDate: '2025-05-31',
+      color: 'from-orange-500 to-red-500'
+    },
+    {
+      id: 5,
+      title: 'Impacto da Metodologia IMRE em Resultados',
+      description: 'Análise dos resultados clínicos utilizando avaliação triaxial',
+      status: 'Análise',
+      progress: 75,
+      participants: 67,
+      startDate: '2024-02-15',
+      endDate: '2024-11-30',
+      color: 'from-indigo-500 to-purple-500'
+    },
+    {
+      id: 6,
+      title: 'Cannabis Medicinal em Pacientes Idosos',
+      description: 'Estudo sobre segurança e eficácia em pacientes acima de 65 anos',
+      status: 'Concluído',
+      progress: 100,
+      participants: 89,
+      startDate: '2023-03-01',
+      endDate: '2024-02-28',
+      color: 'from-teal-500 to-cyan-500'
     }
   ]
+
+  // Mostrar apenas estudos ativos inicialmente, ou todos se showAllStudies for true
+  const displayedStudies = showAllStudies ? researchData : researchData.filter(study => study.status !== 'Concluído')
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -101,362 +133,679 @@ const PesquisaDashboard: React.FC = () => {
       <div className="bg-slate-800 border-b border-slate-700 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button className="flex items-center space-x-2 text-slate-300 hover:text-white transition-colors">
+            <button 
+              onClick={() => navigate('/app/clinica/profissional/dashboard')}
+              className="flex items-center space-x-2 text-slate-300 hover:text-white transition-colors"
+            >
               <ArrowLeft className="w-5 h-5" />
               <span>Voltar</span>
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-white">🔬 Dashboard Pesquisa</h1>
+              <h1 className="text-2xl font-bold text-white">🔬 Eixo Pesquisa</h1>
               <p className="text-slate-400">Área de Pesquisa - Estudos e Análises Clínicas</p>
             </div>
           </div>
-          
-          {/* Patient Profile */}
-          <div className="flex items-center space-x-3 bg-slate-700 p-3 rounded-lg">
-            <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full flex items-center justify-center">
-              <Heart className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-white">❤️ Paciente</p>
-              <p className="text-sm text-slate-400">Participante de Pesquisa</p>
-            </div>
-          </div>
         </div>
       </div>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <div className="w-64 bg-slate-800 border-r border-slate-700 min-h-screen">
-          <div className="p-6">
-            <nav className="space-y-2">
-              <a href="#" className="flex items-center space-x-3 p-3 rounded-lg bg-slate-700 text-white">
-                <BarChart3 className="w-5 h-5" />
-                <span>🔬 Dashboard Pesquisa</span>
-              </a>
-              <a href="#" className="flex items-center space-x-3 p-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
-                <Users className="w-5 h-5" />
-                <span>👥 Meus Pacientes</span>
-              </a>
-              <a href="#" className="flex items-center space-x-3 p-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
-                <Heart className="w-5 h-5" />
-                <span>📊 Avaliações</span>
-              </a>
-              <a href="#" className="flex items-center space-x-3 p-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
-                <MessageCircle className="w-5 h-5" />
-                <span>💬 Fórum de Conselheiros em IA na Saúde</span>
-              </a>
-              <a href="#" className="flex items-center space-x-3 p-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
-                <FileText className="w-5 h-5" />
-                <span>📈 Relatórios</span>
-              </a>
-            </nav>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 p-6">
-          <div className="max-w-6xl mx-auto">
-            {/* Welcome Section */}
-            <div className="bg-gradient-to-r from-pink-600 to-purple-500 rounded-xl p-6 mb-8">
-              <h2 className="text-2xl font-bold text-white mb-2">Bem-vindo à Área de Pesquisa!</h2>
-              <p className="text-white/90 mb-4">
-                Acompanhe seus estudos e pesquisas clínicas. Sua participação é fundamental para o avanço
-                da Cannabis Medicinal e da Arte da Entrevista Clínica.
-              </p>
-              <button className="bg-white text-pink-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
-                Ver Meus Estudos
-              </button>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-slate-800 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-pink-500/10 rounded-lg">
-                    <FlaskConical className="w-6 h-6 text-pink-400" />
+      {/* Main Content */}
+      <div className="p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Fórum Destaque */}
+          <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-xl p-8 mb-8 cursor-pointer hover:shadow-2xl hover:scale-[1.01] transition-all"
+               onClick={() => navigate('/app/pesquisa/profissional/forum-casos')}>
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                    <MessageCircle className="w-8 h-8 text-white" />
                   </div>
-                  <TrendingUp className="w-5 h-5 text-green-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-1">3</h3>
-                <p className="text-sm text-slate-400">Estudos Ativos</p>
-              </div>
-
-              <div className="bg-slate-800 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-blue-500/10 rounded-lg">
-                    <Target className="w-6 h-6 text-blue-400" />
-                  </div>
-                  <TrendingUp className="w-5 h-5 text-green-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-1">83%</h3>
-                <p className="text-sm text-slate-400">Progresso Médio</p>
-              </div>
-
-              <div className="bg-slate-800 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-green-500/10 rounded-lg">
-                    <Users className="w-6 h-6 text-green-400" />
-                  </div>
-                  <TrendingUp className="w-5 h-5 text-green-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-1">192</h3>
-                <p className="text-sm text-slate-400">Participantes</p>
-              </div>
-
-              <div className="bg-slate-800 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-purple-500/10 rounded-lg">
-                    <Award className="w-6 h-6 text-purple-400" />
-                  </div>
-                  <TrendingUp className="w-5 h-5 text-green-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-1">1</h3>
-                <p className="text-sm text-slate-400">Publicações</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Research Studies */}
-              <div className="lg:col-span-2">
-                <div className="bg-slate-800 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-semibold text-white">🔬 Meus Estudos</h3>
-                    <button className="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-4 py-2 rounded-lg font-semibold hover:from-pink-600 hover:to-purple-600 transition-colors">
-                      Ver Todos
-                    </button>
-                  </div>
-
-                  <div className="space-y-6">
-                    {researchData.map((study) => (
-                      <div key={study.id} className="bg-slate-700 rounded-lg p-6 hover:bg-slate-650 transition-colors">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <h4 className="text-lg font-semibold text-white">{study.title}</h4>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(study.status)}`}>
-                                {study.status}
-                              </span>
-                            </div>
-                            <p className="text-sm text-slate-400 mb-3">{study.description}</p>
-                            
-                            <div className="flex items-center space-x-4 text-sm text-slate-500 mb-4">
-                              <span>Participantes: {study.participants}</span>
-                              <span>Início: {study.startDate}</span>
-                              <span>Fim: {study.endDate}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center space-x-2">
-                            <button className="p-2 bg-slate-600 rounded-lg hover:bg-slate-500 transition-colors">
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button className="p-2 bg-slate-600 rounded-lg hover:bg-slate-500 transition-colors">
-                              <Download className="w-4 h-4" />
-                            </button>
-                            <button className="p-2 bg-slate-600 rounded-lg hover:bg-slate-500 transition-colors">
-                              <Share2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        
-                        {/* Progress Bar */}
-                        <div className="mb-2">
-                          <div className="flex items-center justify-between text-sm mb-1">
-                            <span className="text-slate-400">Progresso</span>
-                            <span className="text-white font-medium">{study.progress}%</span>
-                          </div>
-                          <div className="w-full bg-slate-600 rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full ${getProgressColor(study.progress)}`}
-                              style={{ width: `${study.progress}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Recent Publications */}
-                <div className="bg-slate-800 rounded-xl p-6 mt-6">
-                  <h3 className="text-xl font-semibold text-white mb-6">📚 Publicações Recentes</h3>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-slate-700 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
-                          <FileText className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-white">Validação da Arte da Entrevista Clínica</p>
-                          <p className="text-sm text-slate-400">Publicado em: Revista Brasileira de Cannabis Medicinal</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button className="p-2 bg-slate-600 rounded-lg hover:bg-slate-500 transition-colors">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button className="p-2 bg-slate-600 rounded-lg hover:bg-slate-500 transition-colors">
-                          <Download className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Chat Section */}
-              <div className="lg:col-span-1">
-                <div className="bg-slate-800 rounded-xl p-6 h-full">
-                  <div className="text-center mb-6">
-                    <h3 className="text-xl font-semibold text-white mb-2">Nôa Esperança</h3>
-                    <p className="text-sm text-slate-400">IA Residente • Suporte em Pesquisa</p>
-                  </div>
-
-                  {/* Avatar */}
-                  <div className="flex justify-center mb-6">
-                    <NoaAnimatedAvatar
-                      isSpeaking={isSpeaking}
-                      isListening={isListening}
-                      size="md"
-                      showStatus={true}
-                    />
-                  </div>
-
-                  {/* Welcome Message */}
-                  <div className="bg-slate-700 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-slate-300 mb-2">
-                      🔬 Olá! Sou a Nôa Esperança, sua assistente de pesquisa especializada.
+                  <div>
+                    <h2 className="text-3xl font-bold text-white mb-2">💬 Fórum de Conselheiros em IA na Saúde</h2>
+                    <p className="text-white/90 text-lg">
+                      Discussão colaborativa de casos clínicos, integração de dados dos três eixos e 
+                      troca de experiências entre profissionais
                     </p>
-                    <p className="text-xs text-slate-400 mb-2">Posso ajudar com:</p>
-                    <ul className="text-xs text-slate-400 space-y-1">
-                      <li>• Análise de dados de pesquisa</li>
-                      <li>• Metodologia científica</li>
-                      <li>• Interpretação de resultados</li>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-6 text-white/90">
+                  <div className="flex items-center space-x-2">
+                    <Users className="w-5 h-5" />
+                    <span>1,247 participantes ativos</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <MessageCircle className="w-5 h-5" />
+                    <span>456 casos discutidos</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Star className="w-5 h-5" />
+                    <span>Discussões com IA integrada</span>
+                  </div>
+                </div>
+              </div>
+              <div className="ml-6">
+                <button className="bg-white text-purple-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100 transition-colors flex items-center space-x-2">
+                  <span>Acessar Fórum</span>
+                  <ArrowLeft className="w-5 h-5 rotate-180" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Laboratório de Performance em Entrevista Clínica */}
+          <div className="bg-gradient-to-br from-purple-900/40 via-pink-900/40 to-blue-900/40 rounded-xl p-8 mb-8 border border-purple-500/20">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex-1">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <Brain className="w-10 h-10 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold text-white mb-2">Laboratório de Performance em Entrevista Clínica</h2>
+                    <p className="text-purple-200 text-lg">
+                      Projetos inovadores que aplicam a metodologia AEC em diferentes contextos, desde pesquisa aplicada até intervenções comunitárias globais. 
+                      Integração de Deep Learning e NLP para saúde humanizada.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="bg-slate-800/50 rounded-lg p-6 mb-6 border border-purple-500/20">
+                  <div className="flex items-center space-x-3 mb-3">
+                    <Sparkles className="w-6 h-6 text-purple-400" />
+                    <h3 className="text-xl font-semibold text-white">Logo Nôa Esperança Pesquisa</h3>
+                  </div>
+                  <div className="space-y-2 text-purple-200">
+                    <p><strong className="text-white">Seminário Setembro 2025</strong></p>
+                    <p><strong className="text-white">Saúde Espectral</strong></p>
+                    <p className="mt-4">
+                      Análise de critérios diagnósticos em nefrologia e neurologia, e o uso da cannabis medicinal na prática clínica. 
+                      Um olhar expandido pela metodologia da Arte da Entrevista Clínica.
+                    </p>
+                  </div>
+                  <button className="mt-4 flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-bold hover:from-purple-700 hover:to-pink-700 transition-all">
+                    <Download className="w-5 h-5" />
+                    <span>📕 Baixar eBook do Seminário</span>
+                  </button>
+                </div>
+
+                <p className="text-purple-100 mb-6 text-lg leading-relaxed">
+                  No LabPEC, a metodologia da Arte da Entrevista Clínica ganha corpo em encontros ao vivo, simulados e analisados com profundidade. 
+                  Aqui, a escuta clínica é treinada com rigor e sensibilidade, em situações reais da prática médica.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  {/* O que acontece no LabPEC */}
+                  <div className="bg-slate-800/50 rounded-lg p-6 border border-purple-500/20">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                      <Play className="w-5 h-5 text-purple-400" />
+                      <span>🎭 O que acontece no LabPEC?</span>
+                    </h3>
+                    <ul className="space-y-3 text-purple-100">
+                      <li className="flex items-start space-x-2">
+                        <CheckCircle className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span><strong className="text-white">Role-playing clínico realista:</strong> consultas encenadas por duplas com base em casos clínicos reais.</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <CheckCircle className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span><strong className="text-white">Análise triaxial da consulta:</strong> diferentes perspectivas entre entrevistador, paciente e professor.</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <CheckCircle className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span><strong className="text-white">Gravação e revisão técnica:</strong> análise em grupo da comunicação clínica e não-verbal.</span>
+                      </li>
                     </ul>
                   </div>
 
-                  {/* Quick Actions */}
-                  <div className="space-y-3 mb-6">
-                    <button className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 px-4 rounded-lg font-semibold hover:from-pink-600 hover:to-purple-600 transition-colors">
-                      Analisar Dados de Pesquisa
-                    </button>
-                    <button className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-colors">
-                      Metodologia Científica
-                    </button>
+                  {/* Por que participar? */}
+                  <div className="bg-slate-800/50 rounded-lg p-6 border border-purple-500/20">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                      <Target className="w-5 h-5 text-purple-400" />
+                      <span>🎯 Por que participar?</span>
+                    </h3>
+                    <ul className="space-y-3 text-purple-100">
+                      <li className="flex items-start space-x-2">
+                        <Star className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span>Treinamento intensivo em habilidades comunicacionais</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <Star className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span>Aplicação prática dos conceitos da AEC</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <Star className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span>Feedback direto e individualizado</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <Star className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span>Prática segura, com supervisão ativa</span>
+                      </li>
+                    </ul>
                   </div>
 
-                  {/* Chat Input */}
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={inputMessage}
-                        onChange={(e) => setInputMessage(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        placeholder="Digite sua mensagem..."
-                        className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-pink-500"
-                      />
-                    </div>
-                    
-                    <p className="text-xs text-slate-500 text-center">
-                      Nôa utiliza AEC para suporte em pesquisa • LGPD Compliant
-                    </p>
+                  {/* Para quem? */}
+                  <div className="bg-slate-800/50 rounded-lg p-6 border border-purple-500/20">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                      <Users className="w-5 h-5 text-purple-400" />
+                      <span>👥 Para quem?</span>
+                    </h3>
+                    <ul className="space-y-3 text-purple-100">
+                      <li className="flex items-start space-x-2">
+                        <CheckCircle className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span>Estudantes de Medicina e Saúde</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <CheckCircle className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span>Profissionais em formação continuada</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <CheckCircle className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span>Equipes de pesquisa aplicando a metodologia</span>
+                      </li>
+                    </ul>
                   </div>
+
+                  {/* Como funciona? */}
+                  <div className="bg-slate-800/50 rounded-lg p-6 border border-purple-500/20">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                      <Zap className="w-5 h-5 text-purple-400" />
+                      <span>🧭 Como funciona?</span>
+                    </h3>
+                    <ul className="space-y-3 text-purple-100">
+                      <li className="flex items-start space-x-2">
+                        <Video className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span><strong className="text-white">💻 Aulas ao vivo via Zoom</strong> às 21h</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <FileTextIcon className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span><strong className="text-white">🧾 Casos clínicos</strong> alinhados ao tema da aula</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <Users className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span><strong className="text-white">👩‍⚕️ Dupla de alunos</strong> selecionada na hora</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <Clock className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span><strong className="text-white">⏱️ Exercícios</strong> com até 3 rodadas por noite</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <BarChart3 className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span><strong className="text-white">📊 Análise final</strong> orientada por Dr. Ricardo Valença</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="bg-slate-800/50 rounded-lg p-4 border border-purple-500/20 text-center">
+                  <p className="text-purple-200 text-sm">
+                    O LabPEC integra o eixo formativo da plataforma Nôa Esperanza, articulando ensino, clínica e pesquisa.
+                  </p>
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Projetos de Aplicação AEC */}
+          <div className="mb-8">
+            <div className="flex items-center space-x-3 mb-6">
+              <Target className="w-8 h-8 text-purple-400" />
+              <h2 className="text-2xl font-bold text-white">Projetos de Aplicação AEC</h2>
+            </div>
+            <p className="text-slate-400 mb-6">
+              Aplicações da Arte da Entrevista Clínica - Projetos inovadores que aplicam a metodologia AEC em diferentes contextos, 
+              desde pesquisa aplicada até intervenções comunitárias globais.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Cidade Amiga dos Rins */}
+              <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 rounded-xl p-6 border border-blue-500/20 hover:border-blue-400 hover:shadow-xl transition-all">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                    <MapPin className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Cidade Amiga dos Rins</h3>
+                    <p className="text-sm text-blue-300">Saúde Comunitária & Nefrologia</p>
+                  </div>
+                </div>
+                
+                <p className="text-blue-100 mb-4 text-sm leading-relaxed">
+                  Programa pioneiro de saúde comunitária que integra tecnologia avançada e cuidado humanizado para identificação 
+                  de fatores de risco para doença renal crônica e onboarding de profissionais através da metodologia Arte da Entrevista Clínica.
+                </p>
+
+                <div className="bg-slate-800/50 rounded-lg p-4 mb-4 border border-blue-500/20">
+                  <h4 className="text-sm font-semibold text-white mb-3">Características Principais</h4>
+                  <ul className="space-y-2 text-xs text-blue-100">
+                    <li className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <span>35 anos de nefrologia aplicados ao desenvolvimento urbano</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <span>Abordagem preventiva com IA para fatores de risco</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <span>Onboarding de profissionais de saúde</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <span>Impacto direto em saúde pública</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <button 
+                  onClick={() => navigate('/app/pesquisa/profissional/cidade-amiga-dos-rins')}
+                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all flex items-center justify-center space-x-2"
+                >
+                  <span>Explorar Projeto</span>
+                  <ArrowLeft className="w-4 h-4 rotate-180" />
+                </button>
+              </div>
+
+              {/* MedCann Lab */}
+              <div className="bg-gradient-to-br from-green-900/40 to-teal-900/40 rounded-xl p-6 border border-green-500/20 hover:border-green-400 hover:shadow-xl transition-all">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-20 h-20 bg-green-500/20 rounded-xl flex items-center justify-center overflow-hidden">
+                    <img 
+                      src="/brain.png" 
+                      alt="MedCann Lab Logo" 
+                      className="w-full h-full object-contain"
+                      style={{
+                        filter: 'drop-shadow(0 0 10px rgba(0, 193, 106, 0.3)) brightness(1.1)'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">MedCann Lab</h3>
+                    <p className="text-sm text-green-300">Integração Cannabis & Nefrologia</p>
+                  </div>
+                </div>
+                
+                <p className="text-green-100 mb-4 text-sm leading-relaxed">
+                  Pesquisa pioneira da cannabis medicinal aplicada à nefrologia e neurologia, utilizando a metodologia AEC 
+                  para identificar benefícios terapêuticos e avaliar impactos na função renal.
+                </p>
+
+                <div className="bg-slate-800/50 rounded-lg p-4 mb-4 border border-green-500/20">
+                  <h4 className="text-sm font-semibold text-white mb-3">Características Principais</h4>
+                  <ul className="space-y-2 text-xs text-green-100">
+                    <li className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span>Protocolos de prescrição baseados em AEC</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span>Monitoramento de função renal</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span>Deep Learning para análise de biomarcadores</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span>Integração com dispositivos médicos</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <button 
+                  onClick={() => navigate('/app/pesquisa/profissional/medcann-lab')}
+                  className="w-full bg-gradient-to-r from-green-600 to-teal-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-green-700 hover:to-teal-700 transition-all flex items-center justify-center space-x-2"
+                >
+                  <span>Explorar Projeto</span>
+                  <ArrowLeft className="w-4 h-4 rotate-180" />
+                </button>
+              </div>
+
+              {/* Jardins de Cura */}
+              <div className="bg-gradient-to-br from-purple-900/40 to-pink-900/40 rounded-xl p-6 border border-purple-500/20 hover:border-purple-400 hover:shadow-xl transition-all">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                    <Globe className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Jardins de Cura</h3>
+                    <p className="text-sm text-purple-300">Saúde Global & Agência Crítica</p>
+                  </div>
+                </div>
+                
+                <p className="text-purple-100 mb-4 text-sm leading-relaxed">
+                  Projeto de saúde global focado na aplicação da metodologia AEC em comunidades vulneráveis, 
+                  promovendo equidade em saúde e desenvolvimento de capacidades locais.
+                </p>
+
+                <div className="bg-slate-800/50 rounded-lg p-4 mb-4 border border-purple-500/20">
+                  <h4 className="text-sm font-semibold text-white mb-3">Características Principais</h4>
+                  <ul className="space-y-2 text-xs text-purple-100">
+                    <li className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                      <span>Formação de agentes comunitários</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                      <span>Triagem preventiva baseada em AEC</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                      <span>Indicadores de saúde populacional</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                      <span>Parcerias com organizações internacionais</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center space-x-2">
+                  <span>Explorar Projeto</span>
+                  <ArrowLeft className="w-4 h-4 rotate-180" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Integração dos Três Eixos */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* Eixo Clínica */}
+            <div className="bg-slate-800 rounded-xl p-6 hover:bg-slate-750 transition-colors cursor-pointer"
+                 onClick={() => navigate('/app/clinica/profissional/dashboard')}>
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                  <Stethoscope className="w-6 h-6 text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">🏥 Eixo Clínica</h3>
+                  <p className="text-sm text-gray-400">Dados clínicos</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Pacientes Ativos:</span>
+                  <span className="text-white font-semibold">156</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Avaliações AEC:</span>
+                  <span className="text-white font-semibold">89</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Protocolos Ativos:</span>
+                  <span className="text-white font-semibold">34</span>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-700">
+                <Link2 className="w-5 h-5 text-blue-400" />
+                <p className="text-xs text-gray-400 mt-2">Integrado com cursos e pesquisas</p>
+              </div>
+            </div>
+
+            {/* Eixo Ensino */}
+            <div className="bg-slate-800 rounded-xl p-6 hover:bg-slate-750 transition-colors cursor-pointer"
+                 onClick={() => navigate('/app/ensino/profissional/dashboard')}>
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                  <GraduationCap className="w-6 h-6 text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">🎓 Eixo Ensino</h3>
+                  <p className="text-sm text-gray-400">Cursos e materiais</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Arte da Entrevista:</span>
+                  <span className="text-white font-semibold">40h</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Cannabis Medicinal:</span>
+                  <span className="text-white font-semibold">360h</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Alunos:</span>
+                  <span className="text-white font-semibold">856</span>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-700">
+                <Link2 className="w-5 h-5 text-green-400" />
+                <p className="text-xs text-gray-400 mt-2">Casos clínicos integrados</p>
+              </div>
+            </div>
+
+            {/* Eixo Pesquisa */}
+            <div className="bg-slate-800 rounded-xl p-6 hover:bg-slate-750 transition-colors">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                  <FlaskConical className="w-6 h-6 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">🔬 Eixo Pesquisa</h3>
+                  <p className="text-sm text-gray-400">Estudos e análises</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Estudos Ativos:</span>
+                  <span className="text-white font-semibold">3</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Participantes:</span>
+                  <span className="text-white font-semibold">192</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Publicações:</span>
+                  <span className="text-white font-semibold">1</span>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-700">
+                <Link2 className="w-5 h-5 text-purple-400" />
+                <p className="text-xs text-gray-400 mt-2">Baseado em dados clínicos reais</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Conexões entre Cursos e Dados Clínicos */}
+          <div className="bg-slate-800 rounded-xl p-6 mb-8">
+            <h3 className="text-xl font-semibold text-white mb-6 flex items-center space-x-2">
+              <Link2 className="w-6 h-6 text-purple-400" />
+              <span>Integrações e Conexões</span>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Arte da Entrevista Clínica + Dados */}
+              <div className="bg-gradient-to-br from-blue-900/30 to-cyan-900/30 rounded-lg p-6 border border-blue-500/20">
+                <div className="flex items-center space-x-3 mb-4">
+                  <BookOpen className="w-8 h-8 text-blue-400" />
+                  <div>
+                    <h4 className="text-lg font-semibold text-white">Arte da Entrevista Clínica</h4>
+                    <p className="text-sm text-gray-400">Metodologia AEC aplicada</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300">Casos com AEC aplicada:</span>
+                    <span className="text-blue-400 font-semibold">89 casos</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300">Profissionais certificados:</span>
+                    <span className="text-blue-400 font-semibold">34</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300">Dados clínicos correlacionados:</span>
+                    <span className="text-blue-400 font-semibold">156</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => navigate('/app/arte-entrevista-clinica')}
+                  className="mt-4 w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
+                >
+                  Acessar Curso
+                </button>
+              </div>
+
+              {/* Cannabis Medicinal + Dados */}
+              <div className="bg-gradient-to-br from-green-900/30 to-teal-900/30 rounded-lg p-6 border border-green-500/20">
+                <div className="flex items-center space-x-3 mb-4">
+                  <GraduationCap className="w-8 h-8 text-green-400" />
+                  <div>
+                    <h4 className="text-lg font-semibold text-white">Pós-Graduação Cannabis Medicinal</h4>
+                    <p className="text-sm text-gray-400">Dr. Eduardo Faveret</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300">Pacientes em protocolos:</span>
+                    <span className="text-green-400 font-semibold">124</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300">Alunos aplicando conhecimento:</span>
+                    <span className="text-green-400 font-semibold">856</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300">Estudos baseados no curso:</span>
+                    <span className="text-green-400 font-semibold">3 estudos</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => navigate('/curso-eduardo-faveret')}
+                  className="mt-4 w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
+                >
+                  Acessar Curso
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-slate-800 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-pink-500/10 rounded-lg">
+                  <FlaskConical className="w-6 h-6 text-pink-400" />
+                </div>
+                <TrendingUp className="w-5 h-5 text-green-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-1">3</h3>
+              <p className="text-sm text-slate-400">Estudos Ativos</p>
+            </div>
+
+            <div className="bg-slate-800 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-blue-500/10 rounded-lg">
+                  <Target className="w-6 h-6 text-blue-400" />
+                </div>
+                <TrendingUp className="w-5 h-5 text-green-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-1">83%</h3>
+              <p className="text-sm text-slate-400">Progresso Médio</p>
+            </div>
+
+            <div className="bg-slate-800 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-green-500/10 rounded-lg">
+                  <Users className="w-6 h-6 text-green-400" />
+                </div>
+                <TrendingUp className="w-5 h-5 text-green-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-1">192</h3>
+              <p className="text-sm text-slate-400">Participantes</p>
+            </div>
+
+            <div className="bg-slate-800 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-purple-500/10 rounded-lg">
+                  <Award className="w-6 h-6 text-purple-400" />
+                </div>
+                <TrendingUp className="w-5 h-5 text-green-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-1">1</h3>
+              <p className="text-sm text-slate-400">Publicações</p>
+            </div>
+          </div>
+
+          {/* Research Studies */}
+          <div className="bg-slate-800 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-white">🔬 Meus Estudos</h3>
+              <button 
+                onClick={() => setShowAllStudies(!showAllStudies)}
+                className="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-4 py-2 rounded-lg font-semibold hover:from-pink-600 hover:to-purple-600 transition-colors"
+              >
+                {showAllStudies ? 'Ver Ativos' : `Ver Todos (${researchData.length})`}
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {displayedStudies.length === 0 ? (
+                <div className="text-center py-12">
+                  <FlaskConical className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                  <p className="text-slate-400">Nenhum estudo ativo no momento</p>
+                </div>
+              ) : (
+                displayedStudies.map((study) => (
+                <div key={study.id} className="bg-slate-700 rounded-lg p-6 hover:bg-slate-650 transition-colors">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h4 className="text-lg font-semibold text-white">{study.title}</h4>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(study.status)}`}>
+                          {study.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-400 mb-3">{study.description}</p>
+                      
+                      <div className="flex items-center space-x-4 text-sm text-slate-500 mb-4">
+                        <span>Participantes: {study.participants}</span>
+                        <span>Início: {study.startDate}</span>
+                        <span>Fim: {study.endDate}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <button className="p-2 bg-slate-600 rounded-lg hover:bg-slate-500 transition-colors">
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button className="p-2 bg-slate-600 rounded-lg hover:bg-slate-500 transition-colors">
+                        <Download className="w-4 h-4" />
+                      </button>
+                      <button className="p-2 bg-slate-600 rounded-lg hover:bg-slate-500 transition-colors">
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="mb-2">
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="text-slate-400">Progresso</span>
+                      <span className="text-white font-medium">{study.progress}%</span>
+                    </div>
+                    <div className="w-full bg-slate-600 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full ${getProgressColor(study.progress)}`}
+                        style={{ width: `${study.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))
+              )}
+            </div>
+            {!showAllStudies && researchData.filter(study => study.status === 'Concluído').length > 0 && (
+              <div className="mt-6 text-center">
+                <p className="text-sm text-slate-400 mb-2">
+                  {researchData.filter(study => study.status === 'Concluído').length} estudos concluídos não exibidos
+                </p>
+                <button
+                  onClick={() => setShowAllStudies(true)}
+                  className="text-pink-400 hover:text-pink-300 text-sm font-medium"
+                >
+                  Ver estudos concluídos
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Chat Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-xl w-96 h-[600px] flex flex-col">
-            {/* Chat Header */}
-            <div className="p-4 border-b border-slate-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full flex items-center justify-center">
-                    <Heart className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-white">Nôa Esperança</h3>
-                    <p className="text-xs text-slate-400">Suporte em Pesquisa</p>
-                  </div>
-                </div>
-                <button
-                  onClick={toggleChat}
-                  className="text-slate-400 hover:text-white transition-colors"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.length === 0 ? (
-                <div className="text-center text-slate-400 py-8">
-                  <Heart className="w-12 h-12 mx-auto mb-3 text-pink-400" />
-                  <p className="text-sm">Olá! Sou a Nôa Esperança, sua assistente de pesquisa.</p>
-                </div>
-              ) : (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[70%] px-4 py-2 rounded-lg text-sm ${
-                        message.type === 'user'
-                          ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
-                          : 'bg-slate-700 text-slate-100'
-                      }`}
-                    >
-                      {message.content}
-                    </div>
-                  </div>
-                ))
-              )}
-              
-              {isTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-slate-700 px-4 py-2 rounded-lg">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" />
-                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Input */}
-            <div className="p-4 border-t border-slate-700">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Digite sua mensagem..."
-                  className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-pink-500"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!inputMessage.trim()}
-                  className="p-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-lg hover:from-pink-600 hover:to-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -125,9 +125,9 @@ export const ROTAS_INDIVIDUALIZADAS: Record<string, UserRoute> = {
         path: '/app/ensino/profissional/preparacao-aulas',
         component: () => import('../pages/LessonPreparation').then(m => m.default),
         requiredRole: 'professional',
-        title: 'Preparação de Aulas',
-        description: 'Criar e organizar conteúdo didático',
-        icon: '📚'
+        title: 'Ferramentas Pedagógicas',
+        description: 'Produza relatos de caso e crie aulas a partir de casos clínicos reais',
+        icon: '📝'
       },
       {
         path: '/app/ensino/profissional/arte-entrevista-clinica',
@@ -136,6 +136,14 @@ export const ROTAS_INDIVIDUALIZADAS: Record<string, UserRoute> = {
         title: 'Arte da Entrevista Clínica',
         description: 'Metodologia AEC - Dr. Eduardo Faveret',
         icon: '🎭'
+      },
+      {
+        path: '/app/ensino/profissional/gestao-alunos',
+        component: () => import('../pages/GestaoAlunos').then(m => m.default),
+        requiredRole: 'professional',
+        title: 'Gestão de Alunos',
+        description: 'Acompanhar desenvolvimento dos alunos por curso',
+        icon: '👥'
       }
     ]
   },

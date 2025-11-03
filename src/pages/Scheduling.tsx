@@ -205,7 +205,7 @@ const Scheduling: React.FC = () => {
         alert(`Consulta agendada com ${professionals.find(p => p.id === selectedProfessional)?.name} no dia ${selectedDate.toLocaleDateString('pt-BR')} às ${selectedTime}`)
         
         // Redirecionar para dashboard
-        navigate('/app/professional-dashboard')
+        navigate('/app/clinica/profissional/dashboard')
       } catch (error) {
         console.error('Erro ao agendar consulta:', error)
         alert('Erro ao agendar consulta. Tente novamente.')

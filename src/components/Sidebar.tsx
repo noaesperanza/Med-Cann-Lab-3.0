@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { 
   Home, 
@@ -17,7 +17,9 @@ import {
   Calendar,
   Settings,
   Activity,
-  UserPlus
+  UserPlus,
+  GraduationCap,
+  Microscope
 } from 'lucide-react'
 
 // Use BanknoteIcon as an alias for financial operations
@@ -34,17 +36,24 @@ interface SidebarProps {
   isMobile?: boolean
   isOpen?: boolean
   onClose?: () => void
+  onCollapseChange?: (isCollapsed: boolean) => void
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
   userType = 'patient', 
   isMobile = false, 
   isOpen = false, 
-  onClose 
+  onClose,
+  onCollapseChange
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const location = useLocation()
+
+  // Notificar Layout quando sidebar colapsar/expandir
+  useEffect(() => {
+    onCollapseChange?.(isCollapsed)
+  }, [isCollapsed, onCollapseChange])
 
   // Usar props do Layout quando disponíveis
   const mobileOpen = isMobile ? isOpen : isMobileOpen
@@ -52,47 +61,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const getNavigationItems = () => {
     const adminItems = [
-      {
-        name: '📅 Agendamentos', 
-        href: '/app/patients?tab=appointments', 
-        icon: Calendar,
-        section: 'ehr'
-      },
-      { 
-        name: '👥 Meus Pacientes', 
-        href: '/app/patients', 
-        icon: Users,
-        section: 'ehr'
-      },
-      { 
-        name: '🎓 Preparação de Aulas', 
-        href: '/app/lesson-prep', 
-        icon: BookOpen,
-        section: 'ehr'
-      },
+      // OUTROS
       { 
         name: '💰 Gestão Financeira', 
         href: '/app/professional-financial', 
         icon: BanknoteIcon,
-        section: 'ehr'
-      },
-      { 
-        name: 'Atendimento', 
-        href: '/app/professional-dashboard', 
-        icon: MessageCircle,
-        section: 'quick'
-      },
-      { 
-        name: '📝 Nova Avaliação', 
-        href: '/app/patient-onboarding', 
-        icon: Stethoscope,
-        section: 'quick'
-      },
-      { 
-        name: '📚 Biblioteca', 
-        href: '/app/library', 
-        icon: BookOpen,
-        section: 'quick'
+        section: 'other'
       },
       { 
         name: '👤 Meu Perfil', 
@@ -111,54 +85,18 @@ const Sidebar: React.FC<SidebarProps> = ({
     ]
 
     const professionalItems = [
+      // OUTROS
       { 
-        name: '📅 Agendamentos', 
-        href: '/app/patients?tab=appointments', 
-        icon: Calendar,
-        section: 'quick'
-      },
-      { 
-        name: 'Atendimento', 
-        href: '/app/professional-dashboard', 
-        icon: MessageCircle,
-        section: 'quick'
-      },
-      { 
-        name: '👥 Chat com Profissionais', 
-        href: '/app/chat', 
-        icon: Users,
-        section: 'quick'
-      },
-      { 
-        name: '📚 Biblioteca', 
-        href: '/app/library', 
-        icon: BookOpen,
-        section: 'quick'
+        name: '💰 Gestão Financeira', 
+        href: '/app/professional-financial', 
+        icon: BanknoteIcon,
+        section: 'other'
       },
       { 
         name: '👤 Meu Perfil', 
         href: '/app/profile', 
         icon: User,
         section: 'profile'
-      },
-      // Itens do EHR
-      { 
-        name: '👥 Meus Pacientes', 
-        href: '/app/patients', 
-        icon: Users,
-        section: 'ehr'
-      },
-      { 
-        name: '🎓 Preparação de Aulas', 
-        href: '/app/lesson-prep', 
-        icon: BookOpen,
-        section: 'ehr'
-      },
-      { 
-        name: '💰 Gestão Financeira', 
-        href: '/app/professional-financial', 
-        icon: BanknoteIcon,
-        section: 'ehr'
       },
     ]
 
@@ -231,8 +169,15 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center justify-between">
           {!isCollapsed && (
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-primary-600 to-accent-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">M</span>
+              <div className="w-10 h-10 bg-gradient-to-r from-primary-600 to-accent-600 rounded-lg flex items-center justify-center overflow-hidden">
+                <img 
+                  src="/brain.png" 
+                  alt="MedCannLab Logo" 
+                  className="w-full h-full object-contain p-1"
+                  style={{
+                    filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.3)) brightness(1.2) contrast(1.1)'
+                  }}
+                />
               </div>
               <div>
                 <span className="text-xl font-bold">MedCannLab</span>
@@ -241,7 +186,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={() => {
+              const newState = !isCollapsed
+              setIsCollapsed(newState)
+            }}
             className="p-2 rounded-md hover:bg-slate-700 transition-colors duration-200"
           >
             {isCollapsed ? <span className="text-white">→</span> : <span className="text-white">←</span>}
@@ -253,6 +201,56 @@ const Sidebar: React.FC<SidebarProps> = ({
       <nav className="flex-1 overflow-y-auto p-4 space-y-2">
         {(userType === 'professional' || userType === 'admin') ? (
           <>
+            {/* Seletor de Eixos - No Topo */}
+            <div className={`mb-6 pb-4 border-b border-slate-700 ${isCollapsed ? 'px-2' : ''}`}>
+              {!isCollapsed && (
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-3">
+                  Selecionar Eixo
+                </h3>
+              )}
+              <div className={isCollapsed ? 'space-y-2' : 'space-y-2'}>
+                <Link
+                  to="/app/clinica/profissional/dashboard"
+                  className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'space-x-3 px-3'} py-2 rounded-lg transition-colors duration-200 ${
+                    location.pathname.includes('/clinica/')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                  onClick={() => isMobile && setMobileOpen?.()}
+                  title={isCollapsed ? '🏥 Clínica' : ''}
+                >
+                  <Stethoscope className="w-5 h-5 flex-shrink-0" />
+                  {!isCollapsed && <span className="text-sm font-medium">🏥 Clínica</span>}
+                </Link>
+                <Link
+                  to="/app/ensino/profissional/dashboard"
+                  className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'space-x-3 px-3'} py-2 rounded-lg transition-colors duration-200 ${
+                    location.pathname.includes('/ensino/')
+                      ? 'bg-green-600 text-white'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                  onClick={() => isMobile && setMobileOpen?.()}
+                  title={isCollapsed ? '🎓 Ensino' : ''}
+                >
+                  <GraduationCap className="w-5 h-5 flex-shrink-0" />
+                  {!isCollapsed && <span className="text-sm font-medium">🎓 Ensino</span>}
+                </Link>
+                <Link
+                  to="/app/pesquisa/profissional/dashboard"
+                  className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'space-x-3 px-3'} py-2 rounded-lg transition-colors duration-200 ${
+                    location.pathname.includes('/pesquisa/')
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                  onClick={() => isMobile && setMobileOpen?.()}
+                  title={isCollapsed ? '🔬 Pesquisa' : ''}
+                >
+                  <Microscope className="w-5 h-5 flex-shrink-0" />
+                  {!isCollapsed && <span className="text-sm font-medium">🔬 Pesquisa</span>}
+                </Link>
+              </div>
+            </div>
+
             {/* Dashboard */}
             <div className="mb-2">
               {navigationItems
@@ -277,40 +275,18 @@ const Sidebar: React.FC<SidebarProps> = ({
                 })}
             </div>
 
-            {/* Prontuário Eletrônico */}
-            {!isCollapsed && (
+
+            {/* OUTROS */}
+            {!isCollapsed && navigationItems.some(item => (item as any).section === 'other') && (
               <div className="mb-4">
                 <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">
-                  Prontuário Eletrônico
+                  Outros
                 </h3>
               </div>
             )}
             <div className="space-y-1 mb-4">
               {navigationItems
-                .filter(item => (item as any).section === 'ehr')
-                .map((item) => {
-                  const Icon = item.icon
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors duration-200 ${
-                        isActive(item.href)
-                          ? 'bg-primary-600 text-white'
-                          : 'text-slate-300 hover:bg-slate-700 hover:text-white'
-                      }`}
-                      onClick={() => isMobile && setMobileOpen?.()}
-                    >
-                      <Icon className="w-5 h-5 flex-shrink-0" />
-                      {!isCollapsed && <span className="text-sm font-medium">{item.name}</span>}
-                    </Link>
-                  )
-                })}
-            </div>
-
-            <div className="space-y-1 mb-4">
-              {navigationItems
-                .filter(item => (item as any).section === 'quick')
+                .filter(item => (item as any).section === 'other')
                 .map((item) => {
                   const Icon = item.icon
                   return (
@@ -332,7 +308,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Profile */}
-            <div className="space-y-1">
+            <div className="space-y-1 mt-4">
               {navigationItems
                 .filter(item => (item as any).section === 'profile')
                 .map((item) => {

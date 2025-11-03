@@ -67,12 +67,12 @@ const Landing: React.FC = () => {
           navigate('/app/dashboard')
           break
         case 'professional':
-          // Redirecionamento especial para Dr. Eduardo Faveret
+          // Redirecionamento especial para Dr. Eduardo Faveret - usando a mesma estrutura organizada
           if (user.email === 'eduardoscfaveret@gmail.com' || user.name === 'Dr. Eduardo Faveret') {
-            console.log('🎯 Redirecionando Dr. Eduardo Faveret para dashboard personalizado')
-            navigate('/app/eduardo-faveret-dashboard')
+            console.log('🎯 Redirecionando Dr. Eduardo Faveret para dashboard organizado')
+            navigate('/app/clinica/profissional/dashboard-eduardo')
           } else {
-            navigate('/app/professional-dashboard')
+            navigate('/app/clinica/profissional/dashboard')
           }
           break
         case 'patient':
