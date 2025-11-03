@@ -71,10 +71,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('🚪 Evento de logout detectado - definindo user como null')
             setUser(null)
           } else {
-            // Determinar tipo de usuário baseado nos metadados
+            // Determinar tipo de usuário baseado nos metadados e buscar do banco de dados
             let userType: 'patient' | 'professional' | 'aluno' | 'admin' = 'patient'
             let userName = 'Usuário'
             const email = session.user.email || ''
+            
+            // Tentar buscar perfil do banco de dados
+            try {
+              const { data: profileData, error: profileError } = await supabase
+                .from('usuarios')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle()
+              
+              if (!profileError && profileData) {
+                userType = profileData.tipo || profileData.user_type || 'patient'
+                userName = profileData.nome || profileData.name || userName
+                console.log('✅ Perfil encontrado no banco de dados:', profileData)
+                
+                const dbUser: User = {
+                  id: session.user.id,
+                  email: email,
+                  type: userType,
+                  name: userName,
+                  crm: profileData.crm,
+                  cro: profileData.cro
+                }
+                
+                console.log('✅ Usuário carregado do banco de dados:', dbUser)
+                setUser(dbUser)
+                setIsLoading(false)
+                return
+              }
+            } catch (error) {
+              console.warn('⚠️ Erro ao buscar perfil do banco de dados, usando metadados:', error)
+            }
             
             // Detectar nome baseado no email
             if (email.includes('ricardo') || email.includes('rrvalenca') || email.includes('rrvlenca') || email.includes('profrvalenca') || email.includes('valenca')) {

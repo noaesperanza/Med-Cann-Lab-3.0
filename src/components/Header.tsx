@@ -80,7 +80,11 @@ const Header: React.FC = () => {
               </div>
               <div className="hidden sm:block">
                 <div className="text-white font-bold text-base md:text-lg">MedCannLab 3.0</div>
-                <div className="text-slate-400 text-xs md:text-sm">Consultório Escola Dr. Eduardo Faveret • Pós-graduação em Cannabis Medicinal</div>
+                <div className="text-slate-400 text-xs md:text-sm">
+                  {user?.type === 'patient' 
+                    ? 'Programa de Cuidado Renal • Cannabis Medicinal'
+                    : 'Consultório Escola Dr. Eduardo Faveret • Pós-graduação em Cannabis Medicinal'}
+                </div>
               </div>
             </Link>
           </div>
