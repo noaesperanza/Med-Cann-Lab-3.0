@@ -226,9 +226,13 @@ const Landing: React.FC = () => {
   ]
 
   const partners = [
-    { name: 'Remederi', logo: '/logos/remederi.png', type: 'Empresa' },
-    { name: 'Alessandra LLC', logo: '/logos/alessandra-llc.png', type: 'Empresa' },
-    { name: 'IEP Remederi', logo: '/logos/iep-remederi.png', type: 'Instituto' }
+    // Logos removidos temporariamente - adicionar quando arquivos estiverem disponíveis
+    // { name: 'Remederi', logo: '/logos/remederi.png', type: 'Empresa' },
+    // { name: 'Alessandra LLC', logo: '/logos/alessandra-llc.png', type: 'Empresa' },
+    // { name: 'IEP Remederi', logo: '/logos/iep-remederi.png', type: 'Instituto' }
+    { name: 'Remederi', logo: null, type: 'Empresa' },
+    { name: 'Alessandra LLC', logo: null, type: 'Empresa' },
+    { name: 'IEP Remederi', logo: null, type: 'Instituto' }
   ]
 
   if (authLoading) {
@@ -611,20 +615,26 @@ const Landing: React.FC = () => {
                      }}>
                   <div className="text-center">
                     <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
-                      <img 
-                        src={partner.logo} 
-                        alt={partner.name}
-                        className="max-w-full max-h-full object-contain"
-                        onError={(e) => {
-                          // Fallback se a imagem não carregar
-                          const target = e.target as HTMLImageElement
-                          target.style.display = 'none'
-                          const parent = target.parentElement
-                          if (parent) {
-                            parent.innerHTML = `<div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background-color: #00C16A;"><span class="text-white font-bold text-lg">${partner.name.charAt(0)}</span></div>`
-                          }
-                        }}
-                      />
+                      {partner.logo ? (
+                        <img 
+                          src={partner.logo} 
+                          alt={partner.name}
+                          className="max-w-full max-h-full object-contain"
+                          onError={(e) => {
+                            // Fallback se a imagem não carregar
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                            const parent = target.parentElement
+                            if (parent) {
+                              parent.innerHTML = `<div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background-color: #00C16A;"><span class="text-white font-bold text-lg">${partner.name.charAt(0)}</span></div>`
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#00C16A' }}>
+                          <span className="text-white font-bold text-lg">{partner.name.charAt(0)}</span>
+                        </div>
+                      )}
                     </div>
                     <h3 className="font-semibold text-white mb-2">{partner.name}</h3>
                     <p className="text-sm mb-3" style={{ color: '#C8D6E5' }}>{partner.type}</p>
