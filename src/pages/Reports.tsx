@@ -20,54 +20,106 @@ import {
   Printer
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+import ShareReportModal from '../components/ShareReportModal'
 
 const Reports: React.FC = () => {
+  const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState('all')
   const [filterPeriod, setFilterPeriod] = useState('all')
   const [reports, setReports] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedReport, setSelectedReport] = useState<any>(null)
+  const [showShareModal, setShowShareModal] = useState(false)
 
   // Buscar relatórios do Supabase
   useEffect(() => {
     loadReports()
-  }, [])
+  }, [user])
 
   const loadReports = async () => {
     try {
       setLoading(true)
-      const { data: assessments, error } = await supabase
-        .from('clinical_assessments')
-        .select('*')
-        .order('created_at', { ascending: false })
+      
+      // Buscar relatórios clínicos do paciente
+      if (user?.type === 'patient') {
+        const { data: clinicalReports, error } = await supabase
+          .from('clinical_reports')
+          .select('*')
+          .eq('patient_id', user.id)
+          .order('generated_at', { ascending: false })
 
-      if (error) {
-        console.error('Erro ao buscar relatórios:', error)
-        return
+        if (error) {
+          console.error('Erro ao buscar relatórios:', error)
+          return
+        }
+
+        // Converter relatórios clínicos para formato exibido
+        const formattedReports = clinicalReports?.map((report: any) => ({
+          id: report.id,
+          title: `Relatório ${report.report_type === 'initial_assessment' ? 'Avaliação Clínica Inicial' : report.report_type} - ${report.patient_name}`,
+          patientName: report.patient_name,
+          patientId: report.patient_id,
+          type: report.protocol || 'IMRE',
+          date: new Date(report.generated_at || report.created_at).toLocaleDateString('pt-BR'),
+          status: report.status === 'shared' ? 'compartilhado' : report.status === 'completed' ? 'concluido' : 'em_andamento',
+          size: '2.5 MB',
+          pages: 10,
+          doctor: report.professional_name || 'IA Residente',
+          crm: 'CRM-RJ',
+          summary: typeof report.content === 'object' 
+            ? (report.content.result || report.content.investigation || 'Relatório clínico completo.')
+            : (report.content?.substring(0, 200) || 'Avaliação clínica completa.'),
+          keyFindings: typeof report.content === 'object' 
+            ? (report.content.recommendations || [])
+            : [],
+          recommendations: typeof report.content === 'object' 
+            ? (report.content.recommendations || [])
+            : [],
+          nextSteps: [],
+          attachments: [],
+          clinicalReport: report.content,
+          sharedWith: report.shared_with || [],
+          sharedAt: report.shared_at,
+          canShare: report.status === 'completed' && user?.type === 'patient'
+        })) || []
+
+        setReports(formattedReports)
+      } else {
+        // Para profissionais, buscar avaliações como antes
+        const { data: assessments, error } = await supabase
+          .from('clinical_assessments')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          console.error('Erro ao buscar relatórios:', error)
+          return
+        }
+
+        const formattedReports = assessments?.map((assessment) => ({
+          id: assessment.id,
+          title: `Relatório ${assessment.assessment_type} - ${assessment.data?.name || 'Paciente'}`,
+          patientName: assessment.data?.name || 'Paciente',
+          patientId: assessment.patient_id,
+          type: assessment.assessment_type,
+          date: new Date(assessment.created_at).toLocaleDateString('pt-BR'),
+          status: assessment.status === 'completed' ? 'concluido' : 'em_andamento',
+          size: '2.5 MB',
+          pages: 10,
+          doctor: 'Dr. Ricardo Valença',
+          crm: 'CRM-RJ',
+          summary: assessment.clinical_report?.substring(0, 200) || 'Avaliação clínica completa.',
+          keyFindings: assessment.data?.complaintList || [],
+          recommendations: [],
+          nextSteps: [],
+          attachments: [],
+          clinicalReport: assessment.clinical_report
+        })) || []
+
+        setReports(formattedReports)
       }
-
-      // Converter avaliações para formato de relatórios
-      const formattedReports = assessments?.map((assessment) => ({
-        id: assessment.id,
-        title: `Relatório ${assessment.assessment_type} - ${assessment.data?.name || 'Paciente'}`,
-        patientName: assessment.data?.name || 'Paciente',
-        patientId: assessment.patient_id,
-        type: assessment.assessment_type,
-        date: new Date(assessment.created_at).toLocaleDateString('pt-BR'),
-        status: assessment.status === 'completed' ? 'concluido' : 'em_andamento',
-        size: '2.5 MB',
-        pages: 10,
-        doctor: 'Dr. Ricardo Valença',
-        crm: 'CRM-RJ',
-        summary: assessment.clinical_report?.substring(0, 200) || 'Avaliação clínica completa.',
-        keyFindings: assessment.data?.complaintList || [],
-        recommendations: [],
-        nextSteps: [],
-        attachments: [],
-        clinicalReport: assessment.clinical_report
-      })) || []
-
-      setReports(formattedReports)
     } catch (error) {
       console.error('Erro ao carregar relatórios:', error)
     } finally {
@@ -328,7 +380,19 @@ const Reports: React.FC = () => {
                   <button className="p-2 text-green-400 hover:text-green-300 hover:bg-green-500/20 rounded-lg transition-colors" title="Download">
                     <Download className="w-4 h-4" />
                   </button>
-                  <button className="p-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/20 rounded-lg transition-colors" title="Compartilhar">
+                  <button 
+                    onClick={() => {
+                      setSelectedReport(report)
+                      setShowShareModal(true)
+                    }}
+                    disabled={!report.canShare}
+                    className={`p-2 rounded-lg transition-colors ${
+                      report.canShare
+                        ? 'text-purple-400 hover:text-purple-300 hover:bg-purple-500/20'
+                        : 'text-slate-500 cursor-not-allowed opacity-50'
+                    }`}
+                    title={report.canShare ? 'Compartilhar com médicos' : 'Relatório já compartilhado ou não disponível'}
+                  >
                     <Share2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -385,6 +449,22 @@ const Reports: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de Compartilhamento */}
+      {showShareModal && selectedReport && (
+        <ShareReportModal
+          reportId={selectedReport.id}
+          patientId={selectedReport.patientId}
+          reportName={selectedReport.title}
+          onClose={() => {
+            setShowShareModal(false)
+            setSelectedReport(null)
+          }}
+          onShareSuccess={() => {
+            loadReports()
+          }}
+        />
+      )}
     </div>
   )
 }

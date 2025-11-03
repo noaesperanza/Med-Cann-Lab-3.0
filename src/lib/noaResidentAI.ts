@@ -1256,6 +1256,42 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     return fallback
   }
 
+  private extractKeywordsFromMessage(message: string): string[] {
+    const lower = message.toLowerCase()
+    const keywords: string[] = []
+    
+    // Extrair nome de arquivo se mencionado (ex: "cannabis and autismo review.pdf")
+    const fileNameMatch = message.match(/([\w\s]+\.(pdf|docx?|txt|md))/i)
+    if (fileNameMatch) {
+      keywords.push(fileNameMatch[1].replace(/\.[^.]+$/, '')) // Remover extensão
+      keywords.push(fileNameMatch[1]) // Incluir com extensão
+    }
+    
+    // Extrair termos médicos importantes
+    const medicalTerms = [
+      'cannabis', 'autismo', 'autism', 'epilepsia', 'epilepsy',
+      'nefrologia', 'nephrology', 'renal', 'rim', 'kidney',
+      'cbd', 'thc', 'tratamento', 'treatment', 'medicinal',
+      'protocolo', 'protocol', 'imre', 'aec', 'avaliação', 'assessment'
+    ]
+    
+    medicalTerms.forEach(term => {
+      if (lower.includes(term.toLowerCase())) {
+        keywords.push(term)
+      }
+    })
+    
+    // Extrair palavras-chave gerais (substantivos importantes)
+    const words = message.split(/\s+/).filter(word => 
+      word.length > 4 && 
+      !['sobre', 'sobre', 'quero', 'saber', 'você', 'está', 'reconhecendo'].includes(word.toLowerCase())
+    )
+    
+    keywords.push(...words.slice(0, 3)) // Adicionar até 3 palavras-chave
+    
+    return [...new Set(keywords)] // Remover duplicatas
+  }
+
   private getAvailableAxesForUser(userType?: string): AxisKey[] {
     switch (userType) {
       case 'patient':
@@ -1322,15 +1358,39 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
       // 🔥 BUSCAR DOCUMENTOS RELEVANTES DO BACKEND (SUPABASE)
       let backendDocumentsContext = ''
       try {
-        const relevantDocs = await KnowledgeBaseIntegration.semanticSearch(message, {
-          aiLinkedOnly: true,
-          limit: 5
+        // Primeiro, tentar busca por título exato (nome de arquivo)
+        const exactMatchDocs = await KnowledgeBaseIntegration.semanticSearch(message, {
+          aiLinkedOnly: false, // Buscar todos, não apenas vinculados à IA
+          limit: 10 // Aumentar limite para melhor cobertura
         })
 
+        // Se não encontrar resultados exatos, fazer busca mais ampla
+        let relevantDocs = exactMatchDocs
+        if (!relevantDocs || relevantDocs.length === 0) {
+          // Tentar busca por palavras-chave extraídas da mensagem
+          const keywords = this.extractKeywordsFromMessage(message)
+          if (keywords.length > 0) {
+            for (const keyword of keywords) {
+              const keywordResults = await KnowledgeBaseIntegration.semanticSearch(keyword, {
+                aiLinkedOnly: true,
+                limit: 5
+              })
+              if (keywordResults && keywordResults.length > 0) {
+                relevantDocs = [...(relevantDocs || []), ...keywordResults]
+              }
+            }
+          }
+        }
+
+        // Remover duplicatas e ordenar por relevância
         if (relevantDocs && relevantDocs.length > 0) {
-          const docsContext = relevantDocs
+          const uniqueDocs = Array.from(
+            new Map(relevantDocs.map(doc => [doc.id, doc])).values()
+          ).sort((a, b) => (b.aiRelevance || 0) - (a.aiRelevance || 0))
+          
+          const docsContext = uniqueDocs.slice(0, 5)
             .map((doc, index) => {
-              const summary = doc.summary || doc.content?.substring(0, 300) || 'Sem resumo disponível'
+              const summary = doc.summary || 'Sem resumo disponível'
               const tags = doc.tags?.length > 0 ? doc.tags.join(', ') : ''
               const keywords = doc.keywords?.length > 0 ? doc.keywords.join(', ') : ''
               
@@ -1342,6 +1402,9 @@ Resumo: ${summary}${tags ? `\nTags: ${tags}` : ''}${keywords ? `\nKeywords: ${ke
             .join('\n---\n')
           
           backendDocumentsContext = `\n\n📚 BASE DE CONHECIMENTO DA PLATAFORMA (Backend - Supabase):\n${docsContext}\n`
+        } else {
+          // Se não encontrou documentos, informar ao Assistant
+          backendDocumentsContext = `\n\n⚠️ Não foram encontrados documentos específicos na base de conhecimento para esta consulta. Use seu conhecimento geral sobre o assunto.\n`
         }
       } catch (error) {
         console.warn('⚠️ Erro ao buscar documentos do backend:', error)
@@ -1412,6 +1475,49 @@ Resumo: ${summary}${tags ? `\nTags: ${tags}` : ''}${keywords ? `\nKeywords: ${ke
       case 'DASHBOARD_QUERY':
         const reportCount = platformActionResult.data?.reportCount || 0
         return `O paciente tem ${reportCount} relatório(s) salvo(s) no dashboard. Mencione isso de forma acolhedora.`
+      
+      case 'PATIENTS_QUERY':
+        const patients = platformActionResult.data?.patients || []
+        const totalPatients = platformActionResult.data?.totalPatients || 0
+        const activePatients = platformActionResult.data?.activePatients || 0
+        
+        if (patients.length > 0) {
+          const patientList = patients.slice(0, 10).map((p: any, i: number) => {
+            const details = [
+              p.name,
+              p.cpf ? `CPF: ${p.cpf}` : '',
+              p.phone ? `Telefone: ${p.phone}` : '',
+              `Status: ${p.status}`,
+              p.assessmentCount ? `Avaliações: ${p.assessmentCount}` : '',
+              p.reportCount ? `Relatórios: ${p.reportCount}` : ''
+            ].filter(Boolean).join(', ')
+            
+            return `${i + 1}. ${details}`
+          }).join('\n')
+          
+          return `Dados dos pacientes no seu prontuário eletrônico:\n\n📊 Resumo:\n• Total de pacientes: ${totalPatients}\n• Pacientes ativos: ${activePatients}\n\n👥 Lista dos pacientes:\n${patientList}${patients.length > 10 ? `\n... e mais ${patients.length - 10} paciente(s)` : ''}\n\nApresente essas informações de forma clara e organizada, destacando os nomes dos pacientes e seus status.`
+        } else {
+          return 'Não foram encontrados pacientes registrados no sistema no momento através das fontes de dados disponíveis (avaliações clínicas, tabela users e relatórios clínicos). Verifique se há pacientes cadastrados ou se os dados estão sendo salvos corretamente. Se você vê pacientes na interface visual, pode ser que eles estejam em uma fonte de dados diferente que ainda não está integrada à IA residente.'
+        }
+      
+      case 'REPORTS_COUNT_QUERY':
+        const totalReports = platformActionResult.data?.totalReports || 0
+        const completed = platformActionResult.data?.completed || 0
+        const pending = platformActionResult.data?.pending || 0
+        const todayReports = platformActionResult.data?.todayReports || 0
+        
+        return `Estatísticas de relatórios:\n\nTotal de relatórios: ${totalReports}\nRelatórios concluídos: ${completed}\nRelatórios pendentes: ${pending}\nRelatórios emitidos hoje: ${todayReports}\n\nApresente essas informações de forma clara.`
+      
+      case 'APPOINTMENTS_QUERY':
+        const totalAppointments = platformActionResult.data?.totalAppointments || 0
+        const todayAppointments = platformActionResult.data?.todayAppointments || 0
+        const upcomingAppointments = platformActionResult.data?.upcomingAppointments || 0
+        
+        return `Agendamentos:\n\nTotal de agendamentos: ${totalAppointments}\nAgendamentos de hoje: ${todayAppointments}\nPróximos agendamentos (7 dias): ${upcomingAppointments}\n\nApresente essas informações de forma clara.`
+      
+      case 'KPIS_QUERY':
+        const kpis = platformActionResult.data || {}
+        return `KPIs da plataforma em tempo real:\n\nTotal de pacientes: ${kpis.totalPatients || 0}\nAvaliações ativas: ${kpis.activeAssessments || 0}\nAvaliações concluídas: ${kpis.completedAssessments || 0}\nTotal de relatórios: ${kpis.totalReports || 0}\nAvaliações de hoje: ${kpis.todayAssessments || 0}\nRelatórios pendentes: ${kpis.pendingReports || 0}\nRelatórios concluídos: ${kpis.completedReports || 0}\n\nApresente essas informações de forma clara e organizada.`
       
       default:
         return 'Uma ação da plataforma foi executada com sucesso.'

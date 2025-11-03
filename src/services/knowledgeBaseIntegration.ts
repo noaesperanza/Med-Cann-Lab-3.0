@@ -139,37 +139,103 @@ export class KnowledgeBaseIntegration {
         queryBuilder = queryBuilder.eq('isLinkedToAI', true)
       }
 
-      // Busca por texto
-      const searchTerm = query.toLowerCase()
-      queryBuilder = queryBuilder.or(
-        `title.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%`
-      )
+      // Busca por texto - melhorar para buscar por nome de arquivo exato também
+      const searchTerm = query.toLowerCase().trim()
+      const searchTerms = searchTerm.split(/\s+/).filter(term => term.length > 2)
+      
+      // Construir query de busca mais abrangente
+      const searchConditions: string[] = []
+      
+      // Busca exata no título (para nomes de arquivo)
+      if (searchTerm.length > 0) {
+        searchConditions.push(`title.ilike.%${searchTerm}%`)
+        searchConditions.push(`summary.ilike.%${searchTerm}%`)
+        
+        // Se houver extensão de arquivo, buscar também
+        if (searchTerm.includes('.')) {
+          searchConditions.push(`title.ilike.%${searchTerm.replace(/\./g, '%.')}%`)
+        }
+      }
+      
+      // Busca por palavras individuais (para melhor matching)
+      searchTerms.forEach(term => {
+        searchConditions.push(`title.ilike.%${term}%`)
+        searchConditions.push(`summary.ilike.%${term}%`)
+      })
+      
+      if (searchConditions.length > 0) {
+        queryBuilder = queryBuilder.or(searchConditions.join(','))
+      }
 
-      // Ordenar por relevância da IA
+      // Ordenar por relevância da IA primeiro, depois por data
       queryBuilder = queryBuilder.order('aiRelevance', { ascending: false })
+      queryBuilder = queryBuilder.order('created_at', { ascending: false })
       
       // Limitar resultados
       if (limit) {
-        queryBuilder = queryBuilder.limit(limit)
+        queryBuilder = queryBuilder.limit(limit * 2) // Buscar mais para filtrar depois
       }
 
       const { data, error } = await queryBuilder
 
       if (error) throw error
 
-      // Filtrar por keywords e tags para melhor precisão
-      const filtered = (data || []).filter(doc => {
-        const matchesKeywords = doc.keywords?.some((k: string) =>
-          k.toLowerCase().includes(searchTerm)
-        )
-        const matchesTags = doc.tags?.some((t: string) =>
-          t.toLowerCase().includes(searchTerm)
-        )
-        const matchesTitle = doc.title?.toLowerCase().includes(searchTerm)
-        const matchesSummary = doc.summary?.toLowerCase().includes(searchTerm)
+      if (!data || data.length === 0) {
+        return []
+      }
 
-        return matchesKeywords || matchesTags || matchesTitle || matchesSummary
+      // Calcular relevância semântica melhorada para cada documento
+      const scoredDocs = (data || []).map(doc => {
+        let score = 0
+        
+        const docTitle = (doc.title || '').toLowerCase()
+        const docSummary = (doc.summary || '').toLowerCase()
+        const docKeywords = (doc.keywords || []).map((k: string) => k.toLowerCase())
+        const docTags = (doc.tags || []).map((t: string) => t.toLowerCase())
+        
+        // Busca exata no título (maior peso)
+        if (docTitle.includes(searchTerm)) {
+          score += 100
+          // Se for match exato, ainda mais pontos
+          if (docTitle === searchTerm || docTitle.includes(searchTerm + '.pdf')) {
+            score += 50
+          }
+        }
+        
+        // Busca por palavras individuais no título
+        const titleWordMatches = searchTerms.filter(term => docTitle.includes(term)).length
+        score += titleWordMatches * 20
+        
+        // Busca no summary
+        if (docSummary.includes(searchTerm)) {
+          score += 30
+        }
+        const summaryWordMatches = searchTerms.filter(term => docSummary.includes(term)).length
+        score += summaryWordMatches * 10
+        
+        // Busca em keywords
+        const keywordMatches = docKeywords.filter(kw => 
+          searchTerms.some(term => kw.includes(term)) || searchTerm.includes(kw)
+        ).length
+        score += keywordMatches * 25
+        
+        // Busca em tags
+        const tagMatches = docTags.filter(tag => 
+          searchTerms.some(term => tag.includes(term)) || searchTerm.includes(tag)
+        ).length
+        score += tagMatches * 15
+        
+        // Adicionar relevância da IA como bônus
+        score += (doc.aiRelevance || 0) * 10
+        
+        return { ...doc, semanticScore: score }
       })
+
+      // Filtrar apenas documentos com score > 0 e ordenar
+      const filtered = scoredDocs
+        .filter((doc: any) => doc.semanticScore > 0)
+        .sort((a: any, b: any) => b.semanticScore - a.semanticScore)
+        .slice(0, limit)
 
       return filtered
     } catch (error) {

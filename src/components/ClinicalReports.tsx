@@ -74,20 +74,27 @@ const ClinicalReports: React.FC<ClinicalReportsProps> = ({ className = '' }) => 
       setLoading(true)
       
       // Buscar relatórios compartilhados com o profissional atual
-      const { data: sharedReports, error } = await supabase
+      // shared_with é um array UUID[], então verificamos se contém o ID do médico
+      // Usamos RPC ou filtro manual
+      const { data: allReports, error: fetchError } = await supabase
         .from('clinical_reports')
         .select(`
           *,
           patient:patient_id
         `)
-        .eq('shared_with', user?.id)
         .eq('status', 'shared')
         .order('shared_at', { ascending: false })
 
-      if (error) {
-        console.error('❌ Erro ao buscar relatórios compartilhados:', error)
+      if (fetchError) {
+        console.error('❌ Erro ao buscar relatórios:', fetchError)
         return
       }
+
+      // Filtrar relatórios que foram compartilhados com este médico
+      const sharedReports = allReports?.filter(report => {
+        const sharedWith = report.shared_with || []
+        return Array.isArray(sharedWith) && sharedWith.includes(user?.id)
+      }) || []
 
       // Transformar dados para o formato esperado
       const formattedReports: SharedReport[] = sharedReports?.map(report => ({

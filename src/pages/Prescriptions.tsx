@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { 
   FileText,
   Plus,
@@ -42,8 +42,21 @@ interface Prescription {
 
 const Prescriptions: React.FC = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [selectedType, setSelectedType] = useState<'simple' | 'special' | 'blue' | 'yellow' | null>(null)
   const [showForm, setShowForm] = useState(false)
+
+  // Ler tipo da URL e pré-selecionar
+  useEffect(() => {
+    const typeParam = searchParams.get('type')
+    console.log('Parâmetro type da URL:', typeParam)
+    if (typeParam && ['simple', 'special', 'blue', 'yellow'].includes(typeParam)) {
+      console.log('Configurando tipo selecionado:', typeParam)
+      setSelectedType(typeParam as any)
+      setShowForm(true)
+    }
+  }, [searchParams])
+
   const [patientName, setPatientName] = useState('')
   const [patientCPF, setPatientCPF] = useState('')
   const [medications, setMedications] = useState<Medication[]>([])

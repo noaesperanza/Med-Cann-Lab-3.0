@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { 
   FileText, 
   Plus, 
@@ -32,7 +33,8 @@ import {
   Mountain,
   Sun,
   Moon,
-  Star
+  Star,
+  X
 } from 'lucide-react'
 
 interface PrescriptionTemplate {
@@ -64,11 +66,12 @@ interface IntegrativePrescriptionsProps {
 }
 
 const IntegrativePrescriptions: React.FC<IntegrativePrescriptionsProps> = ({ className = '' }) => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const navigate = useNavigate()
   const [selectedRationality, setSelectedRationality] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState<PrescriptionTemplate | null>(null)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [showCFMModal, setShowCFMModal] = useState(false)
 
   // Templates de prescrição integrados com cinco racionalidades
   const prescriptionTemplates: PrescriptionTemplate[] = [
@@ -269,11 +272,20 @@ const IntegrativePrescriptions: React.FC<IntegrativePrescriptionsProps> = ({ cla
   ]
 
   const filteredTemplates = prescriptionTemplates.filter(template => {
-    const matchesCategory = selectedCategory === 'all' || template.category === selectedCategory
-    const matchesRationality = selectedRationality === 'all' || template.rationality === selectedRationality
-    const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         template.description.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchesCategory && matchesRationality && matchesSearch
+    // Filtro por busca
+    const matchesSearch = searchTerm.trim() === '' || 
+      template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      template.description.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    if (!matchesSearch) return false
+
+    // Se racionalidade está selecionada (diferente de 'all'), filtra apenas por ela (ignora categoria)
+    if (selectedRationality !== 'all') {
+      return template.rationality === selectedRationality
+    }
+
+    // Se ambos estão em 'all' e não há busca, mostra tudo
+    return true
   })
 
   const getRationalityIcon = (rationality: string) => {
@@ -320,15 +332,6 @@ const IntegrativePrescriptions: React.FC<IntegrativePrescriptionsProps> = ({ cla
     }
   }
 
-  const categories = [
-    { key: 'all', label: 'Todos', icon: <FileText className="w-4 h-4" /> },
-    { key: 'cannabis', label: 'Cannabis', icon: <Leaf className="w-4 h-4" /> },
-    { key: 'nefrologia', label: 'Nefrologia', icon: <Droplets className="w-4 h-4" /> },
-    { key: 'sintomatico', label: 'Sintomático', icon: <Zap className="w-4 h-4" /> },
-    { key: 'suporte', label: 'Suporte', icon: <CheckCircle className="w-4 h-4" /> },
-    { key: 'integrativo', label: 'Integrativo', icon: <Brain className="w-4 h-4" /> }
-  ]
-
   const rationalities = [
     { key: 'all', label: 'Todas', icon: <Brain className="w-4 h-4" /> },
     { key: 'biomedical', label: 'Biomédica', icon: <Microscope className="w-4 h-4" /> },
@@ -353,20 +356,27 @@ const IntegrativePrescriptions: React.FC<IntegrativePrescriptionsProps> = ({ cla
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <>
+    <div className={`space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden ${className}`}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
-              <Brain className="w-6 h-6" />
+      <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-4">
+          <div className="flex-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-white mb-2 flex items-center space-x-2">
+              <Brain className="w-5 h-5 sm:w-6 sm:h-6" />
               <span>Prescrições Integrativas</span>
             </h2>
-            <p className="text-slate-300">
+            <p className="text-sm sm:text-base text-slate-300">
               Sistema de prescrições com cinco racionalidades médicas e práticas integrativas
             </p>
           </div>
-          <button className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors">
+          <button 
+            onClick={() => {
+              console.log('Abrindo modal CFM')
+              setShowCFMModal(true)
+            }}
+            className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors whitespace-nowrap"
+          >
             <Plus className="w-4 h-4" />
             <span>Nova Prescrição</span>
           </button>
@@ -374,7 +384,7 @@ const IntegrativePrescriptions: React.FC<IntegrativePrescriptionsProps> = ({ cla
 
         {/* Filtros e busca */}
         <div className="space-y-4">
-          <div className="flex-1">
+          <div className="w-full">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
               <input
@@ -387,52 +397,66 @@ const IntegrativePrescriptions: React.FC<IntegrativePrescriptionsProps> = ({ cla
             </div>
           </div>
           
-          <div className="flex flex-wrap gap-2">
-            <div className="flex space-x-2">
-              <span className="text-slate-300 text-sm font-medium py-2">Categoria:</span>
-              {categories.map((category) => (
-                <button
-                  key={category.key}
-                  onClick={() => setSelectedCategory(category.key)}
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm transition-colors ${
-                    selectedCategory === category.key 
-                      ? 'bg-green-600 hover:bg-green-700 text-white' 
-                      : 'text-slate-300 border border-slate-600 hover:bg-slate-700'
-                  }`}
-                >
-                  {category.icon}
-                  <span>{category.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <div className="flex space-x-2">
-              <span className="text-slate-300 text-sm font-medium py-2">Racionalidade:</span>
-              {rationalities.map((rationality) => (
-                <button
-                  key={rationality.key}
-                  onClick={() => setSelectedRationality(rationality.key)}
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm transition-colors ${
-                    selectedRationality === rationality.key 
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                      : 'text-slate-300 border border-slate-600 hover:bg-slate-700'
-                  }`}
-                >
-                  {rationality.icon}
-                  <span>{rationality.label}</span>
-                </button>
-              ))}
+          {/* Filtros de Racionalidade */}
+          <div className="w-full">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-slate-300 text-sm font-medium whitespace-nowrap">Racionalidade:</span>
+              <div className="flex flex-wrap gap-2 flex-1">
+                {rationalities.map((rationality) => (
+                  <button
+                    key={rationality.key}
+                    onClick={() => setSelectedRationality(rationality.key)}
+                    className={`flex items-center space-x-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm transition-colors whitespace-nowrap ${
+                      selectedRationality === rationality.key 
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                        : 'text-slate-300 border border-slate-600 hover:bg-slate-700'
+                    }`}
+                  >
+                    {rationality.icon}
+                    <span>{rationality.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Grid de templates */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTemplates.map((template) => (
-          <div key={template.id} className="bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-slate-600 transition-colors">
+      {filteredTemplates.length === 0 ? (
+        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-8 text-center">
+          <FileText className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">Nenhuma prescrição encontrada</h3>
+          <p className="text-slate-400 mb-4">
+            {selectedRationality !== 'all' 
+              ? `Não há prescrições para a racionalidade selecionada.`
+              : searchTerm.trim() !== ''
+              ? `Nenhuma prescrição encontrada para "${searchTerm}".`
+              : 'Selecione uma racionalidade para visualizar as prescrições.'}
+          </p>
+          <button
+            onClick={() => {
+              setSelectedRationality('all')
+              setSearchTerm('')
+            }}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+          >
+            Limpar Filtros
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between text-sm text-slate-400">
+            <span>📋 {filteredTemplates.length} {filteredTemplates.length === 1 ? 'prescrição encontrada' : 'prescrições encontradas'}</span>
+            {selectedRationality !== 'all' && (
+              <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">
+                Racionalidade: {rationalities.find(r => r.key === selectedRationality)?.label}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {filteredTemplates.map((template) => (
+          <div key={template.id} className="bg-slate-800 border border-slate-700 rounded-lg p-4 sm:p-6 hover:border-slate-600 transition-colors overflow-hidden">
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <h3 className="text-white text-lg mb-2">
@@ -525,25 +549,10 @@ const IntegrativePrescriptions: React.FC<IntegrativePrescriptionsProps> = ({ cla
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Estatísticas */}
-      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-        <div className="flex items-center justify-between text-sm text-slate-400">
-          <div className="flex items-center space-x-4">
-            <span>📋 {filteredTemplates.length} templates disponíveis</span>
-            <span>🧠 Cinco racionalidades médicas</span>
-            <span>🔗 Práticas integrativas</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span>Atualização automática</span>
-            <span className="px-2 py-1 text-xs text-green-400 border border-green-600 rounded">
-              <CheckCircle className="w-3 h-3 inline mr-1" />
-              Ativo
-            </span>
           </div>
         </div>
-      </div>
+      )}
+
 
       {/* Modal de Template */}
       {showTemplateModal && selectedTemplate && (
@@ -611,6 +620,121 @@ const IntegrativePrescriptions: React.FC<IntegrativePrescriptionsProps> = ({ cla
         </div>
       )}
     </div>
+    
+    {/* Modal de Seleção CFM - Renderizado fora do container principal */}
+    {showCFMModal && (
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4"
+        style={{ position: 'fixed', zIndex: 9999 }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setShowCFMModal(false)
+          }
+        }}
+      >
+        <div 
+          className="bg-slate-800 rounded-xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 relative"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
+                <Lock className="w-6 h-6 text-green-400" />
+                <span>Nova Prescrição CFM</span>
+              </h3>
+              <p className="text-slate-400">Selecione o tipo de prescrição conforme diretrizes CFM</p>
+            </div>
+            <button
+              onClick={() => setShowCFMModal(false)}
+              className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-slate-400" />
+            </button>
+          </div>
+
+          {/* Informações CFM */}
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-bold text-white mb-2">Conforme Diretrizes CFM</h4>
+                <ul className="space-y-1 text-xs text-slate-300">
+                  <li className="flex items-start">
+                    <CheckCircle className="w-3 h-3 text-green-400 mr-2 mt-0.5" />
+                    <span>Assinatura Digital com Certificado ICP Brasil</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-3 h-3 text-green-400 mr-2 mt-0.5" />
+                    <span>Validação no Portal do ITI</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-3 h-3 text-green-400 mr-2 mt-0.5" />
+                    <span>Envio por Email e SMS com QR Code</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Tipos de Prescrição */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Receituário Simples */}
+            <button
+              onClick={() => {
+                console.log('Navegando para Receituário Simples')
+                navigate('/app/prescriptions?type=simple')
+                setShowCFMModal(false)
+              }}
+              className="p-6 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all transform hover:scale-105 text-left"
+            >
+              <FileText className="w-8 h-8 text-white mb-3" />
+              <h4 className="text-lg font-bold text-white mb-1">Receituário Simples</h4>
+              <p className="text-blue-100 text-sm">Medicamentos sem restrições</p>
+            </button>
+
+            {/* Receita Controle Especial */}
+            <button
+              onClick={() => {
+                navigate('/app/prescriptions?type=special')
+                setShowCFMModal(false)
+              }}
+              className="p-6 bg-gradient-to-r from-slate-500 to-slate-600 rounded-lg hover:from-slate-600 hover:to-slate-700 transition-all transform hover:scale-105 text-left"
+            >
+              <Lock className="w-8 h-8 text-white mb-3" />
+              <h4 className="text-lg font-bold text-white mb-1">Receita Controle Especial (Branca)</h4>
+              <p className="text-slate-200 text-sm">Psicotrópicos, retinoides (Lista C2)</p>
+            </button>
+
+            {/* Receita Azul */}
+            <button
+              onClick={() => {
+                navigate('/app/prescriptions?type=blue')
+                setShowCFMModal(false)
+              }}
+              className="p-6 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all transform hover:scale-105 text-left"
+            >
+              <Lock className="w-8 h-8 text-white mb-3" />
+              <h4 className="text-lg font-bold text-white mb-1">Receita Azul (B1/B2)</h4>
+              <p className="text-blue-100 text-sm">Entorpecentes e psicotrópicos</p>
+            </button>
+
+            {/* Receita Amarela */}
+            <button
+              onClick={() => {
+                navigate('/app/prescriptions?type=yellow')
+                setShowCFMModal(false)
+              }}
+              className="p-6 bg-gradient-to-r from-yellow-500 to-amber-500 rounded-lg hover:from-yellow-600 hover:to-amber-600 transition-all transform hover:scale-105 text-left"
+            >
+              <Lock className="w-8 h-8 text-white mb-3" />
+              <h4 className="text-lg font-bold text-white mb-1">Receita Amarela (A1/A2/A3)</h4>
+              <p className="text-yellow-100 text-sm">Entorpecentes e psicotrópicos específicos</p>
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
 

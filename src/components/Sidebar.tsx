@@ -52,9 +52,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const getNavigationItems = () => {
     const adminItems = [
-      { 
+      {
         name: '📅 Agendamentos', 
-        href: '/app/professional-scheduling', 
+        href: '/app/patients?tab=appointments', 
         icon: Calendar,
         section: 'ehr'
       },
@@ -113,7 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     const professionalItems = [
       { 
         name: '📅 Agendamentos', 
-        href: '/app/professional-scheduling', 
+        href: '/app/patients?tab=appointments', 
         icon: Calendar,
         section: 'quick'
       },

@@ -191,6 +191,86 @@ const PatientDashboard: React.FC = () => {
 
             {/* Relatórios */}
             <div className="bg-slate-800 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">📋 Meus Relatórios</h3>
+                <button 
+                  onClick={handleViewReports}
+                  className="text-purple-400 hover:text-purple-300 transition-colors text-xs"
+                >
+                  Ver todos
+                </button>
+              </div>
+              {loadingReports ? (
+                <div className="text-center py-4">
+                  <p className="text-slate-400 text-sm">Carregando relatórios...</p>
+                </div>
+              ) : reports.length > 0 ? (
+                <div className="space-y-3">
+                  {reports.slice(0, 3).map((report) => (
+                    <div key={report.id} className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <FileText className="w-4 h-4 text-blue-400" />
+                            <h4 className="text-white font-medium text-sm">
+                              {report.report_type === 'initial_assessment' 
+                                ? 'Avaliação Clínica Inicial' 
+                                : report.report_type}
+                            </h4>
+                            {report.status === 'shared' && (
+                              <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">
+                                Compartilhado
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-slate-400 text-xs mb-2">
+                            {new Date(report.generated_at).toLocaleDateString('pt-BR')}
+                          </p>
+                          <p className="text-slate-300 text-xs line-clamp-2">
+                            {typeof report.content === 'object' 
+                              ? (report.content.result || report.content.investigation || 'Relatório clínico completo.')
+                              : 'Avaliação clínica completa.'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 mt-3">
+                        <button
+                          onClick={() => handleNavigate('/app/reports')}
+                          className="flex-1 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Visualizar
+                        </button>
+                        {report.status === 'completed' && (
+                          <button
+                            onClick={() => {
+                              // Abrir modal de compartilhamento
+                              handleNavigate('/app/reports')
+                            }}
+                            className="flex-1 px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-1"
+                          >
+                            <Share2 className="w-3 h-3" />
+                            <span>Compartilhar</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {reports.length > 3 && (
+                    <button
+                      onClick={handleViewReports}
+                      className="w-full px-4 py-2 bg-slate-700 text-white text-sm rounded-lg hover:bg-slate-600 transition-colors"
+                    >
+                      Ver mais {reports.length - 3} relatório(s)
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <FileText className="w-12 h-12 text-slate-500 mx-auto mb-2" />
+                  <p className="text-slate-400 text-sm mb-1">Nenhum relatório ainda</p>
+                  <p className="text-slate-500 text-xs">Complete sua avaliação clínica inicial</p>
+                </div>
+              )}
             </div>
 
             {/* Chat com Profissional */}
