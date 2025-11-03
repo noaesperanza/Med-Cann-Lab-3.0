@@ -397,7 +397,7 @@ const EduardoFaveretDashboard: React.FC = () => {
           </div>
           <div className="mt-4 md:mt-0 text-right">
             <p className="text-green-300 text-sm">Conectado como</p>
-            <p className="text-white font-semibold">{user?.name || 'Convidado'}</p>
+            <p className="text-white font-semibold">Dr. Eduardo Faveret</p>
             <p className="text-green-200 text-xs">CRM: 123456 • CRO: 654321</p>
           </div>
         </div>
