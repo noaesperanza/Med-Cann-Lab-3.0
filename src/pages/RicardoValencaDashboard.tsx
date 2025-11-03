@@ -55,6 +55,14 @@ const RicardoValencaDashboard: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Redirecionar pacientes para seu dashboard correto
+  useEffect(() => {
+    if (user?.type === 'patient') {
+      console.log('🔄 Paciente detectado no dashboard profissional, redirecionando...')
+      navigate('/app/clinica/paciente/dashboard', { replace: true })
+    }
+  }, [user?.type, navigate])
   const [patientSearch, setPatientSearch] = useState('')
   const [clinicalNotes, setClinicalNotes] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null)

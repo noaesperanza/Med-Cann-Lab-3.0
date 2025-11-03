@@ -102,7 +102,7 @@ function App() {
                 
                 {/* Rotas Individualizadas por Eixo e Tipo */}
                 {/* EIXO CLÍNICA */}
-                <Route path="clinica/profissional/dashboard" element={<RicardoValencaDashboard />} />
+                <Route path="clinica/profissional/dashboard" element={<ProtectedRoute requiredRole="professional"><RicardoValencaDashboard /></ProtectedRoute>} />
                 <Route path="clinica/profissional/dashboard-eduardo" element={<EduardoFaveretDashboard />} />
                 <Route path="clinica/profissional/pacientes" element={<PatientsManagement />} />
                 <Route path="clinica/profissional/agendamentos" element={<ProfessionalScheduling />} />
