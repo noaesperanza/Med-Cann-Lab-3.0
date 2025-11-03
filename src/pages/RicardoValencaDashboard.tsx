@@ -1785,7 +1785,11 @@ const RicardoValencaDashboard: React.FC = () => {
           </div>
           <div className="mt-4 md:mt-0 text-right">
             <p className="text-blue-300 text-sm">Conectado como</p>
-            <p className="text-white font-semibold">{user?.name || 'Convidado'}</p>
+            <p className="text-white font-semibold">
+              {(user?.email === 'eduardoscfaveret@gmail.com' || user?.name === 'Dr. Eduardo Faveret') 
+                ? 'Dr. Eduardo Faveret' 
+                : (user?.name || 'Convidado')}
+            </p>
             <p className="text-blue-200 text-xs">👑 Administrador • Visão completa do sistema</p>
           </div>
         </div>
