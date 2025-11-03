@@ -85,8 +85,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .maybeSingle()
               
               if (!profileError && profileData) {
-                userType = profileData.tipo || profileData.user_type || 'patient'
-                userName = profileData.nome || profileData.name || userName
+                // Verificar tipos com segurança
+                const profile = profileData as any
+                const profileType = profile.tipo || profile.user_type || profile.type
+                const profileName = profile.nome || profile.name
+                
+                if (profileType && ['patient', 'professional', 'aluno', 'admin'].includes(profileType)) {
+                  userType = profileType as 'patient' | 'professional' | 'aluno' | 'admin'
+                }
+                if (profileName) {
+                  userName = String(profileName)
+                }
+                
                 console.log('✅ Perfil encontrado no banco de dados:', profileData)
                 
                 const dbUser: User = {
@@ -94,8 +104,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   email: email,
                   type: userType,
                   name: userName,
-                  crm: profileData.crm,
-                  cro: profileData.cro
+                  crm: profile.crm || undefined,
+                  cro: profile.cro || undefined
                 }
                 
                 console.log('✅ Usuário carregado do banco de dados:', dbUser)
