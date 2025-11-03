@@ -48,6 +48,7 @@ const Library: React.FC = () => {
   const [cacheExpiry, setCacheExpiry] = useState<number>(30000) // 30 segundos
   const [knowledgeStats, setKnowledgeStats] = useState<KnowledgeStats | null>(null)
   const [showStats, setShowStats] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
 
   // Tipos de usuário
   const userTypes = [
@@ -345,17 +346,41 @@ const Library: React.FC = () => {
 
       // Recarregar lista de documentos com retry
       let retryCount = 0
-      const maxRetries = 3
+      const maxRetries = 5
       
       while (retryCount < maxRetries) {
         await loadDocuments(true) // Force reload após upload
         
+        // Aguardar um pouco para o estado atualizar
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Recarregar novamente para garantir que pegamos o estado atualizado
+        await loadDocuments(true)
+        
         // Verificar se o documento foi carregado
-        const currentDocs = realDocuments
-        const newDocExists = currentDocs.some(doc => doc.title === file.name)
+        const allDocs = await KnowledgeBaseIntegration.getAllDocuments()
+        console.log('🔍 Verificando documentos:', {
+          totalDocs: allDocs.length,
+          fileName,
+          publicUrl,
+          uploadedFileName: file.name
+        })
+        
+        // Buscar por múltiplos critérios
+        const newDocExists = allDocs.some(doc => {
+          const titleMatch = doc.title === file.name || doc.title?.includes(file.name.replace(/\.[^/.]+$/, ''))
+          const urlMatch = doc.file_url?.includes(fileName) || doc.file_url === publicUrl
+          const recentMatch = doc.created_at && new Date(doc.created_at).getTime() > (Date.now() - 10000) // Criado nos últimos 10 segundos
+          
+          return titleMatch || urlMatch || recentMatch
+        })
         
         if (newDocExists) {
           console.log('✅ Documento encontrado na lista após upload!')
+          // Atualizar estado local
+          setRealDocuments(allDocs)
+          setTotalDocs(allDocs.length)
+          setLastLoadTime(Date.now())
           break
         } else {
           console.log(`⚠️ Documento não encontrado, tentativa ${retryCount + 1}/${maxRetries}`)
@@ -373,12 +398,21 @@ const Library: React.FC = () => {
       console.log('🎉 Upload concluído!')
       alert('✅ Upload realizado com sucesso!')
 
+      // Atualizar lista imediatamente após sucesso
+      await loadDocuments(true)
+      
       setTimeout(() => {
         setUploadSuccess(false)
         setUploadProgress(0)
         setIsUploading(false)
-        setShowUploadModal(false)
+        // Não fechar modal imediatamente - dar tempo para ver sucesso
+        // setShowUploadModal(false)
         setUploadedFile(null)
+        
+        // Atualizar lista novamente após delay
+        setTimeout(() => {
+          loadDocuments(true)
+        }, 500)
       }, 2000)
     } catch (error: any) {
       console.error('❌ Erro no upload:', error)
@@ -696,15 +730,50 @@ const Library: React.FC = () => {
           </div>
         </div>
 
-        {/* Upload Hint - Unified system */}
+        {/* Upload Hint - Unified system with Drag and Drop */}
         {filteredDocuments.length === 0 && (
-          <div className="mb-8 text-center py-8 border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-xl bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
-            <Brain className="w-12 h-12 mx-auto mb-3 text-purple-600" />
+          <div
+            className={`mb-8 text-center py-12 border-2 border-dashed rounded-xl transition-all ${
+              isDragging
+                ? 'border-purple-500 bg-purple-500/20 dark:bg-purple-900/40'
+                : 'border-purple-300 dark:border-purple-700 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 hover:border-purple-500'
+            }`}
+            onDragEnter={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsDragging(true)
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsDragging(false)
+            }}
+            onDragOver={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsDragging(false)
+              
+              const files = e.dataTransfer.files
+              if (files && files.length > 0) {
+                const file = files[0]
+                setUploadedFile(file)
+                setShowUploadModal(true)
+                console.log('📎 Arquivo solto na área principal:', file.name)
+              }
+            }}
+          >
+            <Brain className={`w-12 h-12 mx-auto mb-3 ${isDragging ? 'text-purple-500' : 'text-purple-600'}`} />
             <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">
               Base de Conhecimento da Nôa Esperança
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Faça upload de documentos para treinar a IA e expandir a base de conhecimento
+              {isDragging 
+                ? 'Solte o arquivo aqui para fazer upload' 
+                : 'Faça upload de documentos para treinar a IA e expandir a base de conhecimento'}
             </p>
             <button
               onClick={() => setShowUploadModal(true)}
@@ -713,6 +782,9 @@ const Library: React.FC = () => {
               <Upload className="w-5 h-5 inline mr-2" />
               Fazer Upload
             </button>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+              Ou arraste e solte um arquivo aqui
+            </p>
           </div>
         )}
 
@@ -1057,14 +1129,51 @@ const Library: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-300 mb-3">
                   Selecione o Arquivo
                 </label>
-                <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 text-center hover:border-purple-500 transition-colors">
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    isDragging
+                      ? 'border-purple-500 bg-purple-500/10'
+                      : uploadedFile
+                      ? 'border-green-500 bg-green-500/10'
+                      : 'border-slate-600 hover:border-purple-500'
+                  }`}
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setIsDragging(true)
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setIsDragging(false)
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setIsDragging(false)
+                    
+                    const files = e.dataTransfer.files
+                    if (files && files.length > 0) {
+                      const file = files[0]
+                      setUploadedFile(file)
+                      console.log('📎 Arquivo solto via drag and drop:', file.name)
+                    }
+                  }}
+                >
                   <input
                     type="file"
                     id="file-upload"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
-                      if (file) setUploadedFile(file)
+                      if (file) {
+                        setUploadedFile(file)
+                        console.log('📎 Arquivo selecionado:', file.name)
+                      }
                     }}
                     accept={uploadCategory === 'ai-avatar' ? 'image/*' : '*'}
                   />
@@ -1087,11 +1196,11 @@ const Library: React.FC = () => {
                   ) : (
                     <label
                       htmlFor="file-upload"
-                      className="cursor-pointer"
+                      className="cursor-pointer block"
                     >
                       <Upload className="w-16 h-16 text-slate-400 mx-auto mb-3" />
                       <p className="text-white font-medium mb-1">
-                        Clique para selecionar ou arraste o arquivo
+                        Clique para selecionar ou arraste o arquivo aqui
                       </p>
                       <p className="text-sm text-slate-400">
                         {uploadCategory === 'ai-avatar' ? 'PNG, JPG ou SVG (recomendado: PNG, 512x512px)' : 'PDF, DOCX, MP4, Imagens, etc.'}

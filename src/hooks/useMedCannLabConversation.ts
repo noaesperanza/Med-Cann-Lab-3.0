@@ -356,14 +356,14 @@ export const useMedCannLabConversation = () => {
       const assistantMessage: ConversationMessage = {
         id: `noa-${Date.now()}`,
         role: 'noa',
-        content: '',
+        content: response.content, // Inicializar com o conteúdo da resposta
         timestamp: ensureDate(response.timestamp),
         intent,
         metadata: {
           confidence: response.confidence,
           reasoning: response.reasoning,
           metadata: response.metadata,
-          fullContent: response.content,
+          fullContent: response.content, // Mantém o conteúdo completo para síntese de voz
           fromVoice: options.preferVoice ?? false,
           usedEndpoints: ['resident-ai']
         }

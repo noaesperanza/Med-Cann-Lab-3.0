@@ -63,6 +63,8 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
   const [inputValue, setInputValue] = useState('')
   const [isListening, setIsListening] = useState(false)
   const recognitionRef = useRef<RecognitionHandle | null>(null)
+  const prevIsSpeakingRef = useRef(false)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
 
   const {
     messages,
@@ -74,7 +76,6 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
     usedEndpoints,
     lastIntent
   } = useMedCannLabConversation()
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const container = scrollContainerRef.current
@@ -210,11 +211,41 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
     setIsListening(true)
   }, [sendMessage, stopListening])
 
+  // Parar microfone quando a IA começar a processar
+  useEffect(() => {
+    if (isProcessing && isListening) {
+      stopListening()
+    }
+  }, [isProcessing, isListening, stopListening])
+
+  // Auto-iniciar microfone quando a IA terminar de falar
+  useEffect(() => {
+    // Quando a IA termina de falar (isSpeaking muda de true para false)
+    if (prevIsSpeakingRef.current && !isSpeaking && isOpen && !isProcessing) {
+      // Aguardar um pequeno delay para garantir que a síntese de voz terminou completamente
+      const timer = setTimeout(() => {
+        // Verificar se não está já escutando, se o chat está aberto e não está processando
+        if (!isListening && isOpen && !isProcessing) {
+          startListening()
+        }
+      }, 300) // 300ms de delay para transição suave
+
+      return () => clearTimeout(timer)
+    }
+    
+    // Atualizar referência para próximo ciclo
+    prevIsSpeakingRef.current = isSpeaking
+  }, [isSpeaking, isOpen, isListening, isProcessing, startListening])
+
   const handleSend = useCallback(() => {
     if (!inputValue.trim()) return
+    // Parar microfone quando enviar mensagem manualmente
+    if (isListening) {
+      stopListening()
+    }
     sendMessage(inputValue)
     setInputValue('')
-  }, [inputValue, sendMessage])
+  }, [inputValue, sendMessage, isListening, stopListening])
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -303,7 +334,9 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
                       : 'bg-slate-800/90 text-slate-100 border-slate-700'
                   )}
                 >
-                  <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  <p className="whitespace-pre-wrap leading-relaxed">
+                    {(message.metadata as Record<string, any> | undefined)?.fullContent || message.content}
+                  </p>
                   <span className="block text-[10px] mt-2 text-slate-400">{message.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
               </div>
