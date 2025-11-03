@@ -227,31 +227,6 @@ const EnsinoDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           {/* Cursos Disponíveis */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* Curso Arte da Entrevista Clínica */}
-            <div 
-              onClick={() => handleJoinClass('Arte da Entrevista Clínica')}
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold text-white">🎭 Arte da Entrevista Clínica</h3>
-                <Heart className="w-8 h-8 text-white" />
-              </div>
-              <p className="text-white/90 mb-4">
-                Metodologia completa de entrevista clínica aplicada à Cannabis Medicinal. 
-                Desenvolva habilidades de comunicação e avaliação clínica.
-              </p>
-              <div className="flex items-center space-x-4 text-sm text-white/80 mb-4">
-                <span>Dr. Ricardo Valença</span>
-                <span>•</span>
-                <span>40 horas</span>
-                <span>•</span>
-                <span>⭐ 5.0</span>
-              </div>
-              <button className="w-full bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
-                Acessar Curso
-              </button>
-            </div>
-
             {/* Curso Pós-Graduação Cannabis Medicinal */}
             <div 
               onClick={() => handleJoinClass('Pós-Graduação Cannabis Medicinal')}
@@ -278,6 +253,31 @@ const EnsinoDashboard: React.FC = () => {
                 Acessar Curso
               </button>
             </div>
+
+            {/* Curso Arte da Entrevista Clínica */}
+            <div 
+              onClick={() => handleJoinClass('Arte da Entrevista Clínica')}
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold text-white">🎭 Arte da Entrevista Clínica</h3>
+                <Heart className="w-8 h-8 text-white" />
+              </div>
+              <p className="text-white/90 mb-4">
+                Metodologia completa de entrevista clínica aplicada à Cannabis Medicinal. 
+                Desenvolva habilidades de comunicação e avaliação clínica.
+              </p>
+              <div className="flex items-center space-x-4 text-sm text-white/80 mb-4">
+                <span>Dr. Ricardo Valença</span>
+                <span>•</span>
+                <span>40 horas</span>
+                <span>•</span>
+                <span>⭐ 5.0</span>
+              </div>
+              <button className="w-full bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                Acessar Curso
+              </button>
+            </div>
           </div>
 
           {/* Informações Adicionais */}
@@ -285,20 +285,20 @@ const EnsinoDashboard: React.FC = () => {
             <h3 className="text-xl font-semibold text-white mb-4">Informações sobre os Cursos</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-slate-700 rounded-lg p-4">
-                <h4 className="font-semibold text-white mb-2">🎭 Arte da Entrevista Clínica</h4>
-                <p className="text-slate-300 text-sm mb-2">
-                  Metodologia desenvolvida pelo Dr. Ricardo Valença para entrevistas clínicas eficazes, 
-                  com foco em comunicação empática e avaliação completa do paciente.
-                </p>
-                <p className="text-slate-400 text-xs">Inclui: Módulos práticos, casos clínicos, certificação</p>
-              </div>
-              <div className="bg-slate-700 rounded-lg p-4">
                 <h4 className="font-semibold text-white mb-2">🌿 Pós-Graduação Cannabis Medicinal</h4>
                 <p className="text-slate-300 text-sm mb-2">
                   Programa completo de especialização em Cannabis Medicinal com metodologia prática 
                   e casos clínicos reais desenvolvidos pelo Dr. Eduardo Faveret.
                 </p>
                 <p className="text-slate-400 text-xs">Inclui: Certificação, casos práticos, comunidade de alunos</p>
+              </div>
+              <div className="bg-slate-700 rounded-lg p-4">
+                <h4 className="font-semibold text-white mb-2">🎭 Arte da Entrevista Clínica</h4>
+                <p className="text-slate-300 text-sm mb-2">
+                  Metodologia desenvolvida pelo Dr. Ricardo Valença para entrevistas clínicas eficazes, 
+                  com foco em comunicação empática e avaliação completa do paciente.
+                </p>
+                <p className="text-slate-400 text-xs">Inclui: Módulos práticos, casos clínicos, certificação</p>
               </div>
             </div>
           </div>
