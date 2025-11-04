@@ -142,14 +142,12 @@ const PatientDoctorChat: React.FC = () => {
   const currentSelectedUser = getCurrentSelectedUser()
 
   // Mensagens do chat - será populado com dados reais do banco
-  const getMessagesForPatient = (patientId: number) => {
-    const patientMessages: Record<number, any[]> = {}
+  const getMessagesForPatient = (patientId: string | number) => {
+    // Se for string UUID, usa como chave direta
+    // Se for número, usa como número
+    const patientMessages: Record<string | number, any[]> = {}
     return patientMessages[patientId] || []
   }
-
-  const [messages, setMessages] = useState(getMessagesForPatient(parseInt(patientId || '1')))
-
-  const [attachments, setAttachments] = useState<any[]>([])
 
   // Atualizar selectedPatientId quando patientId da URL mudar
   useEffect(() => {
@@ -158,13 +156,17 @@ const PatientDoctorChat: React.FC = () => {
     }
   }, [patientId])
 
+  const [messages, setMessages] = useState(getMessagesForPatient(patientId || selectedPatientId || '1'))
+
+  const [attachments, setAttachments] = useState<any[]>([])
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
 
   // Atualizar mensagens quando o paciente selecionado mudar
   useEffect(() => {
-    setMessages(getMessagesForPatient(parseInt(selectedPatientId)))
+    setMessages(getMessagesForPatient(selectedPatientId))
   }, [selectedPatientId])
 
   // Fechar dropdown ao clicar fora

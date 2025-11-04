@@ -159,7 +159,7 @@ const PatientDashboard: React.FC = () => {
 
         {/* Chat com Médico */}
         <button
-          onClick={() => navigate('/app/patient-chat')}
+          onClick={() => navigate('/app/clinica/paciente/chat-profissional')}
           className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
         >
           <MessageCircle className="w-8 h-8 mb-3" />

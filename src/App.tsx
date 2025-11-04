@@ -116,6 +116,7 @@ function App() {
                 <Route path="clinica/paciente/agendamentos" element={<PatientAppointments />} />
                 <Route path="clinica/paciente/agenda" element={<PatientAgenda />} />
                 <Route path="clinica/paciente/chat-profissional" element={<PatientDoctorChat />} />
+                <Route path="clinica/paciente/chat-profissional/:patientId" element={<PatientDoctorChat />} />
                 
                 {/* EIXO ENSINO */}
                 <Route path="ensino/profissional/dashboard" element={<EnsinoDashboard />} />

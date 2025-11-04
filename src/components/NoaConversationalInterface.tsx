@@ -67,6 +67,11 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
   const [isListening, setIsListening] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [uploadCategory, setUploadCategory] = useState('ai-documents')
+  const [uploadArea, setUploadArea] = useState('cannabis')
+  const [uploadUserType, setUploadUserType] = useState<string[]>(['professional', 'student'])
   const recognitionRef = useRef<RecognitionHandle | null>(null)
   const prevIsSpeakingRef = useRef(false)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -274,18 +279,33 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
     triggerQuickCommand(command)
   }, [triggerQuickCommand])
 
-  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
+    // Abrir modal de categorização
+    setUploadedFile(file)
+    setShowUploadModal(true)
+    
+    // Resetar input para permitir selecionar o mesmo arquivo novamente
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }, [])
+
+  // Processar upload com categorias selecionadas
+  const processFileUpload = useCallback(async () => {
+    if (!uploadedFile) return
+
     setIsUploading(true)
     setUploadProgress(0)
+    setShowUploadModal(false)
 
     let progressInterval: NodeJS.Timeout | null = null
 
     try {
       // Adicionar mensagem inicial no chat
-      sendMessage(`📤 Enviando documento "${file.name}" para a biblioteca e base de conhecimento...`, { preferVoice: false })
+      sendMessage(`📤 Enviando documento "${uploadedFile.name}" para a biblioteca e base de conhecimento...`, { preferVoice: false })
 
       progressInterval = setInterval(() => {
         setUploadProgress(prev => {
@@ -297,14 +317,14 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
         })
       }, 200)
 
-      const fileExt = file.name.split('.').pop()?.toLowerCase()
-      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+      const fileExt = uploadedFile.name.split('.').pop()?.toLowerCase()
+      const fileName = `${Date.now()}_${uploadedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
       const bucketName = 'documents'
 
       // Upload para Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucketName)
-        .upload(fileName, file)
+        .upload(fileName, uploadedFile)
 
       if (uploadError) {
         throw uploadError
@@ -334,21 +354,32 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
         finalUrl = publicUrl
       }
 
-      // Salvar metadata no banco
+      // Mapear categoria para formato do banco
+      const categoryMap: Record<string, string> = {
+        'ai-documents': 'ai-documents',
+        'protocols': 'protocols',
+        'research': 'research',
+        'cases': 'cases',
+        'multimedia': 'multimedia'
+      }
+
+      const dbCategory = categoryMap[uploadCategory] || 'research'
+
+      // Salvar metadata no banco com categorias selecionadas
       const documentMetadata = {
-        title: file.name,
+        title: uploadedFile.name,
         content: '', // Deixar vazio para extrair depois
         file_type: fileExt || 'unknown',
         file_url: finalUrl,
-        file_size: file.size,
+        file_size: uploadedFile.size,
         author: user?.name || 'Usuário',
-        category: 'ai-documents',
-        target_audience: ['professional', 'student'],
-        tags: ['upload', 'ai-documents', 'chat-upload'],
-        isLinkedToAI: true,
-        aiRelevance: 0.8,
-        summary: `Documento enviado pelo chat da IA Residente em ${new Date().toLocaleDateString('pt-BR')}`,
-        keywords: [fileExt || 'document', 'ai-documents', 'upload']
+        category: dbCategory,
+        target_audience: uploadUserType.length > 0 ? uploadUserType : ['professional', 'student'],
+        tags: ['upload', 'chat-upload', uploadCategory, uploadArea],
+        isLinkedToAI: uploadCategory === 'ai-documents' || uploadCategory === 'research',
+        aiRelevance: uploadCategory === 'ai-documents' ? 0.9 : 0.7,
+        summary: `Documento enviado pelo chat da IA Residente em ${new Date().toLocaleDateString('pt-BR')} - Categoria: ${uploadCategory}, Área: ${uploadArea}`,
+        keywords: [fileExt || 'document', uploadCategory, uploadArea, ...uploadUserType]
       }
 
       const { data: documentData, error: docError } = await supabase
@@ -361,21 +392,30 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
         throw docError
       }
 
-      // Vincular documento à IA automaticamente
-      if (documentData?.id) {
-        await KnowledgeBaseIntegration.linkDocumentToAI(documentData.id, 0.8)
+      // Vincular documento à IA automaticamente se for categoria IA ou pesquisa
+      if (documentData?.id && (uploadCategory === 'ai-documents' || uploadCategory === 'research')) {
+        await KnowledgeBaseIntegration.linkDocumentToAI(documentData.id, documentMetadata.aiRelevance || 0.8)
       }
 
       if (progressInterval) clearInterval(progressInterval)
       setUploadProgress(100)
 
-      // Adicionar mensagem de sucesso no chat
-      sendMessage(`✅ Documento "${file.name}" enviado com sucesso! O arquivo foi adicionado à biblioteca e está vinculado à base de conhecimento da Nôa Esperança. Agora posso usar este documento em minhas respostas!`, { preferVoice: false })
-
-      // Resetar input de arquivo
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
+      // Mensagem de sucesso com detalhes
+      const categoryNames: Record<string, string> = {
+        'ai-documents': 'IA Residente',
+        'protocols': 'Protocolos',
+        'research': 'Pesquisa',
+        'cases': 'Casos',
+        'multimedia': 'Multimídia'
       }
+
+      sendMessage(`✅ Documento "${uploadedFile.name}" enviado com sucesso!\n\n📚 Categoria: ${categoryNames[uploadCategory] || uploadCategory}\n🎯 Área: ${uploadArea}\n👥 Público: ${uploadUserType.join(', ')}\n\nO arquivo foi adicionado à biblioteca${uploadCategory === 'ai-documents' ? ' e está vinculado à base de conhecimento da Nôa Esperança' : ''}. Agora posso usar este documento em minhas respostas!`, { preferVoice: false })
+
+      // Resetar estados
+      setUploadedFile(null)
+      setUploadCategory('ai-documents')
+      setUploadArea('cannabis')
+      setUploadUserType(['professional', 'student'])
 
       setTimeout(() => {
         setIsUploading(false)
@@ -387,16 +427,12 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
       setUploadProgress(0)
       
       // Adicionar mensagem de erro no chat
-      sendMessage(`❌ Erro ao fazer upload do documento "${file.name}": ${error.message || 'Erro desconhecido'}. Por favor, tente novamente.`, { preferVoice: false })
+      sendMessage(`❌ Erro ao fazer upload do documento "${uploadedFile?.name}": ${error.message || 'Erro desconhecido'}. Por favor, tente novamente.`, { preferVoice: false })
       
       setIsUploading(false)
-      
-      // Resetar input de arquivo
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
+      setUploadedFile(null)
     }
-  }, [sendMessage, user])
+  }, [uploadedFile, uploadCategory, uploadArea, uploadUserType, sendMessage, user])
 
   const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click()
@@ -553,6 +589,186 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
               >
                 {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Upload com Categorias */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-slate-800 rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-700">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white">📚 Categorizar Documento</h2>
+                <button
+                  onClick={() => {
+                    setShowUploadModal(false)
+                    setUploadedFile(null)
+                  }}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Arquivo Selecionado */}
+              {uploadedFile && (
+                <div className="p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+                  <div className="flex items-center space-x-3">
+                    <Upload className="w-8 h-8 text-emerald-400" />
+                    <div className="flex-1">
+                      <p className="text-white font-medium">{uploadedFile.name}</p>
+                      <p className="text-sm text-slate-400">
+                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Seleção de Categoria */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-3">
+                  📚 Categoria
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { id: 'ai-documents', name: '🧠 IA Residente', desc: 'Treinar a Nôa Esperança' },
+                    { id: 'protocols', name: '📖 Protocolos', desc: 'Diretrizes clínicas' },
+                    { id: 'research', name: '🔬 Pesquisa', desc: 'Artigos científicos' },
+                    { id: 'cases', name: '📊 Casos', desc: 'Casos clínicos' },
+                    { id: 'multimedia', name: '🎥 Multimídia', desc: 'Vídeos e mídia' }
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setUploadCategory(cat.id)}
+                      className={`p-4 rounded-lg border-2 transition-all text-left ${
+                        uploadCategory === cat.id
+                          ? 'border-emerald-500 bg-emerald-500/10'
+                          : 'border-slate-600 hover:border-slate-500 bg-slate-700/50'
+                      }`}
+                    >
+                      <h3 className="font-semibold text-white text-sm mb-1">{cat.name}</h3>
+                      <p className="text-xs text-slate-400">{cat.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Seleção de Área */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-3">
+                  🎯 Área
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { id: 'cannabis', name: '🌿 Cannabis' },
+                    { id: 'imre', name: '🧬 IMRE' },
+                    { id: 'clinical', name: '🏥 Clínica' },
+                    { id: 'research', name: '📈 Gestão' }
+                  ].map((area) => (
+                    <button
+                      key={area.id}
+                      onClick={() => setUploadArea(area.id)}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        uploadArea === area.id
+                          ? 'border-emerald-500 bg-emerald-500/10'
+                          : 'border-slate-600 hover:border-slate-500 bg-slate-700/50'
+                      }`}
+                    >
+                      <span className="font-semibold text-white text-sm">{area.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Seleção de Tipo de Usuário */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-3">
+                  👥 Tipo de Usuário
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { id: 'all', name: '🌐 Todos os Usuários' },
+                    { id: 'student', name: '🎓 Alunos' },
+                    { id: 'professional', name: '👨‍⚕️ Profissionais' },
+                    { id: 'patient', name: '❤️ Pacientes' }
+                  ].map((type) => {
+                    const isSelected = uploadUserType.includes(type.id) || (type.id === 'all' && uploadUserType.length === 3)
+                    return (
+                      <button
+                        key={type.id}
+                        onClick={() => {
+                          if (type.id === 'all') {
+                            setUploadUserType(['professional', 'student', 'patient'])
+                          } else {
+                            setUploadUserType(prev => 
+                              prev.includes(type.id) 
+                                ? prev.filter(t => t !== type.id)
+                                : [...prev, type.id]
+                            )
+                          }
+                        }}
+                        className={`p-3 rounded-lg border-2 transition-all ${
+                          isSelected
+                            ? 'border-emerald-500 bg-emerald-500/10'
+                            : 'border-slate-600 hover:border-slate-500 bg-slate-700/50'
+                        }`}
+                      >
+                        <span className="font-semibold text-white text-sm">{type.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Upload Progress */}
+              {isUploading && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-300">Enviando...</span>
+                    <span className="text-sm text-slate-300">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-slate-700 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-emerald-500 to-sky-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Actions */}
+              <div className="flex space-x-3 pt-4 border-t border-slate-700">
+                <button
+                  onClick={() => {
+                    setShowUploadModal(false)
+                    setUploadedFile(null)
+                  }}
+                  className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={processFileUpload}
+                  disabled={!uploadedFile || isUploading}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-sky-500 hover:from-emerald-500 hover:to-sky-400 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Enviando...
+                    </>
+                  ) : (
+                    'Fazer Upload'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

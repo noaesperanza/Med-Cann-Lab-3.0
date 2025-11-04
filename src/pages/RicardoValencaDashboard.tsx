@@ -1278,7 +1278,8 @@ const RicardoValencaDashboard: React.FC = () => {
               <button 
                 onClick={() => {
                   if (selectedPatient) {
-                    setActiveSection('chat-pacientes')
+                    // Navegar para o chat profissional com o paciente selecionado
+                    navigate(`/app/clinica/paciente/chat-profissional/${selectedPatient}`)
                   } else {
                     alert('Por favor, inicie um atendimento primeiro selecionando um paciente.')
                   }

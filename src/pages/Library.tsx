@@ -96,11 +96,18 @@ const Library: React.FC = () => {
     const filtered = realDocuments.filter((doc: any) => {
       // Verificar se o documento pertence à categoria
       if (categoryId === 'ai-documents') {
-        // IA Residente: incluir todos os documentos que estão vinculados à IA OU têm categoria ai-documents
+        // IA Residente: incluir todos os documentos que estão vinculados à IA OU têm categoria/tags relacionados
         const isAILinked = doc.isLinkedToAI === true
-        const isAICategory = doc.category === 'ai-documents'
-        const hasAITags = doc.tags && (doc.tags.includes('ai-documents') || doc.tags.includes('upload'))
-        const hasAIKeywords = doc.keywords && doc.keywords.some((k: string) => k === 'ai-documents')
+        const isAICategory = doc.category === 'ai-documents' || doc.category === 'ai-residente'
+        const hasAITags = doc.tags && (
+          doc.tags.includes('ai-documents') || 
+          doc.tags.includes('ai-residente') ||
+          doc.tags.includes('upload') ||
+          doc.tags.some((tag: string) => tag.toLowerCase().includes('ai'))
+        )
+        const hasAIKeywords = doc.keywords && (
+          doc.keywords.some((k: string) => k === 'ai-documents' || k === 'ai-residente' || k.toLowerCase().includes('ai'))
+        )
         
         const matches = isAILinked || isAICategory || hasAITags || hasAIKeywords
         return matches
@@ -136,7 +143,18 @@ const Library: React.FC = () => {
         let matchesCategory = true
         if (selectedCategory !== 'all') {
           if (selectedCategory === 'ai-documents') {
-            matchesCategory = doc.isLinkedToAI === true || doc.category === 'ai-documents'
+            // IA Residente: incluir todos os documentos vinculados à IA OU com categoria/tags relacionados
+            const isAILinked = doc.isLinkedToAI === true
+            const isAICategory = doc.category === 'ai-documents' || doc.category === 'ai-residente'
+            const hasAITags = doc.tags && (
+              doc.tags.includes('ai-documents') || 
+              doc.tags.includes('ai-residente') ||
+              doc.tags.some((tag: string) => tag.toLowerCase().includes('ai'))
+            )
+            const hasAIKeywords = doc.keywords && (
+              doc.keywords.some((k: string) => k === 'ai-documents' || k === 'ai-residente' || k.toLowerCase().includes('ai'))
+            )
+            matchesCategory = isAILinked || isAICategory || hasAITags || hasAIKeywords
           } else {
             matchesCategory = doc.category === selectedCategory
           }

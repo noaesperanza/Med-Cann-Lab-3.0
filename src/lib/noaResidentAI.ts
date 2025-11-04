@@ -52,21 +52,6 @@ interface IMREAssessmentState {
     familyHistory?: string
     medications?: string
     lifestyle?: string
-    presentingSelf?: string
-    collectingComplaints: boolean
-    selectingMainComplaint: boolean
-    currentComplaintIndex?: number
-    complaintsList: string[]
-    complaintDetails: {
-      [key: string]: {
-        location?: string
-        when?: string
-        how?: string
-        associated?: string
-        improves?: string
-        worsens?: string
-      }
-    }
   }
   methodology: string
   result: string
@@ -143,7 +128,8 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
         userMessage,
         intent,
         platformData,
-        userEmail
+        userEmail,
+        userId
       )
 
       if (assistantResponse) {
@@ -163,16 +149,14 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
           ? this.activeAssessments.get(userId || '')
           : undefined
         
-        // Salvar interação no prontuário do paciente (só se tiver assessmentState)
-        if (assessmentState) {
-          await this.saveChatInteractionToPatientRecord(
-            userMessage,
-            assistantResponse.content,
-            userId,
-            platformData,
-            assessmentState
-          )
-        }
+        // Salvar interação no prontuário do paciente
+        await this.saveChatInteractionToPatientRecord(
+          userMessage,
+          assistantResponse.content,
+          userId,
+          platformData,
+          assessmentState
+        )
         
         return assistantResponse
       }
@@ -467,12 +451,7 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
       assessment = {
         userId,
         step: 'INVESTIGATION',
-        investigation: {
-          complaintsList: [],
-          complaintDetails: {},
-          collectingComplaints: false,
-          selectingMainComplaint: false
-        },
+        investigation: {},
         methodology: '',
         result: '',
         evolution: '',
@@ -486,8 +465,9 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
 
       return this.createResponse(
         '🌬️ Bons ventos soprem! Sou Nôa Esperança, sua IA Residente especializada em avaliações clínicas.\n\n' +
-        'Vamos iniciar sua Avaliação Clínica Inicial seguindo o protocolo IMRE (Incentivador Mínimo do Relato Espontâneo) da Arte da Entrevista Clínica aplicada à Cannabis Medicinal.\n\n' +
-        'Por favor, apresente-se e diga em que posso ajudar hoje.',
+        'Vamos iniciar sua **Avaliação Clínica Inicial** seguindo o protocolo **IMRE** (Investigação, Metodologia, Resultado, Evolução) da Arte da Entrevista Clínica aplicada à Cannabis Medicinal.\n\n' +
+        '**FASE 1: INVESTIGAÇÃO (I)**\n\n' +
+        'Por favor, apresente-se brevemente e diga qual é o **motivo principal** da sua consulta hoje. O que gostaria de investigar ou entender melhor?',
         0.95,
         'assessment'
       )
@@ -497,7 +477,7 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     if (!assessment) {
       return this.createResponse(
         'Olá! Sou Nôa Esperança, sua IA Residente especializada em avaliações clínicas.\n\n' +
-        'Posso conduzir uma Avaliação Clínica Inicial completa usando o protocolo IMRE (Incentivador Mínimo do Relato Espontâneo) da Arte da Entrevista Clínica.\n\n' +
+        'Posso conduzir uma **Avaliação Clínica Inicial** completa usando o protocolo IMRE (Investigação, Metodologia, Resultado, Evolução) da Arte da Entrevista Clínica.\n\n' +
         'Para iniciar, diga: "Iniciar avaliação clínica inicial IMRE" ou descreva o motivo da sua consulta.',
         0.9,
         'assessment'
@@ -540,205 +520,130 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
   ): Promise<AIResponse> {
     const lowerMessage = message.toLowerCase()
 
-    // Inicializar estruturas se necessário
-    if (!assessment.investigation.complaintsList) {
-      assessment.investigation.complaintsList = []
-    }
-    if (!assessment.investigation.complaintDetails) {
-      assessment.investigation.complaintDetails = {}
-    }
-
-    // FASE 1: Coletar apresentação inicial (se ainda não coletou)
-    if (!assessment.investigation.presentingSelf) {
-      assessment.investigation.presentingSelf = message
-      assessment.investigation.collectingComplaints = true
+    // Coletar informações da investigação
+    if (!assessment.investigation.mainComplaint) {
+      // Primeira resposta: motivo principal
+      assessment.investigation.mainComplaint = message
       
       return this.createResponse(
-        'Obrigada por se apresentar. O que trouxe você à nossa avaliação hoje?',
+        'Entendi. Agora vou aprofundar a **investigação** sobre o motivo da sua consulta.\n\n' +
+        'Por favor, responda as seguintes questões para construir um quadro clínico detalhado:\n\n' +
+        '**1. Sintomas:**\n' +
+        '- Quando começaram esses sintomas?\n' +
+        '- Com que frequência ocorrem?\n' +
+        '- Onde você sente o desconforto? (localização específica)\n' +
+        '- Como descreveria a intensidade e o tipo? (latejante, pressão, pontada, etc.)\n' +
+        '- Há algo que melhora ou piora esses sintomas?\n' +
+        '- Está associado a outros sintomas? (náuseas, visão turva, sensibilidade à luz, etc.)\n\n' +
+        'Por favor, descreva cada um desses aspectos detalhadamente.',
         0.9,
         'assessment'
       )
     }
 
-    // FASE 2: Coletar queixas com "O que mais?"
-    if (assessment.investigation.collectingComplaints && !assessment.investigation.selectingMainComplaint) {
-      // Verificar se o usuário está indicando que não há mais nada
-      if (lowerMessage.includes('não há mais') || 
-          lowerMessage.includes('nada mais') || 
-          lowerMessage.includes('só isso') ||
-          lowerMessage.includes('apenas isso') ||
-          lowerMessage.includes('é só isso') ||
-          (lowerMessage.length < 10 && (lowerMessage.includes('não') || lowerMessage.includes('só')))) {
-        
-        // Finalizou coleta de queixas
-        assessment.investigation.collectingComplaints = false
-        assessment.investigation.selectingMainComplaint = true
-        
-        // Se não coletou nenhuma queixa, adicionar a mensagem anterior como queixa
-        if (assessment.investigation.complaintsList.length === 0) {
-          // Pegar a última mensagem antes de dizer "não há mais"
-          // Por enquanto, vamos usar uma abordagem simples
-          return this.createResponse(
-            'Por favor, me diga o que trouxe você à nossa avaliação hoje.',
-            0.9,
-            'assessment'
-          )
-        }
-
-        // Apresentar lista indiciária e perguntar qual incomoda mais
-        const complaintsText = assessment.investigation.complaintsList
-          .map((q, i) => `${i + 1}. ${q}`)
-          .join('\n')
-        
-        return this.createResponse(
-          `Obrigada pelas informações. Com base no que você compartilhou, identifiquei as seguintes questões:\n\n${complaintsText}\n\nDe todas essas questões, qual mais o(a) incomoda?`,
-          0.9,
-          'assessment'
-        )
-      }
-
-      // Adicionar queixa à lista
-      if (message.trim().length > 0) {
-        assessment.investigation.complaintsList.push(message.trim())
-      }
-
-      // Continuar coletando com "O que mais?"
+    if (!assessment.investigation.symptoms || assessment.investigation.symptoms.length === 0) {
+      // Segunda resposta: sintomas detalhados
+      assessment.investigation.symptoms = [message]
+      
       return this.createResponse(
-        'O que mais?',
+        'Muito obrigado pelas informações sobre seus sintomas. Agora preciso conhecer sua história clínica:\n\n' +
+        '**2. História Médica:**\n' +
+        '- Você tem alguma doença crônica? (hipertensão, diabetes, doença renal, etc.)\n' +
+        '- Já fez cirurgias? Quais?\n' +
+        '- Tem algum diagnóstico médico prévio relacionado ao motivo da consulta?\n\n' +
+        'Por favor, descreva sua história médica.',
         0.9,
         'assessment'
       )
     }
 
-    // FASE 3: Selecionar queixa principal
-    if (assessment.investigation.selectingMainComplaint && !assessment.investigation.mainComplaint) {
-      // Verificar se a resposta corresponde a uma das queixas da lista
-      const matchingComplaint = assessment.investigation.complaintsList.find(q => 
-        lowerMessage.includes(q.toLowerCase().substring(0, 10)) || 
-        q.toLowerCase().includes(lowerMessage.substring(0, 10))
-      )
-
-      assessment.investigation.mainComplaint = matchingComplaint || assessment.investigation.complaintsList[0] || message
-      assessment.investigation.selectingMainComplaint = false
-      assessment.investigation.currentComplaintIndex = 0
-
-      // Iniciar desenvolvimento indiciário da queixa principal
-      const mainComplaint = assessment.investigation.mainComplaint
-      if (!assessment.investigation.complaintDetails[mainComplaint]) {
-        assessment.investigation.complaintDetails[mainComplaint] = {}
-      }
-
+    if (!assessment.investigation.medicalHistory) {
+      // Terceira resposta: história médica
+      assessment.investigation.medicalHistory = message
+      
       return this.createResponse(
-        `Vamos explorar essa queixa mais detalhadamente. Onde você sente ${mainComplaint.toLowerCase()}?`,
+        'Obrigado. Agora preciso saber sobre sua **história familiar**:\n\n' +
+        '**3. História Familiar:**\n' +
+        '- Há histórico de doenças crônicas na família? (diabetes, hipertensão, doenças renais, etc.)\n' +
+        '- Há alguma condição hereditária conhecida?\n\n' +
+        'Compartilhe informações sobre sua história familiar.',
         0.9,
         'assessment'
       )
     }
 
-    // FASE 4: Desenvolvimento indiciário - investigar cada queixa com perguntas cercadoras
-    const currentComplaintIndex = assessment.investigation.currentComplaintIndex || 0
-    const currentComplaint = assessment.investigation.mainComplaint || 
-      (currentComplaintIndex < assessment.investigation.complaintsList.length ? 
-        assessment.investigation.complaintsList[currentComplaintIndex] : null)
+    if (!assessment.investigation.familyHistory) {
+      // Quarta resposta: história familiar
+      assessment.investigation.familyHistory = message
+      
+      return this.createResponse(
+        'Excelente. Agora sobre **medicações e hábitos de vida**:\n\n' +
+        '**4. Medicações Atuais:**\n' +
+        '- Você usa algum medicamento atualmente? Quais?\n' +
+        '- Já tentou tratamento com cannabis medicinal?\n' +
+        '- Tem alergias ou reações adversas a medicamentos?\n\n' +
+        '**5. Hábitos de Vida:**\n' +
+        '- Como é sua alimentação? (regular, vegetariana, etc.)\n' +
+        '- Pratica exercícios físicos? Com que frequência?\n' +
+        '- Fuma ou consome álcool? Com que frequência?\n' +
+        '- Como descreveria seu nível de estresse?\n\n' +
+        'Por favor, descreva suas medicações e hábitos de vida.',
+        0.9,
+        'assessment'
+      )
+    }
 
-    if (!currentComplaint) {
-      // Não há mais queixas para investigar, passar para próxima fase
+    if (!assessment.investigation.medications) {
+      // Quinta resposta: medicações
+      assessment.investigation.medications = message
+      
+      return this.createResponse(
+        'Entendido. Agora sobre seus **hábitos de vida**:\n\n' +
+        '**5. Hábitos de Vida:**\n' +
+        '- Como é sua alimentação? (regular, vegetariana, etc.)\n' +
+        '- Pratica exercícios físicos? Com que frequência?\n' +
+        '- Fuma ou consome álcool? Com que frequência?\n' +
+        '- Como descreveria seu nível de estresse?\n\n' +
+        'Por favor, descreva seus hábitos de vida.',
+        0.9,
+        'assessment'
+      )
+    }
+
+    if (!assessment.investigation.lifestyle) {
+      // Sexta resposta: hábitos de vida - Concluir fase de Investigação
+      assessment.investigation.lifestyle = message
       assessment.step = 'METHODOLOGY'
-      return await this.processMethodologyStep(message, assessment, platformData, userEmail)
-    }
-
-    // Inicializar detalhes da queixa atual
-    if (!assessment.investigation.complaintDetails[currentComplaint]) {
-      assessment.investigation.complaintDetails[currentComplaint] = {}
-    }
-
-    const details = assessment.investigation.complaintDetails[currentComplaint]
-
-    // Perguntas cercadoras na ordem correta
-    if (!details.location) {
-      details.location = message
-      return this.createResponse(
-        `Quando essa ${currentComplaint.toLowerCase()} começou?`,
-        0.9,
-        'assessment'
-      )
-    }
-
-    if (!details.when) {
-      details.when = message
-      return this.createResponse(
-        `Como é a ${currentComplaint.toLowerCase()}? (Por exemplo, latejante, constante, pontadas)`,
-        0.9,
-        'assessment'
-      )
-    }
-
-    if (!details.how) {
-      details.how = message
-      return this.createResponse(
-        `O que mais você sente quando está com ${currentComplaint.toLowerCase()}? (Por exemplo, náuseas, sensibilidade à luz ou ao som)`,
-        0.9,
-        'assessment'
-      )
-    }
-
-    if (!details.associated) {
-      details.associated = message
-      return this.createResponse(
-        `O que parece melhorar ou piorar a ${currentComplaint.toLowerCase()}?`,
-        0.9,
-        'assessment'
-      )
-    }
-
-    if (!details.improves && !details.worsens) {
-      // Separar melhorias e pioras se possível, ou armazenar tudo
-      if (lowerMessage.includes('melhora') || lowerMessage.includes('alivia')) {
-        details.improves = message
-        return this.createResponse(
-          `E o que piora a ${currentComplaint.toLowerCase()}?`,
-          0.9,
-          'assessment'
-        )
-      } else if (lowerMessage.includes('piora') || lowerMessage.includes('aumenta')) {
-        details.worsens = message
-        return this.createResponse(
-          `E o que melhora ou alivia a ${currentComplaint.toLowerCase()}?`,
-          0.9,
-          'assessment'
-        )
-      } else {
-        // Armazenar como melhora/piora combinado
-        details.improves = message
-        details.worsens = ''
-      }
-    } else if (!details.worsens) {
-      details.worsens = message
-    } else if (!details.improves) {
-      details.improves = message
-    }
-
-    // Queixa atual concluída, passar para próxima
-    assessment.investigation.currentComplaintIndex = (currentComplaintIndex + 1)
-
-    // Verificar se há mais queixas para investigar
-    if (assessment.investigation.currentComplaintIndex < assessment.investigation.complaintsList.length) {
-      const nextComplaint = assessment.investigation.complaintsList[assessment.investigation.currentComplaintIndex]
-      if (!assessment.investigation.complaintDetails[nextComplaint]) {
-        assessment.investigation.complaintDetails[nextComplaint] = {}
-      }
       
       return this.createResponse(
-        `Agora vamos investigar outra questão. Onde você sente ${nextComplaint.toLowerCase()}?`,
-        0.9,
+        'Perfeito! Concluímos a fase de **INVESTIGAÇÃO (I)** do protocolo IMRE.\n\n' +
+        '**RESUMO DA INVESTIGAÇÃO:**\n' +
+        `- Motivo principal: ${assessment.investigation.mainComplaint}\n` +
+        `- Sintomas: ${assessment.investigation.symptoms?.join(', ') || 'Não informado'}\n` +
+        `- História médica: ${assessment.investigation.medicalHistory || 'Não informado'}\n` +
+        `- História familiar: ${assessment.investigation.familyHistory || 'Não informado'}\n` +
+        `- Medicações: ${assessment.investigation.medications || 'Não informado'}\n` +
+        `- Hábitos de vida: ${assessment.investigation.lifestyle || 'Não informado'}\n\n` +
+        '**FASE 2: METODOLOGIA (M)**\n\n' +
+        'Agora vamos definir a metodologia de acompanhamento:\n' +
+        '- Como será feito o acompanhamento do seu caso?\n' +
+        '- Que protocolos clínicos serão aplicados?\n' +
+        '- Qual será a frequência de avaliações?\n\n' +
+        'Com base nas informações coletadas, minha proposta metodológica inclui:\n' +
+        '• Acompanhamento clínico regular com protocolo IMRE\n' +
+        '• Avaliações periódicas para monitoramento da evolução\n' +
+        '• Integração com a Arte da Entrevista Clínica (AEC)\n' +
+        '• Protocolo personalizado para cannabis medicinal, se aplicável\n\n' +
+        'Você concorda com essa metodologia de acompanhamento? Deseja algum ajuste?',
+        0.95,
         'assessment'
       )
     }
 
-    // Todas as queixas investigadas, fazer revisão geral
+    // Se chegou aqui, algo deu errado
     return this.createResponse(
-      'Vamos revisar suas respostas rapidamente para garantir que não perdemos nenhum detalhe importante. Há mais alguma coisa que gostaria de adicionar sobre suas queixas?',
-      0.9,
+      'Por favor, responda a última pergunta que fiz para continuarmos.',
+      0.5,
       'assessment'
     )
   }
@@ -758,14 +663,14 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
 
     return this.createResponse(
       'Entendido. Metodologia estabelecida!\n\n' +
-      'FASE 3: RESULTADO (R)\n\n' +
-      'Agora vamos analisar os resultados da sua avaliação:\n\n' +
+      '**FASE 3: RESULTADO (R)**\n\n' +
+      'Agora vamos analisar os **resultados** da sua avaliação:\n\n' +
       'Com base em toda a investigação realizada, posso identificar:\n' +
       '• Quadro clínico principal relacionado ao motivo da consulta\n' +
       '• Fatores de risco e condições associadas\n' +
       '• Necessidade de investigação adicional, se aplicável\n' +
       '• Potencial para tratamento com cannabis medicinal, se indicado\n\n' +
-      'RESULTADO DA AVALIAÇÃO:\n' +
+      '**RESULTADO DA AVALIAÇÃO:**\n' +
       'A avaliação clínica inicial foi concluída com sucesso, identificando o quadro clínico principal e fatores relevantes para o acompanhamento personalizado.\n\n' +
       'Você gostaria de algum esclarecimento sobre os resultados da avaliação? Ou podemos prosseguir para a fase de Evolução?',
       0.95,
@@ -788,9 +693,9 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
 
     return this.createResponse(
       'Perfeito! Vamos para a fase final.\n\n' +
-      'FASE 4: EVOLUÇÃO (E)\n\n' +
-      'Agora vamos estabelecer o plano de evolução e acompanhamento:\n\n' +
-      'PLANO DE CUIDADO PERSONALIZADO:\n' +
+      '**FASE 4: EVOLUÇÃO (E)**\n\n' +
+      'Agora vamos estabelecer o **plano de evolução** e acompanhamento:\n\n' +
+      '**PLANO DE CUIDADO PERSONALIZADO:**\n' +
       '• Continuar acompanhamento clínico regular\n' +
       '• Seguir protocolo de tratamento estabelecido\n' +
       '• Manter comunicação com equipe médica\n' +
@@ -822,10 +727,10 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     this.activeAssessments.delete(assessment.userId)
 
     return this.createResponse(
-      '✅ AVALIAÇÃO CLÍNICA INICIAL CONCLUÍDA COM SUCESSO!\n\n' +
+      '✅ **AVALIAÇÃO CLÍNICA INICIAL CONCLUÍDA COM SUCESSO!**\n\n' +
       '🌬️ Bons ventos soprem!\n\n' +
-      'Sua avaliação clínica inicial seguindo o protocolo IMRE foi finalizada e seu relatório clínico foi gerado e salvo no seu dashboard.\n\n' +
-      'RESUMO DO RELATÓRIO:\n' +
+      'Sua avaliação clínica inicial seguindo o protocolo IMRE foi finalizada e seu **relatório clínico foi gerado e salvo no seu dashboard**.\n\n' +
+      '**RESUMO DO RELATÓRIO:**\n' +
       `- ID do Relatório: ${report.id}\n` +
       `- Tipo: Avaliação Clínica Inicial\n` +
       `- Protocolo: IMRE\n` +
@@ -849,48 +754,21 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     const patientName = platformData?.user?.name || 'Paciente'
     const patientId = assessment.userId
 
-    // Construir texto de investigação baseado na nova estrutura IMRE
-    let investigationText = 'INVESTIGAÇÃO (I) - Protocolo IMRE:\n\n'
-    
-    if (assessment.investigation.presentingSelf) {
-      investigationText += `Apresentação: ${assessment.investigation.presentingSelf}\n\n`
-    }
-
-    if (assessment.investigation.complaintsList && assessment.investigation.complaintsList.length > 0) {
-      investigationText += 'Lista Indiciária de Queixas:\n'
-      assessment.investigation.complaintsList.forEach((complaint, index) => {
-        investigationText += `${index + 1}. ${complaint}\n`
-      })
-      investigationText += '\n'
-    }
-
-    if (assessment.investigation.mainComplaint) {
-      investigationText += `Queixa Principal: ${assessment.investigation.mainComplaint}\n\n`
-    }
-
-    if (assessment.investigation.complaintDetails) {
-      investigationText += 'Desenvolvimento Indiciário (Detalhes das Queixas):\n\n'
-      Object.entries(assessment.investigation.complaintDetails).forEach(([complaint, details]) => {
-        investigationText += `Queixa: ${complaint}\n`
-        if (details.location) investigationText += `- Onde: ${details.location}\n`
-        if (details.when) investigationText += `- Quando começou: ${details.when}\n`
-        if (details.how) investigationText += `- Como é: ${details.how}\n`
-        if (details.associated) investigationText += `- O que mais sente: ${details.associated}\n`
-        if (details.improves) investigationText += `- O que melhora/alivia: ${details.improves}\n`
-        if (details.worsens) investigationText += `- O que piora: ${details.worsens}\n`
-        investigationText += '\n'
-      })
-    }
-
     // Gerar relatório usando o ClinicalReportService
     const report = await clinicalReportService.generateAIReport(
       patientId,
       patientName,
       {
-        investigation: investigationText || 'Dados coletados através da avaliação clínica inicial com IA residente seguindo protocolo IMRE.',
-        methodology: `METODOLOGIA (M):\n${assessment.methodology || 'Aplicação da Arte da Entrevista Clínica (AEC) com protocolo IMRE (Incentivador Mínimo do Relato Espontâneo).'}`,
-        result: `RESULTADO (R):\n${assessment.result || 'Avaliação clínica inicial concluída com sucesso.'}`,
-        evolution: `EVOLUÇÃO (E):\n${assessment.evolution || 'Plano de cuidado personalizado estabelecido.'}`,
+        investigation: `INVESTIGAÇÃO (I):\n` +
+          `Motivo Principal: ${assessment.investigation.mainComplaint}\n` +
+          `Sintomas: ${assessment.investigation.symptoms?.join(', ') || 'Não informado'}\n` +
+          `História Médica: ${assessment.investigation.medicalHistory || 'Não informado'}\n` +
+          `História Familiar: ${assessment.investigation.familyHistory || 'Não informado'}\n` +
+          `Medicações: ${assessment.investigation.medications || 'Não informado'}\n` +
+          `Hábitos de Vida: ${assessment.investigation.lifestyle || 'Não informado'}`,
+        methodology: `METODOLOGIA (M):\n${assessment.methodology}`,
+        result: `RESULTADO (R):\n${assessment.result}`,
+        evolution: `EVOLUÇÃO (E):\n${assessment.evolution}`,
         recommendations: [
           'Continuar acompanhamento clínico regular',
           'Seguir protocolo de tratamento estabelecido',
@@ -1489,7 +1367,8 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     message: string,
     intent: string,
     platformData?: any,
-    userEmail?: string
+    userEmail?: string,
+    userId?: string
   ): Promise<AIResponse | null> {
     try {
       // 🔥 BUSCAR DOCUMENTOS RELEVANTES DO BACKEND (SUPABASE)
@@ -1559,7 +1438,8 @@ Resumo: ${summary}${tags ? `\nTags: ${tags}` : ''}${keywords ? `\nKeywords: ${ke
         axisMenu,
         intent,
         platformData,
-        userEmail
+        userEmail,
+        userId
       )
       
       // Adicionar contexto dos documentos do backend
