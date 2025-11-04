@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react'
 import { NoaEsperancaCore, noaEsperancaConfig, NoaInteraction } from '../lib/noaEsperancaCore'
 import { NoaResidentAI, residentAIConfig, AIResponse } from '../lib/noaResidentAI'
 import { useAuth } from './AuthContext'
@@ -57,12 +57,42 @@ export const NoaProvider: React.FC<NoaProviderProps> = ({ children }) => {
   // Inicializar Nôa Esperança Core (apenas uma vez)
   const [noaCore] = useState(() => new NoaEsperancaCore(noaEsperancaConfig))
   
-  // Inicializar IA Residente (apenas uma vez para manter o estado)
-  const [residentAI] = useState(() => new NoaResidentAI())
+  // Inicializar IA Residente apenas quando houver usuário logado
+  const residentAIRef = useRef<NoaResidentAI | null>(null)
   
-  console.log('🎯 NoaContext - residentAI instanciado:', residentAI)
+  useEffect(() => {
+    if (user && !residentAIRef.current) {
+      residentAIRef.current = new NoaResidentAI()
+    } else if (!user && residentAIRef.current) {
+      // Limpar IA quando usuário fizer logout
+      residentAIRef.current = null
+    }
+  }, [user])
 
   const sendMessage = async (content: string) => {
+    // Verificar se há usuário logado e IA inicializada
+    if (!user) {
+      const errorMessage: NoaMessage = {
+        id: Date.now().toString(),
+        type: 'noa',
+        content: 'Por favor, faça login para usar a IA residente.',
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMessage])
+      return
+    }
+
+    if (!residentAIRef.current) {
+      const errorMessage: NoaMessage = {
+        id: Date.now().toString(),
+        type: 'noa',
+        content: 'IA residente não inicializada. Aguarde um momento e tente novamente.',
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMessage])
+      return
+    }
+
     const userMessage: NoaMessage = {
       id: Date.now().toString(),
       type: 'user',
@@ -75,15 +105,20 @@ export const NoaProvider: React.FC<NoaProviderProps> = ({ children }) => {
 
     try {
       // Processar com IA Residente incluindo email do usuário para individualização
-      console.log('🧠 Processando mensagem com IA Residente...', content)
-      const aiResponse = await residentAI.processMessage(content, user?.id, user?.email)
+      const aiResponse = await residentAIRef.current.processMessage(
+        content, 
+        user.id, 
+        user.email
+      )
       
-      console.log('✅ Resposta da IA Residente:', aiResponse)
+      if (!aiResponse) {
+        throw new Error('A IA não retornou uma resposta válida')
+      }
       
       const noaMessage: NoaMessage = {
         id: (Date.now() + 1).toString(),
         type: 'noa',
-        content: aiResponse.content,
+        content: aiResponse.content || 'Desculpe, não consegui processar sua mensagem no momento.',
         timestamp: new Date(),
         aiResponse: aiResponse,
         confidence: aiResponse.confidence,
@@ -92,13 +127,12 @@ export const NoaProvider: React.FC<NoaProviderProps> = ({ children }) => {
 
       setMessages(prev => [...prev, noaMessage])
     } catch (error) {
-      console.error('Erro ao processar mensagem com Nôa:', error)
+      console.error('❌ Erro ao processar mensagem com Nôa:', error)
       
-      // Fallback para resposta simples
       const noaMessage: NoaMessage = {
         id: (Date.now() + 1).toString(),
         type: 'noa',
-        content: `Olá! Sou a Nôa Esperança, sua assistente médica especializada em Cannabis Medicinal. Como posso ajudá-lo hoje?`,
+        content: 'Desculpe, não consegui processar sua mensagem no momento. Por favor, tente novamente.',
         timestamp: new Date()
       }
 

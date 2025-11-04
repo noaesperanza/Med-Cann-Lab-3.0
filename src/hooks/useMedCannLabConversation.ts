@@ -80,9 +80,16 @@ export const useMedCannLabConversation = () => {
   const [lastIntent, setLastIntent] = useState<ConversationalIntent | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [usedEndpoints, setUsedEndpoints] = useState<string[]>([])
-  if (!residentRef.current) {
-    residentRef.current = new NoaResidentAI()
-  }
+  
+  // Inicializar IA apenas quando houver um usuário logado
+  useEffect(() => {
+    if (user && !residentRef.current) {
+      residentRef.current = new NoaResidentAI()
+    } else if (!user && residentRef.current) {
+      // Limpar IA quando usuário fizer logout
+      residentRef.current = null
+    }
+  }, [user])
 
   const conversationId = useMemo(() => conversationIdRef.current, [])
   const lastSpokenMessageRef = useRef<string | null>(null)
@@ -302,8 +309,11 @@ export const useMedCannLabConversation = () => {
       }
     }
 
-    utterance.onerror = () => {
-      console.warn('[useMedCannLabConversation] Erro ao sintetizar fala.')
+    utterance.onerror = (error) => {
+      // Silenciar erros de síntese de voz não críticos (comuns em alguns navegadores)
+      if (error?.error !== 'not-allowed' && error?.error !== 'interrupted') {
+        console.debug('[useMedCannLabConversation] Erro ao sintetizar fala:', error?.error || 'erro desconhecido')
+      }
       const current = speechQueueRef.current
       if (current && current.messageId === lastMessage.id) {
         if (current.timer) {
@@ -336,6 +346,17 @@ export const useMedCannLabConversation = () => {
     const trimmed = text.trim()
     if (!trimmed || isProcessing) return
 
+    // Verificar se há usuário logado e IA inicializada
+    if (!user) {
+      setError('Por favor, faça login para usar a IA residente.')
+      return
+    }
+
+    if (!residentRef.current) {
+      setError('IA residente não inicializada. Aguarde um momento e tente novamente.')
+      return
+    }
+
     setIsProcessing(true)
     setError(null)
     stopSpeech()
@@ -350,7 +371,7 @@ export const useMedCannLabConversation = () => {
     setMessages(prev => [...prev, userMessage])
 
     try {
-      const response = await residentRef.current!.processMessage(trimmed, user?.id, user?.email)
+      const response = await residentRef.current.processMessage(trimmed, user.id, user.email)
 
       const intent = mapResponseToIntent(response)
       const assistantMessage: ConversationMessage = {
@@ -389,7 +410,10 @@ export const useMedCannLabConversation = () => {
   }, [sendMessage])
 
   const resetConversation = useCallback(() => {
-    residentRef.current = new NoaResidentAI()
+    // Só reiniciar se houver usuário logado
+    if (user) {
+      residentRef.current = new NoaResidentAI()
+    }
     conversationIdRef.current = createConversationId()
     setMessages([{
       id: 'welcome',
@@ -401,7 +425,7 @@ export const useMedCannLabConversation = () => {
     setLastIntent(null)
     setUsedEndpoints([])
     setError(null)
-  }, [])
+  }, [user])
 
   return {
     conversationId,

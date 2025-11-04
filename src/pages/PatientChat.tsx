@@ -10,7 +10,8 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  ChevronDown
+  ChevronDown,
+  MessageSquare
 } from 'lucide-react'
 import { PROFESSIONALS_ARRAY } from '../constants/professionals'
 
@@ -21,6 +22,7 @@ const PatientChat: React.FC = () => {
   const [selectedProfessional, setSelectedProfessional] = useState('ricardo-valenca')
   const [showProfessionalSelect, setShowProfessionalSelect] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const currentProfessional = PROFESSIONALS_ARRAY.find(p => p.id === selectedProfessional) || PROFESSIONALS_ARRAY[0]
 
@@ -94,7 +96,7 @@ const PatientChat: React.FC = () => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showProfessionalSelect) {
+      if (showProfessionalSelect && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowProfessionalSelect(false)
       }
     }
@@ -140,12 +142,18 @@ const PatientChat: React.FC = () => {
 
             {/* Dropdown */}
             {showProfessionalSelect && (
-              <div className="absolute left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10">
+              <div 
+                ref={dropdownRef}
+                className="absolute left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="p-2">
                   {PROFESSIONALS_ARRAY.map((professional) => (
                     <button
                       key={professional.id}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
                         setSelectedProfessional(professional.id)
                         setShowProfessionalSelect(false)
                       }}
@@ -284,22 +292,36 @@ const PatientChat: React.FC = () => {
           </div>
         </div>
 
-        {/* Informações Importantes */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-slate-800/80 rounded-lg p-6 text-center">
-            <Clock className="w-8 h-8 text-blue-400 mx-auto mb-3" />
-            <h3 className="text-white font-medium mb-2">Horário de Atendimento</h3>
-            <p className="text-slate-300 text-sm">Seg-Sex: 8h às 18h</p>
-          </div>
-          <div className="bg-slate-800/80 rounded-lg p-6 text-center">
-            <AlertCircle className="w-8 h-8 text-orange-400 mx-auto mb-3" />
-            <h3 className="text-white font-medium mb-2">Emergência</h3>
-            <p className="text-slate-300 text-sm">Use o chat de emergência</p>
-          </div>
-          <div className="bg-slate-800/80 rounded-lg p-6 text-center">
-            <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-3" />
-            <h3 className="text-white font-medium mb-2">Próxima Consulta</h3>
-            <p className="text-slate-300 text-sm">15/01/2024 - 14:00</p>
+        {/* Banner de Avaliação Clínica Inicial com IA Nôa Esperança */}
+        <div className="mt-8">
+          <div className="bg-blue-900/30 border border-blue-700/50 rounded-lg p-6">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-white font-semibold mb-2">🤖 Avaliação Clínica Inicial pela IA Residente</h4>
+                <p className="text-sm text-slate-300 mb-3">
+                  Sua consulta será precedida por uma <strong>Avaliação Clínica Inicial</strong> realizada pela <strong>IA Residente Nôa Esperança</strong>, especializada em Cannabis Medicinal e Nefrologia.
+                </p>
+                <div className="bg-slate-900/50 rounded p-3 mb-3">
+                  <p className="text-xs text-slate-400 mb-2"><strong className="text-slate-300">Fluxo do Processo:</strong></p>
+                  <ol className="text-xs text-slate-400 space-y-1 list-decimal list-inside">
+                    <li>Você realizará a <strong className="text-slate-300">Avaliação Clínica Inicial</strong> com a IA Nôa Esperança</li>
+                    <li>A IA gerará um <strong className="text-slate-300">Relatório da Avaliação Clínica Inicial</strong></li>
+                    <li>O relatório será direcionado para seu <strong className="text-slate-300">Prontuário Eletrônico</strong></li>
+                    <li>Você poderá acessar o relatório na área de <strong className="text-slate-300">Atendimento</strong> ou <strong className="text-slate-300">Chat com Profissional</strong></li>
+                    <li>O profissional receberá o relatório antes da consulta presencial/online</li>
+                  </ol>
+                </div>
+                <div className="bg-purple-900/30 border border-purple-700/50 rounded p-3">
+                  <p className="text-xs text-slate-300 mb-1"><strong>🔐 Consentimento Informado & NFT Escute-se</strong></p>
+                  <p className="text-xs text-slate-400">
+                    Ao agendar, você concorda com o processamento de seus dados pela IA Residente e reconhece o vínculo com o <strong className="text-purple-300">NFT Escute-se</strong>, garantindo seus direitos de privacidade e propriedade dos dados.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

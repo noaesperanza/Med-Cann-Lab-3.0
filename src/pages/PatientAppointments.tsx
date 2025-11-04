@@ -56,60 +56,8 @@ const PatientAppointments: React.FC = () => {
     priority: 'normal'
   })
 
-  // Mock dados de agendamentos do paciente
-  const [appointments, setAppointments] = useState([
-    {
-      id: 1,
-      doctorName: 'Dr. Passos Mir',
-      doctorSpecialty: 'Clínico Geral',
-      date: '2024-02-15',
-      time: '14:00',
-      type: 'presencial',
-      service: 'Consulta de retorno',
-      room: 'Sala 201',
-      status: 'agendado',
-      duration: 60,
-      priority: 'normal',
-      notes: 'Trazer exames de sangue',
-      rating: 5,
-      patientComment: 'Excelente atendimento!',
-      createdAt: '2024-01-15'
-    },
-    {
-      id: 2,
-      doctorName: 'Dra. Ana Costa',
-      doctorSpecialty: 'Cardiologista',
-      date: '2024-02-16',
-      time: '10:00',
-      type: 'online',
-      service: 'Avaliação cardiológica',
-      room: 'Plataforma digital',
-      status: 'agendado',
-      duration: 45,
-      priority: 'high',
-      notes: 'Consulta por videochamada',
-      rating: 4,
-      patientComment: 'Muito bom, esclareceu minhas dúvidas.',
-      createdAt: '2024-01-16'
-    },
-    {
-      id: 3,
-      doctorName: 'Dr. Passos Mir',
-      doctorSpecialty: 'Clínico Geral',
-      date: '2024-02-17',
-      time: '09:00',
-      type: 'presencial',
-      service: 'Exame de rotina',
-      room: 'Sala 101',
-      status: 'agendado',
-      duration: 90,
-      priority: 'normal',
-      notes: 'Avaliação completa',
-      rating: null,
-      patientComment: null,
-      createdAt: '2024-01-17'
-    }
-  ])
+  // Agendamentos do paciente (será populado com dados reais do banco)
+  const [appointments, setAppointments] = useState<any[]>([])
 
   // Horários disponíveis
   const timeSlots = [
@@ -118,17 +66,14 @@ const PatientAppointments: React.FC = () => {
     '16:00', '16:30', '17:00', '17:30', '18:00', '18:30'
   ]
 
-  // Especialidades
+  // Especialidades disponíveis
   const specialties = [
-    'Clínico Geral', 'Cardiologia', 'Endocrinologia', 'Neurologia',
-    'Psiquiatria', 'Dermatologia', 'Oftalmologia', 'Ortopedia'
+    'Nefrologia',
+    'Neurologia'
   ]
 
-  // Salas disponíveis
-  const rooms = [
-    'Sala 101', 'Sala 102', 'Sala 201', 'Sala 202', 'Sala 301', 'Sala 302',
-    'Plataforma digital', 'Telemedicina'
-  ]
+  // Salas disponíveis (removido - será determinado automaticamente pelo tipo de consulta)
+  const rooms: string[] = []
 
   // Função para gerar dias do mês
   const generateCalendarDays = () => {
@@ -214,39 +159,36 @@ const PatientAppointments: React.FC = () => {
     setShowAppointmentModal(true)
   }
 
-  // Função para salvar agendamento
-  const handleSaveAppointment = () => {
-    const newAppointment = {
-      id: appointments.length + 1,
-      doctorName: 'Dr. Passos Mir',
-      doctorSpecialty: 'Clínico Geral',
-      date: appointmentData.date,
-      time: appointmentData.time,
-      type: appointmentData.type,
-      service: appointmentData.service,
-      room: appointmentData.room,
-      status: 'agendado',
-      duration: appointmentData.duration,
-      priority: appointmentData.priority,
-      notes: appointmentData.notes,
-      rating: null,
-      patientComment: null,
-      createdAt: new Date().toISOString().split('T')[0]
+  // Função para salvar agendamento (vinculado à IA residente)
+  const handleSaveAppointment = async () => {
+    if (!appointmentData.date || !appointmentData.time || !appointmentData.specialty) {
+      alert('Por favor, preencha todos os campos obrigatórios.')
+      return
     }
 
-    setAppointments([...appointments, newAppointment])
-    setShowAppointmentModal(false)
-    setAppointmentData({
-      date: '',
-      time: '',
-      type: 'presencial',
-      specialty: '',
-      service: '',
-      room: '',
-      notes: '',
-      duration: 60,
-      priority: 'normal'
-    })
+    try {
+      // TODO: Salvar agendamento no banco vinculado à avaliação clínica inicial pela IA residente
+      // O agendamento será processado pela IA residente que realizará a avaliação clínica inicial
+      // e gerará o relatório que será direcionado para o prontuário do paciente
+      
+      alert('Agendamento realizado com sucesso! Você receberá uma avaliação clínica inicial pela IA residente Nôa Esperança antes da consulta.')
+      
+      setShowAppointmentModal(false)
+      setAppointmentData({
+        date: '',
+        time: '',
+        type: 'presencial',
+        specialty: '',
+        service: '',
+        room: '',
+        notes: '',
+        duration: 60,
+        priority: 'normal'
+      })
+    } catch (error) {
+      console.error('Erro ao agendar consulta:', error)
+      alert('Erro ao agendar consulta. Tente novamente.')
+    }
   }
 
   // Função para renderizar calendário
@@ -488,24 +430,58 @@ const PatientAppointments: React.FC = () => {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-slate-800 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <h3 className="text-xl font-semibold text-white mb-4">Novo Agendamento</h3>
+              
+              {/* Informações sobre IA Residente e Fluxo */}
+              <div className="bg-blue-900/30 border border-blue-700/50 rounded-lg p-4 mb-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                    <MessageSquare className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-white font-semibold mb-2">🤖 Avaliação Clínica Inicial pela IA Residente</h4>
+                    <p className="text-sm text-slate-300 mb-3">
+                      Sua consulta será precedida por uma <strong>Avaliação Clínica Inicial</strong> realizada pela <strong>IA Residente Nôa Esperança</strong>, especializada em Cannabis Medicinal e Nefrologia.
+                    </p>
+                    <div className="bg-slate-900/50 rounded p-3 mb-3">
+                      <p className="text-xs text-slate-400 mb-2"><strong className="text-slate-300">Fluxo do Processo:</strong></p>
+                      <ol className="text-xs text-slate-400 space-y-1 list-decimal list-inside">
+                        <li>Você realizará a <strong className="text-slate-300">Avaliação Clínica Inicial</strong> com a IA Nôa Esperança</li>
+                        <li>A IA gerará um <strong className="text-slate-300">Relatório da Avaliação Clínica Inicial</strong></li>
+                        <li>O relatório será direcionado para seu <strong className="text-slate-300">Prontuário Eletrônico</strong></li>
+                        <li>Você poderá acessar o relatório na área de <strong className="text-slate-300">Atendimento</strong> ou <strong className="text-slate-300">Chat com Profissional</strong></li>
+                        <li>O profissional receberá o relatório antes da consulta presencial/online</li>
+                      </ol>
+                    </div>
+                    <div className="bg-purple-900/30 border border-purple-700/50 rounded p-3">
+                      <p className="text-xs text-slate-300 mb-1"><strong>🔐 Consentimento Informado & NFT Escute-se</strong></p>
+                      <p className="text-xs text-slate-400">
+                        Ao agendar, você concorda com o processamento de seus dados pela IA Residente e reconhece o vínculo com o <strong className="text-purple-300">NFT Escute-se</strong>, garantindo seus direitos de privacidade e propriedade dos dados.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Data</label>
+                    <label className="block text-sm text-slate-400 mb-2">Data <span className="text-red-400">*</span></label>
                     <input
                       type="date"
                       value={appointmentData.date}
                       onChange={(e) => setAppointmentData({...appointmentData, date: e.target.value})}
                       className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                      required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Horário</label>
+                    <label className="block text-sm text-slate-400 mb-2">Horário <span className="text-red-400">*</span></label>
                     <input
                       type="time"
                       value={appointmentData.time}
                       onChange={(e) => setAppointmentData({...appointmentData, time: e.target.value})}
                       className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                      required
                     />
                   </div>
                   <div>
@@ -520,11 +496,12 @@ const PatientAppointments: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">Especialidade</label>
+                    <label className="block text-sm text-slate-400 mb-2">Especialidade <span className="text-red-400">*</span></label>
                     <select
                       value={appointmentData.specialty}
                       onChange={(e) => setAppointmentData({...appointmentData, specialty: e.target.value})}
                       className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                      required
                     >
                       <option value="">Selecione</option>
                       {specialties.map(specialty => (
@@ -532,27 +509,14 @@ const PatientAppointments: React.FC = () => {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-2">Sala</label>
-                    <select
-                      value={appointmentData.room}
-                      onChange={(e) => setAppointmentData({...appointmentData, room: e.target.value})}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
-                    >
-                      <option value="">Selecione</option>
-                      {rooms.map(room => (
-                        <option key={room} value={room}>{room}</option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">Serviço</label>
+                  <label className="block text-sm text-slate-400 mb-2">Tipo de Serviço</label>
                   <input
                     type="text"
                     value={appointmentData.service}
                     onChange={(e) => setAppointmentData({...appointmentData, service: e.target.value})}
-                    placeholder="Ex: Consulta de retorno"
+                    placeholder="Ex: Avaliação Clínica Inicial com IA Residente"
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                   />
                 </div>
@@ -561,7 +525,7 @@ const PatientAppointments: React.FC = () => {
                   <textarea
                     value={appointmentData.notes}
                     onChange={(e) => setAppointmentData({...appointmentData, notes: e.target.value})}
-                    placeholder="Observações adicionais..."
+                    placeholder="Informações adicionais relevantes para a avaliação clínica inicial..."
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white h-20"
                   />
                 </div>

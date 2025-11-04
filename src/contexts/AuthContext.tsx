@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
 interface User {
@@ -38,169 +38,80 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false)
-
-  // --- REFS for concurrency control & caching ---
-  const profilePromisesRef = useRef<Map<string, Promise<User | null>>>(new Map())
-  const profileLoadedForUserRef = useRef<string | null>(null)
-  const profileLoadingRef = useRef<boolean>(false)
 
   // Verificar se o usuário já está logado
   useEffect(() => {
-    let isMounted = true
-    let timeoutId: NodeJS.Timeout
-
-    // Timeout de segurança para evitar loading infinito
-    timeoutId = setTimeout(() => {
-      if (isMounted) {
-        console.log('⏰ Timeout de segurança - definindo isLoading como false')
-        setIsLoading(false)
-      }
-    }, 20000)
-
     // Escutar mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth state change:', event, 'Session:', !!session, 'User:', session?.user?.id)
-      if (isMounted) {
-        clearTimeout(timeoutId)
+      if (session?.user) {
+        // Determinar tipo de usuário baseado nos metadados
+        let userType: 'patient' | 'professional' | 'aluno' | 'admin' = 'patient'
+        let userName = 'Usuário'
+        const email = session.user.email || ''
         
-        if (session?.user) {
-          console.log('👤 Usuário no auth state change:', session.user.id)
-          
-          if (event === 'SIGNED_OUT') {
-            console.log('🚪 Evento de logout detectado - definindo user como null')
-            setUser(null)
-          } else {
-            // Determinar tipo de usuário baseado nos metadados e buscar do banco de dados
-            let userType: 'patient' | 'professional' | 'aluno' | 'admin' = 'patient'
-            let userName = 'Usuário'
-            const email = session.user.email || ''
-            
-            // Tentar buscar perfil do banco de dados
-            try {
-              console.log('🔍 Buscando perfil no banco de dados para usuário:', session.user.id)
-              const { data: profileData, error: profileError } = await supabase
-                .from('usuarios')
-                .select('*')
-                .eq('id', session.user.id)
-                .maybeSingle()
-              
-              if (profileError) {
-                console.warn('⚠️ Erro ao buscar perfil do banco:', profileError.message, profileError)
-              }
-              
-              if (!profileError && profileData) {
-                // Verificar tipos com segurança
-                const profile = profileData as any
-                const profileType = profile.tipo || profile.user_type || profile.type
-                const profileName = profile.nome || profile.name
-                
-                console.log('🔍 Dados do perfil:', { profileType, profileName, profile })
-                
-                // Validar tipo - deve ser um dos tipos válidos
-                if (profileType && typeof profileType === 'string' && ['patient', 'professional', 'aluno', 'admin'].includes(profileType.toLowerCase())) {
-                  userType = profileType.toLowerCase() as 'patient' | 'professional' | 'aluno' | 'admin'
-                }
-                // Validar nome - não deve ser um tipo
-                if (profileName && typeof profileName === 'string' && !['patient', 'professional', 'aluno', 'admin', 'Escute-se', 'Escute se'].includes(profileName)) {
-                  userName = String(profileName)
-                }
-                
-                console.log('✅ Perfil encontrado no banco de dados:', profileData)
-                
-                const dbUser: User = {
-                  id: session.user.id,
-                  email: email,
-                  type: userType,
-                  name: userName,
-                  crm: profile.crm || undefined,
-                  cro: profile.cro || undefined
-                }
-                
-                console.log('✅ Usuário carregado do banco de dados:', dbUser)
-                setUser(dbUser)
-                setIsLoading(false)
-                return
-              } else {
-                console.log('ℹ️ Perfil não encontrado no banco de dados, usando metadados do auth')
-              }
-            } catch (error) {
-              console.warn('⚠️ Erro ao buscar perfil do banco de dados, usando metadados:', error)
-            }
-            
-            // Detectar nome baseado no email
-            if (email.includes('ricardo') || email.includes('rrvalenca') || email.includes('rrvlenca') || email.includes('profrvalenca') || email.includes('valenca')) {
-              userName = 'Dr. Ricardo Valença'
-            } else if (email.includes('eduardo') || email.includes('faveret')) {
-              userName = 'Dr. Eduardo Faveret'
-            } else {
-              userName = session.user.user_metadata?.name || email.split('@')[0] || 'Usuário'
-            }
-            
-            // MODO DE TESTE: Permitir forçar tipo de usuário via localStorage (útil para testes)
-            const testUserType = localStorage.getItem('test_user_type')
-            if (testUserType && ['patient', 'professional', 'aluno', 'admin'].includes(testUserType)) {
-              console.log(`🧪 MODO DE TESTE: Forçando tipo de usuário: ${testUserType}`)
-              userType = testUserType as 'patient' | 'professional' | 'aluno' | 'admin'
-            } else if (email === 'rrvalenca@gmail.com' || email === 'rrvlenca@gmail.com' || email === 'profrvalenca@gmail.com') {
-              // SOLUÇÃO TEMPORÁRIA: Forçar admin apenas para emails específicos
-              userType = 'admin'
-            } else if (session.user.user_metadata?.type) {
-              const metadataType = String(session.user.user_metadata.type).toLowerCase()
-              if (['patient', 'professional', 'aluno', 'admin'].includes(metadataType)) {
-                userType = metadataType as 'patient' | 'professional' | 'aluno' | 'admin'
-              }
-            } else if (session.user.user_metadata?.user_type) {
-              const metadataUserType = String(session.user.user_metadata.user_type).toLowerCase()
-              if (['patient', 'professional', 'aluno', 'admin'].includes(metadataUserType)) {
-                userType = metadataUserType as 'patient' | 'professional' | 'aluno' | 'admin'
-              }
-            } else if (session.user.user_metadata?.role) {
-              const metadataRole = String(session.user.user_metadata.role).toLowerCase()
-              if (['patient', 'professional', 'aluno', 'admin'].includes(metadataRole)) {
-                userType = metadataRole as 'patient' | 'professional' | 'aluno' | 'admin'
-              }
-            }
-            
-            // Garantir que o nome não seja um tipo válido
-            if (userName && ['patient', 'professional', 'aluno', 'admin'].includes(userName.toLowerCase())) {
-              console.warn('⚠️ Nome detectado como tipo, corrigindo...', userName)
-              userName = email.split('@')[0] || 'Usuário'
-            }
-            
-            // Garantir que o tipo seja válido
-            if (!['patient', 'professional', 'aluno', 'admin'].includes(userType)) {
-              console.warn('⚠️ Tipo inválido detectado, usando padrão:', userType)
-              userType = 'patient' // Padrão seguro
-            }
-            
-            const debugUser: User = {
-              id: session.user.id,
-              email: email,
-              type: userType,
-              name: userName,
-              crm: session.user.user_metadata?.crm,
-              cro: session.user.user_metadata?.cro
-            }
-            
-            console.log('✅ Usuário criado com metadados:', debugUser)
-            console.log('📧 Email:', email)
-            console.log('👤 Tipo detectado:', userType)
-            console.log('📝 Nome:', userName)
-            setUser(debugUser)
-            setIsLoading(false)
-          }
+        // Detectar nome baseado no email ou metadados
+        if (email.toLowerCase() === 'escute-se@gmail.com') {
+          userName = 'Escutese'
+          userType = 'patient'
+        } else if (email.includes('ricardo') || email.includes('rrvalenca') || email.includes('rrvlenca') || email.includes('profrvalenca') || email.includes('valenca')) {
+          userName = 'Dr. Ricardo Valença'
+        } else if (email.includes('eduardo') || email.includes('faveret')) {
+          userName = 'Dr. Eduardo Faveret'
         } else {
-          console.log('❌ Nenhum usuário no auth state change - fazendo logout')
-          setUser(null)
-          setIsLoading(false)
+          userName = session.user.user_metadata?.name || email.split('@')[0] || 'Usuário'
         }
+        
+        // Determinar tipo do usuário
+        const testUserType = localStorage.getItem('test_user_type')
+        if (testUserType && ['patient', 'professional', 'aluno', 'admin'].includes(testUserType)) {
+          userType = testUserType as 'patient' | 'professional' | 'aluno' | 'admin'
+        } else if (email === 'rrvalenca@gmail.com' || email === 'rrvlenca@gmail.com' || email === 'profrvalenca@gmail.com') {
+          userType = 'admin'
+        } else if (session.user.user_metadata?.type) {
+          const metadataType = String(session.user.user_metadata.type).toLowerCase()
+          if (['patient', 'professional', 'aluno', 'admin'].includes(metadataType)) {
+            userType = metadataType as 'patient' | 'professional' | 'aluno' | 'admin'
+          }
+        } else if (session.user.user_metadata?.user_type) {
+          const metadataUserType = String(session.user.user_metadata.user_type).toLowerCase()
+          if (['patient', 'professional', 'aluno', 'admin'].includes(metadataUserType)) {
+            userType = metadataUserType as 'patient' | 'professional' | 'aluno' | 'admin'
+          }
+        } else if (session.user.user_metadata?.role) {
+          const metadataRole = String(session.user.user_metadata.role).toLowerCase()
+          if (['patient', 'professional', 'aluno', 'admin'].includes(metadataRole)) {
+            userType = metadataRole as 'patient' | 'professional' | 'aluno' | 'admin'
+          }
+        }
+        
+        // Garantir que o nome não seja um tipo válido
+        if (userName && ['patient', 'professional', 'aluno', 'admin'].includes(userName.toLowerCase())) {
+          userName = email.split('@')[0] || 'Usuário'
+        }
+        
+        // Garantir que o tipo seja válido
+        if (!['patient', 'professional', 'aluno', 'admin'].includes(userType)) {
+          userType = 'patient' // Padrão seguro
+        }
+        
+        const debugUser: User = {
+          id: session.user.id,
+          email: email,
+          type: userType,
+          name: userName,
+          crm: session.user.user_metadata?.crm,
+          cro: session.user.user_metadata?.cro
+        }
+        
+        setUser(debugUser)
+        setIsLoading(false)
+      } else {
+        setUser(null)
+        setIsLoading(false)
       }
     })
 
     return () => {
-      isMounted = false
-      clearTimeout(timeoutId)
       subscription.unsubscribe()
     }
   }, [])
@@ -277,10 +188,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false)
     }
   }
-
-  useEffect(() => {
-    console.log('🔍 Estado do usuário atualizado:', user)
-  }, [user])
 
   const value = {
     user,

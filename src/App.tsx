@@ -25,6 +25,7 @@ import PatientChat from './pages/PatientChat'
 import ForumCasosClinicos from './pages/ForumCasosClinicos'
 import Gamificacao from './pages/Gamificacao'
 import Profile from './pages/Profile'
+import AdminSettings from './pages/AdminSettings'
 import AdminDashboardWrapper from './components/AdminDashboardWrapper'
 import ExperienciaPaciente from './pages/ExperienciaPaciente'
 import CursoEduardoFaveret from './pages/CursoEduardoFaveret'
@@ -156,6 +157,11 @@ function App() {
                     <Route path="forum" element={<ForumCasosClinicos />} />
                 <Route path="gamificacao" element={<Gamificacao />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="admin-settings" element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminSettings />
+                  </ProtectedRoute>
+                } />
                 <Route path="admin" element={
                   <ProtectedRoute requiredRole="admin">
                     <AdminDashboardWrapper />

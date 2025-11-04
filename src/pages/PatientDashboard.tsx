@@ -115,7 +115,7 @@ const PatientDashboard: React.FC = () => {
 
   // Função para iniciar avaliação clínica inicial
   const handleStartClinicalAssessment = () => {
-    const imrePrompt = `Olá Nôa! Sou ${user?.name || 'um paciente'} e gostaria de realizar uma Avaliação Clínica Inicial seguindo o protocolo IMRE (Investigação, Metodologia, Resultado, Evolução) da Arte da Entrevista Clínica aplicada à Cannabis Medicinal. Por favor, inicie o protocolo IMRE para minha avaliação clínica inicial e, ao final, gere um relatório clínico que será salvo no meu dashboard.`
+    const imrePrompt = `Olá Nôa! Sou ${user?.name || 'um paciente'} e gostaria de realizar uma Avaliação Clínica Inicial seguindo o protocolo IMRE (Incentivador Mínimo do Relato Espontâneo) da Arte da Entrevista Clínica aplicada à Cannabis Medicinal. Por favor, inicie o protocolo IMRE para minha avaliação clínica inicial e, ao final, gere um relatório clínico que será salvo no meu dashboard.`
     sendInitialMessage(imrePrompt)
   }
 
@@ -159,7 +159,7 @@ const PatientDashboard: React.FC = () => {
 
         {/* Chat com Médico */}
         <button
-          onClick={() => navigate('/app/clinica/paciente/chat-profissional')}
+          onClick={() => navigate('/app/patient-chat')}
           className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
         >
           <MessageCircle className="w-8 h-8 mb-3" />

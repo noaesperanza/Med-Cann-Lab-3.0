@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Mic, MicOff, X, Send, Loader2, Activity, BookOpen, Brain } from 'lucide-react'
+import { Mic, MicOff, X, Send, Loader2, Activity, BookOpen, Brain, Upload } from 'lucide-react'
 import clsx from 'clsx'
 import NoaAnimatedAvatar from './NoaAnimatedAvatar'
 import { useNoaPlatform } from '../contexts/NoaPlatformContext'
 import { useMedCannLabConversation } from '../hooks/useMedCannLabConversation'
+import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
+import { KnowledgeBaseIntegration } from '../services/knowledgeBaseIntegration'
 
 interface NoaConversationalInterfaceProps {
   userCode?: string
@@ -62,9 +65,13 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
   const [isOpen, setIsOpen] = useState(hideButton || contextIsOpen)
   const [inputValue, setInputValue] = useState('')
   const [isListening, setIsListening] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const recognitionRef = useRef<RecognitionHandle | null>(null)
   const prevIsSpeakingRef = useRef(false)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const { user } = useAuth()
 
   const {
     messages,
@@ -267,6 +274,134 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
     triggerQuickCommand(command)
   }, [triggerQuickCommand])
 
+  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    setUploadProgress(0)
+
+    let progressInterval: NodeJS.Timeout | null = null
+
+    try {
+      // Adicionar mensagem inicial no chat
+      sendMessage(`📤 Enviando documento "${file.name}" para a biblioteca e base de conhecimento...`, { preferVoice: false })
+
+      progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            if (progressInterval) clearInterval(progressInterval)
+            return 90
+          }
+          return prev + 10
+        })
+      }, 200)
+
+      const fileExt = file.name.split('.').pop()?.toLowerCase()
+      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+      const bucketName = 'documents'
+
+      // Upload para Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(fileName, file)
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      // Criar signed URL para o arquivo
+      let finalUrl = ''
+      try {
+        const { data: { publicUrl } } = supabase.storage
+          .from('documents')
+          .getPublicUrl(fileName)
+
+        const { data: signedUrlData, error: signedError } = await supabase.storage
+          .from('documents')
+          .createSignedUrl(fileName, 2592000) // 30 dias
+
+        if (!signedError && signedUrlData) {
+          finalUrl = signedUrlData.signedUrl
+        } else {
+          finalUrl = publicUrl
+        }
+      } catch (urlError) {
+        console.warn('⚠️ Erro ao criar URL:', urlError)
+        const { data: { publicUrl } } = supabase.storage
+          .from('documents')
+          .getPublicUrl(fileName)
+        finalUrl = publicUrl
+      }
+
+      // Salvar metadata no banco
+      const documentMetadata = {
+        title: file.name,
+        content: '', // Deixar vazio para extrair depois
+        file_type: fileExt || 'unknown',
+        file_url: finalUrl,
+        file_size: file.size,
+        author: user?.name || 'Usuário',
+        category: 'ai-documents',
+        target_audience: ['professional', 'student'],
+        tags: ['upload', 'ai-documents', 'chat-upload'],
+        isLinkedToAI: true,
+        aiRelevance: 0.8,
+        summary: `Documento enviado pelo chat da IA Residente em ${new Date().toLocaleDateString('pt-BR')}`,
+        keywords: [fileExt || 'document', 'ai-documents', 'upload']
+      }
+
+      const { data: documentData, error: docError } = await supabase
+        .from('documents')
+        .insert(documentMetadata)
+        .select()
+        .single()
+
+      if (docError) {
+        throw docError
+      }
+
+      // Vincular documento à IA automaticamente
+      if (documentData?.id) {
+        await KnowledgeBaseIntegration.linkDocumentToAI(documentData.id, 0.8)
+      }
+
+      if (progressInterval) clearInterval(progressInterval)
+      setUploadProgress(100)
+
+      // Adicionar mensagem de sucesso no chat
+      sendMessage(`✅ Documento "${file.name}" enviado com sucesso! O arquivo foi adicionado à biblioteca e está vinculado à base de conhecimento da Nôa Esperança. Agora posso usar este documento em minhas respostas!`, { preferVoice: false })
+
+      // Resetar input de arquivo
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+
+      setTimeout(() => {
+        setIsUploading(false)
+        setUploadProgress(0)
+      }, 1000)
+    } catch (error: any) {
+      console.error('❌ Erro no upload:', error)
+      if (progressInterval) clearInterval(progressInterval)
+      setUploadProgress(0)
+      
+      // Adicionar mensagem de erro no chat
+      sendMessage(`❌ Erro ao fazer upload do documento "${file.name}": ${error.message || 'Erro desconhecido'}. Por favor, tente novamente.`, { preferVoice: false })
+      
+      setIsUploading(false)
+      
+      // Resetar input de arquivo
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }, [sendMessage, user])
+
+  const handleUploadClick = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
   const positionClasses = useMemo(() => getPositionClasses(position), [position])
 
   return (
@@ -366,6 +501,31 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
             )}
 
             <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              
+              <button
+                onClick={handleUploadClick}
+                disabled={isUploading}
+                className={clsx('p-3 rounded-2xl border transition',
+                  isUploading
+                    ? 'bg-emerald-600 text-white border-emerald-400 opacity-50 cursor-not-allowed'
+                    : 'border-slate-700 text-slate-300 hover:border-emerald-400 hover:text-emerald-200'
+                )}
+                title={isUploading ? 'Enviando documento...' : 'Enviar documento para biblioteca'}
+              >
+                {isUploading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4" />
+                )}
+              </button>
+
               <button
                 onClick={toggleListening}
                 className={clsx('p-3 rounded-2xl border transition',

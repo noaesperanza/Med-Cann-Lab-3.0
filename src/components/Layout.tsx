@@ -14,6 +14,7 @@ const Layout: React.FC = () => {
   const { user, isLoading } = useAuth()
   const [isMobile, setIsMobile] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
@@ -141,8 +142,6 @@ const Layout: React.FC = () => {
   }
 
   // Layout padrão para outros tipos de usuário (com sidebar)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-
   return (
     <ProtectedRoute>
       <MobileResponsiveWrapper onMobileMenuToggle={setIsSidebarOpen}>

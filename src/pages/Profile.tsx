@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { 
   User, 
@@ -22,6 +23,7 @@ import {
 const Profile: React.FC = () => {
   const { user } = useAuth()
   const { success, error: showError } = useToast()
+  const navigate = useNavigate()
   const [isEditing, setIsEditing] = useState(false)
   const [isPasswordEditing, setIsPasswordEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -46,6 +48,13 @@ const Profile: React.FC = () => {
     language: 'pt'
   })
 
+  // Redirecionar admins para página de configurações administrativas
+  useEffect(() => {
+    if (user && user.type === 'admin') {
+      navigate('/app/admin-settings', { replace: true })
+    }
+  }, [user, navigate])
+
   // Carregar dados do usuário
   useEffect(() => {
     if (user) {
@@ -58,6 +67,11 @@ const Profile: React.FC = () => {
       })
     }
   }, [user])
+
+  // Não renderizar nada se for admin (será redirecionado)
+  if (user?.type === 'admin') {
+    return null
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target

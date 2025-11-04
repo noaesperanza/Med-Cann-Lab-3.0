@@ -1,0 +1,20 @@
+[33m1f95c2b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Fix: Validate user type and name to prevent type/name confusion and ensure valid types
+[33ma38aab6[m Fix: Add better logging and ensure user is always set, fix isLoading state
+[33mf782c65[m Replace Droplets icon with brain logo for kidney health section
+[33m88b0678[m Fix: Replace non-existent Kidney icon with Droplets and improve type safety in AuthContext
+[33mf6c8cc4[m Fix: Connect patient login flow, load user type from database, fix header for patients, and ensure IA is connected to user type
+[33ma61c7b7[m Fix: Redirect patients correctly and remove non-existent logo references to fix 404 errors
+[33mb0f635d[m Feat: Complete patient dashboard with scheduling, therapeutic plan tracking, and educational content about cannabis and kidney health
+[33mdf64463[m Fix: Redirect patients away from professional dashboard and protect route
+[33mb498362[m Reorder course cards: Pós-Graduação Cannabis Medicinal first, then Arte da Entrevista Clínica
+[33ma1685ad[m Fix: Show 'Dr. Eduardo Faveret' in Ricardo dashboard when Eduardo is logged in
+[33mb2080bb[m Fix: Display 'Dr. Eduardo Faveret' instead of logged user name in Eduardo dashboard header
+[33m2a73061[m Update authentication, NOA AI integration, and routing system
+[33ma9edc07[m Reorganizar estrutura de dashboards e aplicar organização unificada para Dr. Eduardo Faveret
+[33mf2cdcda[m feat: Adicionar compartilhamento de relatórios e scripts para paciente Paulo Gonçalves
+[33m7d3cd73[m chore: remove arquivo acidental criado por redirecionamento de comando
+[33m9e73c5d[m feat: atualizações Noa AI, integração chat-prontuário e migrações SQL - Atualizações nos componentes Noa (interface conversacional, hooks, resident AI) - Adiciona módulo platformFunctionsModule - Melhorias na página Library - Migrações SQL para estrutura de pacientes e RLS - Documentação de integração chat-prontuário
+[33m0daf6e2[m Merge master into main: integrar Nôa Resident AI e resolver conflitos
+[33mb7e1e01[m[33m ([m[1;31morigin/master[m[33m, [m[1;32mmaster[m[33m)[m feat: integrar Nôa Resident AI com dados de plataforma no hook de conversação
+[33m808b333[m Refine resident assistant voice and knowledge integration
+[33m8b3a659[m Initial commit
