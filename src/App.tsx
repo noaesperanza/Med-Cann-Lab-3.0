@@ -53,6 +53,7 @@ import GestaoAlunos from './pages/GestaoAlunos'
 import PesquisaDashboard from './pages/PesquisaDashboard'
 import CidadeAmigaDosRins from './pages/CidadeAmigaDosRins'
 import MedCannLab from './pages/MedCannLab'
+import JardinsDeCura from './pages/JardinsDeCura'
 import AdminDashboard from './pages/AdminDashboard'
 import MedCannLabStructure from './pages/MedCannLabStructure'
 import NotFound from './pages/NotFound'
@@ -135,6 +136,7 @@ function App() {
                 <Route path="pesquisa/profissional/forum-casos" element={<ForumCasosClinicos />} />
                 <Route path="pesquisa/profissional/cidade-amiga-dos-rins" element={<CidadeAmigaDosRins />} />
                 <Route path="pesquisa/profissional/medcann-lab" element={<MedCannLab />} />
+                <Route path="pesquisa/profissional/jardins-de-cura" element={<JardinsDeCura />} />
                 
                 <Route path="pesquisa/aluno/dashboard" element={<PesquisaDashboard />} />
                 <Route path="pesquisa/aluno/forum-casos" element={<ForumCasosClinicos />} />

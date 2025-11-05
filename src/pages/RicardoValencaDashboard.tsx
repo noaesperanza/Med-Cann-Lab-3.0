@@ -16,7 +16,6 @@ import {
   Activity, 
   Heart, 
   Stethoscope, 
-  Microscope, 
   Search, 
   Plus, 
   Clock, 
@@ -31,10 +30,8 @@ import {
   Upload,
   Bell,
   User,
-  GraduationCap,
-  DollarSign,
-  Library,
-  ClipboardList
+  UserPlus,
+  GraduationCap
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
@@ -71,7 +68,7 @@ const RicardoValencaDashboard: React.FC = () => {
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false)
   const [isAudioCallOpen, setIsAudioCallOpen] = useState(false)
   const [callType, setCallType] = useState<'video' | 'audio'>('video')
-  const [activeSection, setActiveSection] = useState<'dashboard' | 'agendamentos' | 'pacientes' | 'aulas' | 'financeiro' | 'atendimento' | 'avaliacao' | 'biblioteca' | 'perfil' | 'chat-pacientes' | 'kpis-admin' | 'newsletter' | 'prescricoes' | 'relatorios-clinicos'>('dashboard')
+  const [activeSection, setActiveSection] = useState<'dashboard' | 'agendamentos' | 'pacientes' | 'aulas' | 'financeiro' | 'atendimento' | 'avaliacao' | 'biblioteca' | 'perfil' | 'chat-pacientes' | 'chat-profissionais' | 'kpis-admin' | 'newsletter' | 'prescricoes' | 'relatorios-clinicos'>('dashboard')
   
   // KPIs Administrativos Personalizados
   const [kpis, setKpis] = useState({
@@ -318,7 +315,7 @@ const RicardoValencaDashboard: React.FC = () => {
             >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium opacity-90">💰 Gestão Financeira</h3>
-                <DollarSign className="w-6 h-6" />
+                <TrendingUp className="w-6 h-6" />
               </div>
               <p className="text-xs opacity-75 mt-1">Controle financeiro</p>
             </button>
@@ -363,7 +360,7 @@ const RicardoValencaDashboard: React.FC = () => {
               <button className="bg-gradient-to-r from-emerald-500 to-green-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-medium opacity-90">💰 Financeiro</h3>
-                  <DollarSign className="w-6 h-6" />
+                  <TrendingUp className="w-6 h-6" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">Controle financeiro e pagamentos</p>
               </button>
@@ -432,7 +429,10 @@ const RicardoValencaDashboard: React.FC = () => {
                 <p className="text-xs opacity-75 mt-1">Biblioteca médica e documentos</p>
               </button>
               
-              <button className="bg-gradient-to-r from-violet-500 to-purple-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+              <button 
+                onClick={() => navigate('/app/ai-documents')}
+                className="bg-gradient-to-r from-violet-500 to-purple-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left cursor-pointer"
+              >
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-medium opacity-90">🤖 Chat IA Documentos</h3>
                   <Brain className="w-6 h-6" />
@@ -551,7 +551,7 @@ const RicardoValencaDashboard: React.FC = () => {
   const renderKPIsAdmin = () => (
     <div className="space-y-8">
       <div className="text-center">
-        <h2 className="text-3xl font-bold text-white mb-4">📊 KPIs Administrativos - Dr. Ricardo Valença</h2>
+        <h2 className="text-3xl font-bold text-white mb-4">📊 KPIs Administrativos</h2>
         <p className="text-slate-300">Monitoramento das 3 camadas da plataforma MedCannLab 3.0</p>
       </div>
 
@@ -983,7 +983,7 @@ const RicardoValencaDashboard: React.FC = () => {
             <span className="font-semibold text-white">Upload de Materiais</span>
           </button>
           <button className="bg-slate-700 hover:bg-slate-600 rounded-lg p-4 transition-colors">
-            <Library className="w-6 h-6 mx-auto mb-2 text-white" />
+            <BookOpen className="w-6 h-6 mx-auto mb-2 text-white" />
             <span className="font-semibold text-white">Biblioteca</span>
           </button>
           <button className="bg-slate-700 hover:bg-slate-600 rounded-lg p-4 transition-colors">
@@ -999,7 +999,7 @@ const RicardoValencaDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-orange-800 to-orange-700 rounded-lg p-6">
         <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
-          <DollarSign className="w-6 h-6" />
+          <TrendingUp className="w-6 h-6" />
           <span>💰 Gestão Financeira</span>
         </h2>
         <p className="text-orange-200">
@@ -1033,7 +1033,7 @@ const RicardoValencaDashboard: React.FC = () => {
               <p className="text-slate-400 text-sm">Lucro Líquido</p>
               <p className="text-2xl font-bold text-white">R$ 33.550</p>
             </div>
-            <DollarSign className="w-8 h-8 text-blue-400" />
+            <TrendingUp className="w-8 h-8 text-blue-400" />
           </div>
         </div>
         <div className="bg-slate-800/80 rounded-lg p-4 border border-slate-700">
@@ -1054,7 +1054,7 @@ const RicardoValencaDashboard: React.FC = () => {
           <div className="bg-slate-700 rounded-lg p-4 flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-white" />
+                <TrendingUp className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h4 className="font-semibold text-white">Consulta - Maria Santos</h4>
@@ -1069,7 +1069,7 @@ const RicardoValencaDashboard: React.FC = () => {
           <div className="bg-slate-700 rounded-lg p-4 flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-white" />
+                <TrendingUp className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h4 className="font-semibold text-white">Avaliação - João Silva</h4>
@@ -1084,7 +1084,7 @@ const RicardoValencaDashboard: React.FC = () => {
           <div className="bg-slate-700 rounded-lg p-4 flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-white" />
+                <TrendingUp className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h4 className="font-semibold text-white">Equipamentos</h4>
@@ -1104,7 +1104,7 @@ const RicardoValencaDashboard: React.FC = () => {
         <h3 className="text-xl font-semibold text-white mb-4">Ações Financeiras</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <button className="bg-green-600 hover:bg-green-700 text-white p-4 rounded-lg transition-colors">
-            <DollarSign className="w-6 h-6 mx-auto mb-2" />
+            <TrendingUp className="w-6 h-6 mx-auto mb-2" />
             <span className="font-semibold">Nova Receita</span>
           </button>
           <button className="bg-red-600 hover:bg-red-700 text-white p-4 rounded-lg transition-colors">
@@ -1186,11 +1186,16 @@ const RicardoValencaDashboard: React.FC = () => {
                       onClick={() => {
                         // Encontrar o paciente Maria Santos na lista ou criar um ID temporário
                         const mariaPatient = patients.find(p => p.name.includes('Maria')) || patients[0]
+                        let patientId: string
                         if (mariaPatient) {
-                          setSelectedPatient(mariaPatient.id)
+                          patientId = mariaPatient.id
+                          setSelectedPatient(patientId)
                         } else {
-                          setSelectedPatient('maria-santos')
+                          patientId = 'maria-santos'
+                          setSelectedPatient(patientId)
                         }
+                        // Abrir automaticamente o chat profissional para este paciente
+                        navigate(`/app/clinica/paciente/chat-profissional/${patientId}`)
                       }}
                       className={`px-3 py-1 rounded text-xs transition-colors ${
                         selectedPatient === 'maria-santos' || (selectedPatient && patients.find(p => p.id === selectedPatient)?.name.includes('Maria'))
@@ -1215,11 +1220,16 @@ const RicardoValencaDashboard: React.FC = () => {
                       onClick={() => {
                         // Encontrar o paciente João Silva na lista ou criar um ID temporário
                         const joaoPatient = patients.find(p => p.name.includes('João')) || patients[1]
+                        let patientId: string
                         if (joaoPatient) {
-                          setSelectedPatient(joaoPatient.id)
+                          patientId = joaoPatient.id
+                          setSelectedPatient(patientId)
                         } else {
-                          setSelectedPatient('joao-silva')
+                          patientId = 'joao-silva'
+                          setSelectedPatient(patientId)
                         }
+                        // Abrir automaticamente o chat profissional para este paciente
+                        navigate(`/app/clinica/paciente/chat-profissional/${patientId}`)
                       }}
                       className={`px-3 py-1 rounded text-xs transition-colors ${
                         selectedPatient === 'joao-silva' || (selectedPatient && patients.find(p => p.id === selectedPatient)?.name.includes('João'))
@@ -1416,7 +1426,7 @@ const RicardoValencaDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-teal-800 to-teal-700 rounded-lg p-6">
         <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
-          <Library className="w-6 h-6" />
+          <BookOpen className="w-6 h-6" />
           <span>📚 Biblioteca</span>
         </h2>
         <p className="text-teal-200">
@@ -1782,24 +1792,26 @@ const RicardoValencaDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header Personalizado para Dr. Ricardo Valença */}
+      {/* Header Personalizado */}
       <div className="bg-gradient-to-r from-blue-800 to-indigo-700 border-b border-blue-600/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between">
           <div className="flex items-center space-x-4">
-            <img src="/ricardo-valenca-avatar.png" alt="Dr. Ricardo Valença" className="w-12 h-12 rounded-full border-2 border-blue-300" />
+            <div className="w-12 h-12 rounded-full border-2 border-blue-300 bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center">
+              <span className="text-white font-bold text-lg">MCL</span>
+            </div>
             <div>
-              <h1 className="text-xl font-bold text-white">Dr. Ricardo Valença</h1>
-              <p className="text-blue-200 text-sm">Administrador • MedCannLab 3.0 • Sistema Integrado - Cidade Amiga dos Rins & Cannabis Medicinal</p>
+              <h1 className="text-xl font-bold text-white">Consultório Escola Dr. Eduardo Faveret</h1>
+              <p className="text-blue-200 text-sm">Pós-graduação em Cannabis Medicinal</p>
             </div>
           </div>
           <div className="mt-4 md:mt-0 text-right">
             <p className="text-blue-300 text-sm">Conectado como</p>
             <p className="text-white font-semibold">
-              {(user?.email === 'eduardoscfaveret@gmail.com' || user?.name === 'Dr. Eduardo Faveret') 
-                ? 'Dr. Eduardo Faveret' 
-                : (user?.name || 'Convidado')}
+              {user?.name || 'Convidado'}
             </p>
-            <p className="text-blue-200 text-xs">👑 Administrador • Visão completa do sistema</p>
+            <p className="text-blue-200 text-xs">
+              {user?.type === 'admin' ? '👑 Administrador' : user?.type === 'professional' ? '👨‍⚕️ Profissional' : '👤 Usuário'} • Visão completa do sistema
+            </p>
           </div>
         </div>
       </div>
