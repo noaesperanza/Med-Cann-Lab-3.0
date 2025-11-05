@@ -52,7 +52,7 @@ const UserTypeNavigation: React.FC<UserTypeNavigationProps> = ({
       color: 'text-green-400',
       bgColor: 'bg-green-500/10',
       borderColor: 'border-green-500/20',
-      href: '/app/ensino-dashboard'
+      href: '/app/ensino/profissional/dashboard'
     },
     {
       id: 'pesquisa',
@@ -87,7 +87,7 @@ const UserTypeNavigation: React.FC<UserTypeNavigationProps> = ({
         ]
       case 'ensino':
         return [
-          { name: 'Dashboard Ensino', icon: BookOpen, href: '/app/ensino-dashboard' },
+          { name: 'Dashboard Ensino', icon: BookOpen, href: '/app/ensino/profissional/dashboard' },
           { name: 'Biblioteca Médica', icon: BookOpen, href: '/app/ensino-library' },
           { name: 'Arte da Entrevista', icon: Heart, href: '/app/ensino-arte-entrevista' },
           { name: 'Cannabis Medicinal', icon: Brain, href: '/app/ensino-cannabis' },

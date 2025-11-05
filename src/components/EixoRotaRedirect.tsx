@@ -70,9 +70,9 @@ const determinarRotaDestino = (eixo?: string, tipo?: string): string => {
     case 'ensino':
       switch (tipo) {
         case 'profissional':
-          return '/app/ensino-dashboard'
+          return '/app/ensino/profissional/dashboard'
         case 'aluno':
-          return '/app/aluno-dashboard'
+          return '/app/ensino/aluno/dashboard'
         default:
           return '/app/dashboard'
       }

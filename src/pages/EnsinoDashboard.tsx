@@ -250,7 +250,7 @@ const EnsinoDashboard: React.FC = () => {
             <span className="hidden sm:inline">📚 Biblioteca</span>
           </button>
           <button 
-            onClick={() => handleNavigate('/app/ensino-dashboard')} 
+            onClick={() => handleNavigate('/app/ensino/profissional/dashboard')} 
             className="flex items-center space-x-1 md:space-x-2 px-2 md:px-3 lg:px-4 py-1.5 md:py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors text-xs md:text-sm"
           >
             <Calendar className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
