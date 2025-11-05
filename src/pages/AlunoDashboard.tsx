@@ -30,7 +30,7 @@ import {
   Edit,
   Trash2,
   Link as ExternalLink,
-  LayoutGrid as LayoutDashboard,
+  Menu as LayoutDashboard,
   Users
 } from 'lucide-react'
 import { useNoaPlatform } from '../contexts/NoaPlatformContext'

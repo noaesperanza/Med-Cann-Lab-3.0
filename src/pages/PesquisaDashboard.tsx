@@ -19,7 +19,7 @@ import {
   Target,
   Award,
   Brain,
-  Beaker as FlaskConical,
+  Activity as FlaskConical,
   FileText,
   Users,
   BookOpen,
@@ -32,7 +32,7 @@ import {
   FileText as FileTextIcon,
   Globe,
   MapPin,
-  Sparkles as SparklesIcon
+  Zap as SparklesIcon
 } from 'lucide-react'
 
 const PesquisaDashboard: React.FC = () => {
