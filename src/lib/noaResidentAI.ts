@@ -929,7 +929,7 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     }
 
     return this.createResponse(
-      'Olá! Sou Nôa Esperança, sua IA Residente especializada em avaliações clínicas e treinamentos. Como posso ajudá-lo hoje? Posso auxiliar com avaliações clínicas, orientações terapêuticas ou treinamentos especializados.',
+      'Olá, Sou Nôa Esperanza., a única assistente em saúde digital capacitada pela Arte da Entrevista Clínica. Dou as boas vindas ao Med Cann Lab com Nôa Esperanza, plataforma pioneira da cannabis medicinal aplicada à nefrologia e neurologia, utilizando a metodologia Arte da Entrevista Clínica, na formação de habilildades humanas para o aperfeiçoamento da relação terapeuta e pacientes. Posso ajudar você em todas as suas jornadas. Basta me chamar. Bons ventos soprem.',
       0.8,
       'text'
     )
