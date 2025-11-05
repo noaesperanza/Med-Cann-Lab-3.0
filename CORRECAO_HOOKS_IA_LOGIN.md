@@ -276,3 +276,4 @@ export const NoaProvider: React.FC<NoaProviderProps> = ({ children }) => {
 ---
 
 **✅ Todas as correções foram aplicadas com sucesso!**
+

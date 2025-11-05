@@ -115,7 +115,7 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
       if (platformIntent.type !== 'NONE') {
         platformActionResult = await this.platformFunctions.executeAction(platformIntent, userId, platformData)
         
-        // Se a ação requer resposta, adicionar contexto para o Assistant mencionar na resposta
+        // Se a ação requer resposta, adicionar contexto para o Assistant
         if (platformActionResult.requiresResponse && platformActionResult.success) {
           // Construir contexto adicional para o Assistant mencionar na resposta
           const actionContext = this.buildPlatformActionContext(platformIntent, platformActionResult)
@@ -1311,7 +1311,8 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     switch (userType) {
       case 'patient':
         return ['clinica']
-      case 'aluno':
+      case 'student':
+      case 'aluno': // Compatibilidade com dados antigos
         return ['ensino', 'pesquisa']
       case 'professional':
         return ['clinica', 'pesquisa', 'ensino']
@@ -1367,8 +1368,7 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     message: string,
     intent: string,
     platformData?: any,
-    userEmail?: string,
-    userId?: string
+    userEmail?: string
   ): Promise<AIResponse | null> {
     try {
       // 🔥 BUSCAR DOCUMENTOS RELEVANTES DO BACKEND (SUPABASE)
@@ -1438,8 +1438,7 @@ Resumo: ${summary}${tags ? `\nTags: ${tags}` : ''}${keywords ? `\nKeywords: ${ke
         axisMenu,
         intent,
         platformData,
-        userEmail,
-        userId
+        userEmail
       )
       
       // Adicionar contexto dos documentos do backend

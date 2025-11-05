@@ -67,3 +67,4 @@ Exibe no dashboard do profissional
 - ✅ IA salva dados como `generated_by = 'ai_resident'`
 - ✅ Auditoria completa (quem fez o quê)
 
+

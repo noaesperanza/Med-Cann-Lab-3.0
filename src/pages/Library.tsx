@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { 
   Search, 
   Eye, 
@@ -21,7 +22,8 @@ import {
   Trash2,
   Share2,
   Link as LinkIcon,
-  XCircle
+  XCircle,
+  Target
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -33,11 +35,15 @@ import { KnowledgeBaseIntegration, KnowledgeDocument, KnowledgeStats } from '../
 
 const Library: React.FC = () => {
   const { user } = useAuth()
+  const location = useLocation()
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedType, setSelectedType] = useState('all')
-  const [selectedUserType, setSelectedUserType] = useState('all') // Novo filtro
+  // Aplicar filtro de tipo de usuário passado via state, se houver
+  const [selectedUserType, setSelectedUserType] = useState<string>(
+    (location.state as { userType?: string })?.userType || 'all'
+  )
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadCategory, setUploadCategory] = useState('ai-residente')
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
@@ -139,7 +145,7 @@ const Library: React.FC = () => {
     if (!debouncedSearchTerm.trim()) {
       // Se não há termo de busca, usar filtros normais
       const filtered = realDocuments.filter((doc: KnowledgeDocument) => {
-        // Filtro de categoria
+        // Filtro de categoria (consistente com getCategoryCount)
         let matchesCategory = true
         if (selectedCategory !== 'all') {
           if (selectedCategory === 'ai-documents') {
@@ -149,6 +155,7 @@ const Library: React.FC = () => {
             const hasAITags = doc.tags && (
               doc.tags.includes('ai-documents') || 
               doc.tags.includes('ai-residente') ||
+              doc.tags.includes('upload') ||
               doc.tags.some((tag: string) => tag.toLowerCase().includes('ai'))
             )
             const hasAIKeywords = doc.keywords && (
@@ -156,7 +163,10 @@ const Library: React.FC = () => {
             )
             matchesCategory = isAILinked || isAICategory || hasAITags || hasAIKeywords
           } else {
-            matchesCategory = doc.category === selectedCategory
+            // Para outras categorias, verificar category OU tags/keywords (consistente com getCategoryCount)
+            matchesCategory = doc.category === selectedCategory || 
+                            (doc.tags && doc.tags.includes(selectedCategory)) ||
+                            (doc.keywords && doc.keywords.some((k: string) => k === selectedCategory))
           }
         }
         
@@ -190,8 +200,31 @@ const Library: React.FC = () => {
         limit: 50
       })
 
-      // Aplicar filtros adicionais
+      // Aplicar filtros adicionais (incluindo categoria)
       const filtered = searchResults.filter((doc: KnowledgeDocument) => {
+        // Filtro de categoria (consistente com getCategoryCount)
+        let matchesCategory = true
+        if (selectedCategory !== 'all') {
+          if (selectedCategory === 'ai-documents') {
+            const isAILinked = doc.isLinkedToAI === true
+            const isAICategory = doc.category === 'ai-documents' || doc.category === 'ai-residente'
+            const hasAITags = doc.tags && (
+              doc.tags.includes('ai-documents') || 
+              doc.tags.includes('ai-residente') ||
+              doc.tags.includes('upload') ||
+              doc.tags.some((tag: string) => tag.toLowerCase().includes('ai'))
+            )
+            const hasAIKeywords = doc.keywords && (
+              doc.keywords.some((k: string) => k === 'ai-documents' || k === 'ai-residente' || k.toLowerCase().includes('ai'))
+            )
+            matchesCategory = isAILinked || isAICategory || hasAITags || hasAIKeywords
+          } else {
+            matchesCategory = doc.category === selectedCategory || 
+                            (doc.tags && doc.tags.includes(selectedCategory)) ||
+                            (doc.keywords && doc.keywords.some((k: string) => k === selectedCategory))
+          }
+        }
+        
         const matchesType = selectedType === 'all' || doc.file_type === selectedType
         const matchesUserType = selectedUserType === 'all' || 
                               (doc.target_audience && doc.target_audience.includes(selectedUserType))
@@ -202,7 +235,7 @@ const Library: React.FC = () => {
                            doc.title?.toLowerCase().includes(selectedArea) ||
                            doc.summary?.toLowerCase().includes(selectedArea)
         
-        return matchesType && matchesUserType && matchesArea
+        return matchesCategory && matchesType && matchesUserType && matchesArea
       })
 
       setFilteredDocuments(filtered)
@@ -352,6 +385,10 @@ const Library: React.FC = () => {
         }
       }
 
+      // Garantir que tags e keywords incluam tanto a categoria de upload quanto a categoria final
+      const tags = ['upload', category, documentCategory].filter((t, i, arr) => arr.indexOf(t) === i) // Remove duplicatas
+      const keywords = [fileExt || 'document', category, documentCategory].filter((k, i, arr) => arr.indexOf(k) === i) // Remove duplicatas
+      
       const documentMetadata = {
         title: file.name,
         content: '', // Deixar vazio para extrair depois
@@ -361,10 +398,10 @@ const Library: React.FC = () => {
         author: user?.name || 'Usuário',
         category: documentCategory,
         target_audience: targetAudience,
-        tags: ['upload', category],
-        isLinkedToAI: category === 'ai-documents' || category === 'research',
-        summary: `Documento enviado em ${new Date().toLocaleDateString('pt-BR')} - Categoria: ${category}`,
-        keywords: [fileExt || 'document', category]
+        tags: tags,
+        isLinkedToAI: category === 'ai-documents' || category === 'research' || documentCategory === 'protocols',
+        summary: `Documento enviado em ${new Date().toLocaleDateString('pt-BR')} - Categoria: ${documentCategory}`,
+        keywords: keywords
       }
 
       console.log('💾 Salvando metadata:', documentMetadata)
@@ -516,6 +553,102 @@ const Library: React.FC = () => {
     }
   ]
 
+  // Função para sincronizar e corrigir documentos existentes
+  const syncAllDocuments = async () => {
+    try {
+      console.log('🔄 Sincronizando todos os documentos com a base de conhecimento...')
+      
+      // Buscar todos os documentos
+      const { data: allDocs, error } = await supabase
+        .from('documents')
+        .select('*')
+      
+      if (error) throw error
+      
+      if (!allDocs || allDocs.length === 0) {
+        console.log('ℹ️ Nenhum documento encontrado para sincronizar')
+        return
+      }
+      
+      console.log(`📚 Encontrados ${allDocs.length} documentos para sincronizar`)
+      
+      // Atualizar documentos que precisam de correção
+      let updatedCount = 0
+      for (const doc of allDocs) {
+        const updates: any = {}
+        let needsUpdate = false
+        
+        // Garantir que category está correta
+        if (doc.category) {
+          // Se category é 'professional' ou tem tag 'professional', garantir que tags e keywords incluam 'protocols'
+          if (doc.category === 'professional' || (doc.tags && doc.tags.includes('professional'))) {
+            if (!doc.tags || !doc.tags.includes('protocols')) {
+              updates.tags = [...(doc.tags || []), 'protocols'].filter((t, i, arr) => arr.indexOf(t) === i)
+              needsUpdate = true
+            }
+            if (!doc.keywords || !doc.keywords.includes('protocols')) {
+              updates.keywords = [...(doc.keywords || []), 'protocols'].filter((k, i, arr) => arr.indexOf(k) === i)
+              needsUpdate = true
+            }
+            if (doc.category !== 'protocols') {
+              updates.category = 'protocols'
+              needsUpdate = true
+            }
+          }
+          
+          // Se category é 'student' ou tem tag 'student', garantir que tags e keywords incluam 'multimedia'
+          if (doc.category === 'student' || (doc.tags && doc.tags.includes('student'))) {
+            if (!doc.tags || !doc.tags.includes('multimedia')) {
+              updates.tags = [...(doc.tags || []), 'multimedia'].filter((t, i, arr) => arr.indexOf(t) === i)
+              needsUpdate = true
+            }
+            if (!doc.keywords || !doc.keywords.includes('multimedia')) {
+              updates.keywords = [...(doc.keywords || []), 'multimedia'].filter((k, i, arr) => arr.indexOf(k) === i)
+              needsUpdate = true
+            }
+            if (doc.category !== 'multimedia') {
+              updates.category = 'multimedia'
+              needsUpdate = true
+            }
+          }
+        }
+        
+        // Garantir que protocolos e multimedia estejam vinculados à IA
+        if (doc.category === 'protocols' || doc.category === 'multimedia') {
+          if (!doc.isLinkedToAI) {
+            updates.isLinkedToAI = true
+            needsUpdate = true
+          }
+        }
+        
+        // Atualizar documento se necessário
+        if (needsUpdate) {
+          const { error: updateError } = await supabase
+            .from('documents')
+            .update(updates)
+            .eq('id', doc.id)
+          
+          if (updateError) {
+            console.error(`❌ Erro ao atualizar documento ${doc.id}:`, updateError)
+          } else {
+            updatedCount++
+            console.log(`✅ Documento ${doc.id} sincronizado`)
+          }
+        }
+      }
+      
+      console.log(`✅ Sincronização concluída: ${updatedCount} documentos atualizados`)
+      
+      // Recarregar documentos após sincronização
+      await loadDocuments(true)
+      
+      alert(`✅ Sincronização concluída! ${updatedCount} documentos foram atualizados na base de conhecimento.`)
+    } catch (error) {
+      console.error('❌ Erro ao sincronizar documentos:', error)
+      alert('❌ Erro ao sincronizar documentos. Verifique o console para mais detalhes.')
+    }
+  }
+
   // Função para carregar documentos com cache usando a integração da base de conhecimento
   const loadDocuments = async (forceReload: boolean = false) => {
     const now = Date.now()
@@ -561,6 +694,14 @@ const Library: React.FC = () => {
     }
   }
 
+  // Aplicar filtro de tipo de usuário quando vier via location.state
+  useEffect(() => {
+    const state = location.state as { userType?: string } | null
+    if (state?.userType) {
+      setSelectedUserType(state.userType)
+    }
+  }, [location.state])
+
   // Carregar documentos reais do Supabase
   useEffect(() => {
     loadDocuments()
@@ -576,94 +717,118 @@ const Library: React.FC = () => {
   }, [searchTerm])
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+        {/* Header Melhorado - Conectado à IA Residente */}
         <div className="mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl">
-                <Brain className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white dark:text-slate-100">
-                  Base de Conhecimento
-                </h1>
-                <p className="text-sm text-purple-600 dark:text-purple-400 font-medium">
-                  Nôa Esperança IA • Educação • Pesquisa
-                </p>
-              </div>
-            </div>
-            
-            {/* Estatísticas da Base de Conhecimento */}
-            {knowledgeStats && (
-              <div className="flex flex-wrap gap-4">
-                <button
-                  onClick={() => setShowStats(!showStats)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-semibold transition-all"
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  Estatísticas
-                </button>
-                
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Brain className="w-4 h-4 text-purple-500" />
-                    <span className="text-gray-600 dark:text-gray-300">
-                      {knowledgeStats.aiLinkedDocuments} vinculados à IA
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <TrendingUp className="w-4 h-4 text-green-500" />
-                    <span className="text-gray-600 dark:text-gray-300">
-                      {knowledgeStats.averageRelevance.toFixed(2)} relevância média
-                    </span>
-                  </div>
+          <div className="bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border-2 border-purple-500/50 shadow-xl relative overflow-hidden">
+            {/* Gradiente de fundo sutil */}
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-pink-600/10 to-blue-600/10 pointer-events-none"></div>
+            <div className="relative z-10">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 rounded-2xl shadow-lg transform hover:scale-105 transition-transform">
+                  <Brain className="w-10 h-10 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent mb-1">
+                    Base de Conhecimento
+                  </h1>
+                  <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">
+                    Nôa Esperança IA • Educação • Pesquisa
+                  </p>
                 </div>
               </div>
-            )}
+              
+              {/* Estatísticas Inline Melhoradas - Conectadas à IA */}
+              {knowledgeStats && (
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-3 bg-slate-700/80 backdrop-blur-sm px-4 py-3 rounded-xl border-2 border-purple-500/50 shadow-lg hover:border-purple-400 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg">
+                        <Brain className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-300 font-medium">Vinculados à IA Residente</div>
+                        <div className="text-lg font-bold text-purple-400">{knowledgeStats.aiLinkedDocuments}</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 bg-slate-700/80 backdrop-blur-sm px-4 py-3 rounded-xl border-2 border-green-500/50 shadow-lg hover:border-green-400 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg shadow-lg">
+                        <TrendingUp className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-300 font-medium">Relevância Média IA</div>
+                        <div className="text-lg font-bold text-green-400">{knowledgeStats.averageRelevance.toFixed(2)}</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => setShowStats(!showStats)}
+                    className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                  >
+                    <BarChart3 className="w-5 h-5" />
+                    {showStats ? 'Ocultar' : 'Ver'} Estatísticas
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-4 flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-600/20 border border-purple-500/50 rounded-lg">
+                <Brain className="w-4 h-4 text-purple-400" />
+                <span className="text-sm text-slate-300 font-medium">Treinamento da IA Residente</span>
+              </div>
+              <span className="text-slate-500">•</span>
+              <span className="text-sm text-slate-400 font-medium">Recursos educacionais</span>
+              <span className="text-slate-500">•</span>
+              <span className="text-sm text-slate-400 font-medium">Referências científicas</span>
+              <span className="text-slate-500">•</span>
+              <span className="text-sm text-slate-400 font-medium">Protocolos clínicos</span>
+            </div>
+            </div>
           </div>
-          
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
-            Treinamento da IA • Recursos educacionais • Referências científicas • Protocolos clínicos
-          </p>
 
           {/* Painel de Estatísticas Expandido */}
           {showStats && knowledgeStats && (
-            <div className="mt-6 p-6 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-700">
+            <div className="mt-6 p-6 bg-slate-800/90 backdrop-blur-sm rounded-xl border-2 border-purple-500/30 shadow-xl">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                  <div className="text-3xl font-bold text-purple-400">
                     {knowledgeStats.totalDocuments}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <div className="text-sm text-slate-300">
                     Total de Documentos
                   </div>
                 </div>
                 
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="text-3xl font-bold text-blue-400">
                     {knowledgeStats.aiLinkedDocuments}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <div className="text-sm text-slate-300">
                     Vinculados à IA
                   </div>
                 </div>
                 
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                  <div className="text-3xl font-bold text-green-400">
                     {knowledgeStats.averageRelevance.toFixed(2)}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <div className="text-sm text-slate-300">
                     Relevância Média
                   </div>
                 </div>
                 
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                  <div className="text-3xl font-bold text-orange-400">
                     {knowledgeStats.topCategories.length}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <div className="text-sm text-slate-300">
                     Categorias Ativas
                   </div>
                 </div>
@@ -671,19 +836,20 @@ const Library: React.FC = () => {
               
               {/* Top Categorias */}
               <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
-                  📊 Top Categorias
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-purple-400" />
+                  Top Categorias
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {knowledgeStats.topCategories.map((cat, index) => (
                     <div
                       key={cat.category}
-                      className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                      className="flex items-center gap-2 px-3 py-2 bg-slate-700/80 rounded-lg border-2 border-purple-500/30"
                     >
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <span className="text-sm font-medium text-slate-200">
                         {cat.category}
                       </span>
-                      <span className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full">
+                      <span className="text-xs bg-purple-600 text-purple-100 px-2 py-1 rounded-full font-bold">
                         {cat.count}
                       </span>
                     </div>
@@ -694,82 +860,147 @@ const Library: React.FC = () => {
           )}
         </div>
 
-        {/* Filters - 3 Columns: User Types, Categories, Areas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {/* 1. Tipos de Usuário */}
-          <div>
-            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">👥 Tipo de Usuário</h3>
-            <div className="flex flex-wrap gap-2">
-              {userTypes.map((ut) => {
-                const Icon = ut.icon
-                const isActive = selectedUserType === ut.id
-                return (
+        {/* Busca Melhorada - Conectada à IA Residente */}
+        <div className="bg-slate-800/90 backdrop-blur-sm rounded-2xl shadow-xl p-6 mb-8 border-2 border-purple-500/50 relative overflow-hidden">
+          {/* Gradiente de fundo sutil */}
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-pink-600/10 to-blue-600/10 pointer-events-none"></div>
+          <div className="relative z-10">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search Bar Melhorada */}
+            <div className="flex-1">
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                  <Search className="w-6 h-6 text-purple-500" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Buscar documentos por título, conteúdo, autor..."
+                  value={searchTerm}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                  className="w-full pl-14 pr-4 py-4 border-2 border-purple-500/50 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-500/30 focus:border-purple-400 bg-slate-700/80 text-white font-medium text-lg shadow-lg"
+                />
+                {searchTerm && (
                   <button
-                    key={ut.id}
-                    onClick={() => setSelectedUserType(ut.id)}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      isActive
-                        ? `bg-${ut.color}-600 text-white shadow-md`
-                        : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 border border-gray-300 dark:border-slate-600'
-                    }`}
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-200"
                   >
-                    <Icon size={14} />
-                    {ut.name}
+                    <X className="w-5 h-5" />
                   </button>
-                )
-              })}
+                )}
+              </div>
+            </div>
+
+            {/* Upload Button Melhorado */}
+            <button 
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 hover:from-purple-700 hover:via-pink-700 hover:to-blue-700 text-white font-bold rounded-xl shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 text-lg"
+            >
+              <Upload className="w-6 h-6" />
+              Fazer Upload
+            </button>
+          </div>
+          
+          {/* Filtros Secundários */}
+          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t-2 border-purple-500/30">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-300">Categoria:</span>
+              <select
+                value={selectedCategory}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedCategory(e.target.value)}
+                className="px-4 py-2 border-2 border-purple-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/50 bg-slate-700/80 text-white font-semibold"
+              >
+                {categoriesWithCount.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name} ({category.count})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-300">Tipo:</span>
+              <select
+                value={selectedType}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedType(e.target.value)}
+                className="px-4 py-2 border-2 border-purple-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/50 bg-slate-700/80 text-white font-semibold"
+              >
+                {documentTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-300">Área:</span>
+              <select
+                value={selectedArea}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedArea(e.target.value)}
+                className="px-4 py-2 border-2 border-purple-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/50 bg-slate-700/80 text-white font-semibold"
+              >
+                {knowledgeAreas.map((area) => (
+                  <option key={area.id} value={area.id}>
+                    {area.icon} {area.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
-
-          {/* 2. Categorias */}
-          <div>
-            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">📚 Categoria</h3>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((cat) => {
-                const isActive = selectedCategory === cat.id
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      isActive
-                        ? 'bg-purple-600 text-white shadow-md'
-                        : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 border border-gray-300 dark:border-slate-600'
-                    }`}
-                  >
-                    <span>{cat.icon}</span>
-                    {cat.name}
-                    <span className="text-xs opacity-75">({cat.count})</span>
-                  </button>
-                )
-              })}
+          
+          {/* Contador e Atualizar - Integrado ao Card de Busca */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4 pt-4 border-t-2 border-purple-500/30">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-white">
+                  {filteredDocuments.length} {filteredDocuments.length === 1 ? 'documento encontrado' : 'documentos encontrados'}
+                </p>
+                {selectedUserType !== 'all' && (
+                  <p className="text-sm text-slate-400 mt-1 flex items-center gap-1">
+                    <Brain className="w-3 h-3 text-purple-400" />
+                    Filtrado para: {userTypes.find(ut => ut.id === selectedUserType)?.name}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => loadDocuments(true)}
+                disabled={isLoadingDocuments || isUploading}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
+              >
+                {isLoadingDocuments ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Carregando...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Atualizar Lista
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={syncAllDocuments}
+                disabled={isLoadingDocuments || isUploading}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
+                title="Sincronizar todos os documentos da plataforma com a base de conhecimento"
+              >
+                <Brain className="w-5 h-5" />
+                Sincronizar Base
+              </button>
             </div>
           </div>
-
-          {/* 3. Áreas de Conhecimento */}
-          <div>
-            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">🎯 Área</h3>
-            <div className="flex flex-wrap gap-2">
-              {knowledgeAreas.map((area) => {
-                const isActive = selectedArea === area.id
-                return (
-                  <button
-                    key={area.id}
-                    onClick={() => setSelectedArea(area.id)}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      isActive
-                        ? `bg-${area.color}-600 text-white shadow-md`
-                        : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 border border-gray-300 dark:border-slate-600'
-                    }`}
-                  >
-                    <span>{area.icon}</span>
-                    {area.name}
-                  </button>
-                )
-              })}
-            </div>
           </div>
         </div>
+
 
         {/* Upload Hint - Unified system with Drag and Drop */}
         {filteredDocuments.length === 0 && (
@@ -808,10 +1039,10 @@ const Library: React.FC = () => {
             }}
           >
             <Brain className={`w-12 h-12 mx-auto mb-3 ${isDragging ? 'text-purple-500' : 'text-purple-600'}`} />
-            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">
+            <h3 className="text-lg font-bold text-white mb-2">
               Base de Conhecimento da Nôa Esperança
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <p className="text-slate-300 mb-4">
               {isDragging 
                 ? 'Solte o arquivo aqui para fazer upload' 
                 : 'Faça upload de documentos para treinar a IA e expandir a base de conhecimento'}
@@ -823,102 +1054,18 @@ const Library: React.FC = () => {
               <Upload className="w-5 h-5 inline mr-2" />
               Fazer Upload
             </button>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+            <p className="text-xs text-slate-400 mt-3">
               Ou arraste e solte um arquivo aqui
             </p>
           </div>
         )}
-
-        {/* Search and Filters */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 mb-8 border-2 border-gray-200 dark:border-slate-700">
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Buscar documentos..."
-                  value={searchTerm}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50 dark:bg-slate-700 text-slate-900 dark:text-white font-medium"
-                />
-              </div>
-            </div>
-
-            {/* Category Filter */}
-            <div className="lg:w-64">
-              <select
-                value={selectedCategory}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50 dark:bg-slate-700 text-slate-900 dark:text-white font-semibold"
-              >
-                {categoriesWithCount.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name} ({category.count})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Type Filter */}
-            <div className="lg:w-48">
-              <select
-                value={selectedType}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedType(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50 dark:bg-slate-700 text-slate-900 dark:text-white font-semibold"
-              >
-                {documentTypes.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Upload Button */}
-            <button 
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all"
-            >
-              <Upload className="w-5 h-5 mr-2" />
-              Upload
-            </button>
-          </div>
-        </div>
-
-        {/* Documents Count with Refresh Button */}
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-lg font-bold text-gray-800 dark:text-gray-200">
-            {filteredDocuments.length} {filteredDocuments.length === 1 ? 'documento encontrado' : 'documentos encontrados'}
-          </p>
-          <button
-            onClick={() => loadDocuments(true)}
-            disabled={isLoadingDocuments || isUploading}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoadingDocuments ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Carregando...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Atualizar Lista
-              </>
-            )}
-          </button>
-        </div>
 
         {/* Documents List - Dynamic and Intelligent */}
         <div className="space-y-4">
           {filteredDocuments.map((doc) => (
             <div 
               key={doc.id} 
-              className="bg-white dark:bg-slate-800 rounded-xl border-2 border-gray-200 dark:border-slate-700 p-6 hover:shadow-2xl hover:border-purple-400 dark:hover:border-purple-500 transition-all duration-300"
+              className="bg-slate-800/90 backdrop-blur-sm rounded-xl border-2 border-slate-700 p-6 hover:shadow-2xl hover:border-purple-500/50 transition-all duration-300 hover:bg-slate-800"
             >
               <div className="flex items-start gap-4">
                 {/* Icon */}
@@ -932,10 +1079,10 @@ const Library: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex-1">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2 line-clamp-2 group-hover:text-purple-600 dark:group-hover:text-purple-400">
+                      <h3 className="text-base font-bold text-white mb-2 line-clamp-2 group-hover:text-purple-400">
                         {doc.title}
                       </h3>
-                      <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 font-medium mb-3">
+                      <div className="flex items-center gap-3 text-xs text-slate-300 font-medium mb-3">
                         <span className="flex items-center gap-1">
                           <User className="w-3 h-3" />
                           {doc.author || 'Autor não disponível'}
@@ -965,7 +1112,7 @@ const Library: React.FC = () => {
 
                   {/* Summary */}
                   {doc.summary && (
-                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 line-clamp-2 italic">
+                    <p className="text-sm text-slate-300 mb-3 line-clamp-2 italic">
                       {doc.summary}
                     </p>
                   )}
@@ -993,13 +1140,13 @@ const Library: React.FC = () => {
                   )}
 
                   {/* Actions */}
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-gray-200 dark:border-slate-700">
-                    <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400 font-medium">
-                      <span className="flex items-center gap-1 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-slate-700">
+                    <div className="flex items-center gap-4 text-xs text-slate-300 font-medium">
+                      <span className="flex items-center gap-1 bg-slate-700 px-2 py-1 rounded">
                         ⬇️ {doc.downloads || 0} downloads
                       </span>
                       {doc.aiRelevance && doc.aiRelevance > 0 && (
-                        <span className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-1 rounded">
+                        <span className="flex items-center gap-1 bg-purple-900/50 border border-purple-500/50 text-purple-300 px-2 py-1 rounded">
                           <Brain className="w-3 h-3" />
                           Relevância IA: {doc.aiRelevance}
                         </span>
@@ -1297,15 +1444,15 @@ const Library: React.FC = () => {
 
         {/* Empty State */}
         {filteredDocuments.length === 0 && (
-          <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-lg">
-            <div className="w-16 h-16 text-gray-400 mx-auto mb-4 text-5xl">📁</div>
-            <h3 className="text-lg font-medium text-slate-900 dark:text-white dark:text-slate-100 mb-2">
+          <div className="text-center py-12 border-2 border-dashed border-slate-700 rounded-lg bg-slate-800/50">
+            <div className="w-16 h-16 text-slate-400 mx-auto mb-4 text-5xl">📁</div>
+            <h3 className="text-lg font-medium text-white mb-2">
               Nenhum documento encontrado
             </h3>
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-slate-400">
               Tente ajustar os filtros ou fazer uma nova busca
             </p>
-            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+            <p className="text-xs text-purple-400 mt-2">
               Ou faça upload de um novo documento para a base de conhecimento
             </p>
           </div>
@@ -1313,40 +1460,40 @@ const Library: React.FC = () => {
 
         {/* Quick Stats */}
         <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="card p-6 text-center">
-            <FileText className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-slate-900 dark:text-white dark:text-slate-100">
+          <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-6 text-center border-2 border-purple-500/30 shadow-xl">
+            <FileText className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-white">
               {totalDocs > 0 ? totalDocs : '1,247'}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">
+            <div className="text-sm text-slate-300">
               {totalDocs > 0 ? 'Documentos Reais' : 'Documentos (Fictício)'}
             </div>
           </div>
-          <div className="card p-6 text-center">
-            <div className="w-8 h-8 text-green-600 mx-auto mb-2 text-2xl">⬇️</div>
-            <div className="text-2xl font-bold text-slate-900 dark:text-white dark:text-slate-100">
+          <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-6 text-center border-2 border-purple-500/30 shadow-xl">
+            <div className="w-8 h-8 text-green-400 mx-auto mb-2 text-2xl">⬇️</div>
+            <div className="text-2xl font-bold text-white">
               {realDocuments.reduce((sum, doc: any) => sum + (doc.downloads || 0), 0)}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">Total de Downloads</div>
+            <div className="text-sm text-slate-300">Total de Downloads</div>
           </div>
-          <div className="card p-6 text-center">
-            <div className="w-8 h-8 text-purple-600 mx-auto mb-2 text-2xl">#</div>
-            <div className="text-2xl font-bold text-slate-900 dark:text-white dark:text-slate-100">
+          <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-6 text-center border-2 border-purple-500/30 shadow-xl">
+            <div className="w-8 h-8 text-purple-400 mx-auto mb-2 text-2xl">#</div>
+            <div className="text-2xl font-bold text-white">
               {realDocuments.filter((d: any) => d.isLinkedToAI === true).length}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">
+            <div className="text-sm text-slate-300">
               Vinculados à IA
             </div>
           </div>
-          <div className="card p-6 text-center">
-            <Star className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-slate-900 dark:text-white dark:text-slate-100">
+          <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-6 text-center border-2 border-purple-500/30 shadow-xl">
+            <Star className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-white">
               {realDocuments.length > 0 
                 ? (realDocuments.reduce((sum: number, doc: any) => sum + (doc.aiRelevance || 0), 0) / realDocuments.length).toFixed(1)
                 : '0'
               }
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">Relevância IA Média</div>
+            <div className="text-sm text-slate-300">Relevância IA Média</div>
           </div>
         </div>
       </div>
@@ -1544,3 +1691,4 @@ const Library: React.FC = () => {
 }
 
 export default Library
+

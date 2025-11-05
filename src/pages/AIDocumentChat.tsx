@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import RAGSystem from '../lib/ragSystem'
 import { supabase } from '../lib/supabase'
+import { KnowledgeBaseIntegration } from '../services/knowledgeBaseIntegration'
 
 interface Document {
   id: string
@@ -42,6 +43,15 @@ const AIDocumentChat: React.FC = () => {
   const [ragSystem] = useState(new RAGSystem())
   const [documents, setDocuments] = useState<Document[]>([])
   const [isInitialized, setIsInitialized] = useState(false)
+  const [stats, setStats] = useState({
+    totalDocuments: 0,
+    connections: 0,
+    precision: 0,
+    studies: 0,
+    similarities: 0,
+    patterns: 0,
+    semanticConnections: 0
+  })
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -75,6 +85,61 @@ const AIDocumentChat: React.FC = () => {
     const initializeSystem = async () => {
       try {
         console.log('🚀 Inicializando Chat IA...')
+        
+        // Carregar estatísticas reais do banco
+        const knowledgeStats = await KnowledgeBaseIntegration.getKnowledgeStats()
+        
+        // Buscar documentos do Supabase
+        const { data: supabaseDocs, error } = await supabase
+          .from('documents')
+          .select('*')
+          .order('created_at', { ascending: false })
+        
+        if (error) {
+          console.error('❌ Erro ao buscar documentos:', error)
+        }
+        
+        // Calcular estatísticas baseadas nos documentos reais
+        const totalDocs = knowledgeStats.totalDocuments || 0
+        const aiLinkedDocs = knowledgeStats.aiLinkedDocuments || 0
+        
+        // Calcular conexões semânticas (baseado em documentos com keywords/tags)
+        const docsWithKeywords = (supabaseDocs || []).filter(doc => 
+          (doc.keywords && doc.keywords.length > 0) || 
+          (doc.tags && doc.tags.length > 0)
+        )
+        const totalKeywords = (supabaseDocs || []).reduce((sum, doc) => 
+          sum + (doc.keywords?.length || 0) + (doc.tags?.length || 0), 0
+        )
+        
+        // Calcular estudos (documentos de pesquisa ou protocolos)
+        const studies = (supabaseDocs || []).filter(doc => 
+          doc.category === 'pesquisa' || 
+          doc.category === 'protocolos' ||
+          (doc.tags && (doc.tags.includes('pesquisa') || doc.tags.includes('protocolo')))
+        ).length
+        
+        // Calcular similaridades (baseado em documentos com mesma categoria)
+        const categoryCounts: Record<string, number> = {}
+        ;(supabaseDocs || []).forEach(doc => {
+          const category = doc.category || 'outros'
+          categoryCounts[category] = (categoryCounts[category] || 0) + 1
+        })
+        const similarities = Object.values(categoryCounts)
+          .filter(count => count > 1)
+          .reduce((sum, count) => sum + (count * (count - 1)) / 2, 0)
+        
+        // Calcular padrões (baseado em documentos com tags/keywords em comum)
+        const patterns = Math.floor(totalKeywords / 10) // Aproximação baseada em keywords
+        
+        // Calcular conexões semânticas (total de keywords/tags)
+        const semanticConnections = totalKeywords
+        
+        // Calcular precisão (baseado em relevância média da IA)
+        const precision = knowledgeStats.averageRelevance 
+          ? Math.round(knowledgeStats.averageRelevance * 100 * 10) / 10 
+          : 0
+        
         await ragSystem.initialize()
         setIsInitialized(true)
         
@@ -92,7 +157,20 @@ const AIDocumentChat: React.FC = () => {
           keywords: doc.keywords
         })))
         
+        // Atualizar estatísticas após tudo estar pronto
+        const finalStats = {
+          totalDocuments: totalDocs,
+          connections: totalKeywords,
+          precision: precision,
+          studies: studies,
+          similarities: Math.round(similarities),
+          patterns: patterns,
+          semanticConnections: semanticConnections
+        }
+        setStats(finalStats)
+        
         console.log('✅ Sistema RAG inicializado!')
+        console.log('📊 Estatísticas:', finalStats)
       } catch (error) {
         console.error('❌ Erro ao inicializar sistema:', error)
       }
@@ -297,15 +375,15 @@ Ocorreu um erro ao processar o arquivo. Tente novamente ou verifique se o arquiv
                 <div className="text-xs text-slate-400">Documentos</div>
               </div>
               <div className="bg-slate-700/50 rounded-lg p-3 text-center">
-                <div className="text-lg font-bold text-green-400">2,847</div>
+                <div className="text-lg font-bold text-green-400">{stats.connections.toLocaleString()}</div>
                 <div className="text-xs text-slate-400">Conexões</div>
               </div>
               <div className="bg-slate-700/50 rounded-lg p-3 text-center">
-                <div className="text-lg font-bold text-purple-400">89.2%</div>
+                <div className="text-lg font-bold text-purple-400">{stats.precision > 0 ? `${stats.precision}%` : '0%'}</div>
                 <div className="text-xs text-slate-400">Precisão</div>
               </div>
               <div className="bg-slate-700/50 rounded-lg p-3 text-center">
-                <div className="text-lg font-bold text-orange-400">156</div>
+                <div className="text-lg font-bold text-orange-400">{stats.studies}</div>
                 <div className="text-xs text-slate-400">Estudos</div>
               </div>
             </div>
@@ -317,15 +395,15 @@ Ocorreu um erro ao processar o arquivo. Tente novamente ou verifique se o arquiv
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-400">Similaridades Encontradas</span>
-                <span className="text-green-400 font-bold">1,247</span>
+                <span className="text-green-400 font-bold">{stats.similarities.toLocaleString()}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-400">Padrões Identificados</span>
-                <span className="text-blue-400 font-bold">89</span>
+                <span className="text-blue-400 font-bold">{stats.patterns}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-400">Conexões Semânticas</span>
-                <span className="text-purple-400 font-bold">2,156</span>
+                <span className="text-purple-400 font-bold">{stats.semanticConnections.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -663,34 +741,36 @@ Ocorreu um erro ao processar o arquivo. Tente novamente ou verifique se o arquiv
               </div>
             )}
           </div>
-
-          {/* Input */}
-          <div className="bg-slate-800/80 border-t border-slate-700 p-4">
-            <div className="flex items-center space-x-3">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder={isInitialized ? "Faça uma pergunta sobre os documentos..." : "Inicializando IA local..."}
-                  disabled={!isInitialized}
-                  className={`w-full px-4 py-3 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                    isInitialized 
-                      ? 'bg-slate-700 border-slate-600' 
-                      : 'bg-slate-800 border-slate-700 cursor-not-allowed'
-                  }`}
-                />
+          
+          {/* Input - Visível apenas na view de chat */}
+          {activeView === 'chat' && (
+            <div className="bg-slate-800/80 border-t border-slate-700 p-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    placeholder={isInitialized ? "Faça uma pergunta sobre os documentos..." : "Inicializando IA local..."}
+                    disabled={!isInitialized}
+                    className={`w-full px-4 py-3 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                      isInitialized 
+                        ? 'bg-slate-700 border-slate-600' 
+                        : 'bg-slate-800 border-slate-700 cursor-not-allowed opacity-50'
+                    }`}
+                  />
+                </div>
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!inputMessage.trim() || !isInitialized}
+                  className="bg-primary-600 hover:bg-primary-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white p-3 rounded-lg transition-colors duration-200 flex items-center justify-center"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || !isInitialized}
-                className="bg-primary-600 hover:bg-primary-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white p-3 rounded-lg transition-colors duration-200"
-              >
-                <Send className="w-5 h-5" />
-              </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

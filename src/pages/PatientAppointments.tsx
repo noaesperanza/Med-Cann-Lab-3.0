@@ -1,5 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import { 
   Clock,
   Calendar,
@@ -34,11 +36,13 @@ import {
   Zap,
   Activity,
   PieChart,
-  LineChart
+  LineChart,
+  Brain
 } from 'lucide-react'
 
 const PatientAppointments: React.FC = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
@@ -58,6 +62,81 @@ const PatientAppointments: React.FC = () => {
 
   // Agendamentos do paciente (será populado com dados reais do banco)
   const [appointments, setAppointments] = useState<any[]>([])
+  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([])
+  const [carePlan, setCarePlan] = useState<any>(null)
+
+  // Carregar agendamentos e plano de cuidado
+  useEffect(() => {
+    if (user?.id) {
+      loadAppointments()
+      loadCarePlan()
+    }
+  }, [user?.id])
+
+  const loadAppointments = async () => {
+    try {
+      const { data: appointmentsData, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('patient_id', user!.id)
+        .order('appointment_date', { ascending: true })
+
+      if (!error && appointmentsData) {
+        const formattedAppointments = appointmentsData.map((apt: any) => ({
+          id: apt.id,
+          date: apt.appointment_date,
+          time: apt.appointment_time || '09:00',
+          professional: apt.professional_name || 'Dr. Ricardo Valença',
+          type: apt.appointment_type || 'Consulta',
+          service: apt.service_type || '',
+          status: apt.status || 'scheduled',
+          doctorName: apt.professional_name || 'Dr. Ricardo Valença',
+          doctorSpecialty: apt.specialty || 'Nefrologia',
+          room: apt.room || 'Virtual',
+          notes: apt.notes || '',
+          priority: apt.priority || 'normal'
+        }))
+
+        setAppointments(formattedAppointments)
+        
+        // Filtrar próximas consultas (apenas agendadas e futuras)
+        const now = new Date()
+        const upcoming = formattedAppointments.filter(apt => {
+          const aptDate = new Date(`${apt.date}T${apt.time}`)
+          return apt.status === 'scheduled' && aptDate >= now
+        }).slice(0, 3) // Próximas 3 consultas
+        
+        setUpcomingAppointments(upcoming)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar agendamentos:', error)
+    }
+  }
+
+  const loadCarePlan = async () => {
+    try {
+      // Buscar plano de cuidado do paciente (pode estar em clinical_assessments ou outra tabela)
+      const { data: assessments, error } = await supabase
+        .from('clinical_assessments')
+        .select('*')
+        .eq('patient_id', user!.id)
+        .eq('assessment_type', 'INITIAL')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (!error && assessments) {
+        setCarePlan({
+          id: assessments.id,
+          progress: assessments.data?.progress || 0,
+          nextReview: assessments.data?.nextReview || null,
+          medications: assessments.data?.medications || []
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao carregar plano de cuidado:', error)
+    }
+  }
 
   // Horários disponíveis
   const timeSlots = [
@@ -161,7 +240,7 @@ const PatientAppointments: React.FC = () => {
 
   // Função para salvar agendamento (vinculado à IA residente)
   const handleSaveAppointment = async () => {
-    if (!appointmentData.date || !appointmentData.time || !appointmentData.specialty) {
+    if (!appointmentData.date || !appointmentData.time || !appointmentData.specialty || !appointmentData.service) {
       alert('Por favor, preencha todos os campos obrigatórios.')
       return
     }
@@ -171,19 +250,44 @@ const PatientAppointments: React.FC = () => {
       // O agendamento será processado pela IA residente que realizará a avaliação clínica inicial
       // e gerará o relatório que será direcionado para o prontuário do paciente
       
-      alert('Agendamento realizado com sucesso! Você receberá uma avaliação clínica inicial pela IA residente Nôa Esperança antes da consulta.')
+      // Salvar agendamento no Supabase
+      const { data: sessionData } = await supabase.auth.getSession()
+      const patientId = sessionData?.session?.user?.id
       
+      if (patientId) {
+        const { error: appointmentError } = await supabase
+          .from('appointments')
+          .insert({
+            patient_id: patientId,
+            appointment_date: appointmentData.date,
+            appointment_time: appointmentData.time,
+            appointment_type: appointmentData.service || 'Consulta',
+            status: 'scheduled',
+            notes: appointmentData.notes,
+            specialty: appointmentData.specialty,
+            type: appointmentData.type
+          })
+
+        if (appointmentError) {
+          console.error('Erro ao salvar agendamento:', appointmentError)
+        }
+      }
+      
+      // Fechar modal
       setShowAppointmentModal(false)
-      setAppointmentData({
-        date: '',
-        time: '',
-        type: 'presencial',
-        specialty: '',
-        service: '',
-        room: '',
-        notes: '',
-        duration: 60,
-        priority: 'normal'
+      
+      // Redirecionar para a IA residente para avaliação clínica inicial
+      navigate('/app/chat-noa-esperanca', {
+        state: {
+          startAssessment: true,
+          appointmentData: {
+            date: appointmentData.date,
+            time: appointmentData.time,
+            specialty: appointmentData.specialty,
+            service: appointmentData.service,
+            type: appointmentData.type
+          }
+        }
       })
     } catch (error) {
       console.error('Erro ao agendar consulta:', error)
@@ -201,80 +305,81 @@ const PatientAppointments: React.FC = () => {
     const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
     return (
-      <div className="bg-slate-800 rounded-xl p-6">
-        {/* Header do calendário */}
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-semibold text-white">
+      <div className="bg-slate-800 rounded-xl p-4 md:p-6">
+        {/* Header do calendário - mais compacto */}
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg md:text-xl font-semibold text-white">
             {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
           </h3>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1">
             <button
               onClick={() => navigateMonth('prev')}
-              className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+              className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
             >
-              <ChevronLeft className="w-5 h-5 text-slate-400" />
+              <ChevronLeft className="w-4 h-4 text-slate-400" />
             </button>
             <button
               onClick={() => navigateMonth('next')}
-              className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+              className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
             >
-              <ChevronRight className="w-5 h-5 text-slate-400" />
+              <ChevronRight className="w-4 h-4 text-slate-400" />
             </button>
           </div>
         </div>
 
-        {/* Dias da semana */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
+        {/* Dias da semana - mais compacto */}
+        <div className="grid grid-cols-7 gap-0.5 mb-1">
           {dayNames.map(day => (
-            <div key={day} className="p-2 text-center text-sm font-medium text-slate-400">
+            <div key={day} className="p-1.5 text-center text-xs font-medium text-slate-400">
               {day}
             </div>
           ))}
         </div>
 
-        {/* Dias do calendário */}
-        <div className="grid grid-cols-7 gap-1">
+        {/* Dias do calendário - menor e mais compacto */}
+        <div className="grid grid-cols-7 gap-0.5">
           {days.map((day, index) => (
             <div
               key={index}
               onClick={() => handleDateSelect(day)}
-              className={`p-2 h-20 border border-slate-700 rounded-lg cursor-pointer transition-colors ${
+              className={`p-1.5 h-14 md:h-16 border border-slate-700 rounded-md cursor-pointer transition-all hover:scale-105 ${
                 day.isCurrentMonth
-                  ? 'hover:bg-slate-700'
-                  : 'text-slate-500'
+                  ? 'hover:bg-slate-700/50'
+                  : 'text-slate-500 opacity-50'
               } ${
                 day.isToday
-                  ? 'bg-primary-600/20 border-primary-500'
+                  ? 'bg-primary-600/20 border-primary-500 ring-1 ring-primary-500'
                   : ''
               } ${
                 selectedDate && day.isCurrentMonth && 
                 selectedDate.getDate() === day.date
-                  ? 'bg-primary-600 border-primary-500'
+                  ? 'bg-primary-600 border-primary-500 ring-2 ring-primary-400'
                   : ''
               }`}
             >
-              <div className="text-sm font-medium mb-1">
+              <div className="text-xs md:text-sm font-medium mb-0.5">
                 {day.date}
               </div>
               {day.appointments.length > 0 && (
-                <div className="space-y-1">
-                  {day.appointments.slice(0, 2).map(apt => (
+                <div className="space-y-0.5">
+                  {day.appointments.slice(0, 1).map(apt => (
                     <div
                       key={apt.id}
-                      className={`text-xs px-1 py-0.5 rounded ${
+                      className={`text-[10px] px-0.5 py-0.5 rounded truncate ${
                         apt.priority === 'high'
-                          ? 'bg-red-500/20 text-red-400'
+                          ? 'bg-red-500/30 text-red-300'
                           : apt.priority === 'normal'
-                          ? 'bg-blue-500/20 text-blue-400'
-                          : 'bg-green-500/20 text-green-400'
+                          ? 'bg-blue-500/30 text-blue-300'
+                          : 'bg-green-500/30 text-green-300'
                       }`}
+                      title={`${apt.time} - ${apt.doctorName}`}
                     >
-                      {apt.time} - {apt.doctorName.split(' ')[1]}
+                      {apt.time}
                     </div>
                   ))}
-                  {day.appointments.length > 2 && (
-                    <div className="text-xs text-slate-400">
-                      +{day.appointments.length - 2} mais
+                  {day.appointments.length > 1 && (
+                    <div className="text-[10px] text-slate-400 font-medium">
+                      +{day.appointments.length - 1}
                     </div>
                   )}
                 </div>
@@ -295,11 +400,11 @@ const PatientAppointments: React.FC = () => {
     const bookedTimes = dayAppointments.map(apt => apt.time)
 
     return (
-      <div className="bg-slate-800 rounded-xl p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">
+      <div className="bg-slate-800 rounded-xl p-4 md:p-6">
+        <h3 className="text-lg md:text-xl font-semibold text-white mb-3">
           Horários Disponíveis - {selectedDate.toLocaleDateString('pt-BR')}
         </h3>
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
           {timeSlots.map(time => {
             const isBooked = bookedTimes.includes(time)
             return (
@@ -307,10 +412,10 @@ const PatientAppointments: React.FC = () => {
                 key={time}
                 onClick={() => !isBooked && handleTimeSelect(time)}
                 disabled={isBooked}
-                className={`p-3 rounded-lg text-sm font-medium transition-colors ${
+                className={`p-2 rounded-lg text-xs md:text-sm font-medium transition-all ${
                   isBooked
-                    ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                    : 'bg-slate-700 hover:bg-primary-600 text-slate-300 hover:text-white'
+                    ? 'bg-slate-700/50 text-slate-500 cursor-not-allowed opacity-50'
+                    : 'bg-slate-700 hover:bg-primary-600 hover:scale-105 text-slate-300 hover:text-white active:scale-95'
                 }`}
               >
                 {time}
@@ -324,38 +429,233 @@ const PatientAppointments: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
+        {/* Header - mais compacto */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 md:mb-6 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">Meus Agendamentos</h1>
-            <p className="text-slate-400">Gerencie suas consultas e visualize seu calendário</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white">Meus Agendamentos</h1>
+            <p className="text-sm md:text-base text-slate-400">Gerencie suas consultas e visualize seu calendário integrado ao seu plano de cuidado</p>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
             <button
               onClick={() => setViewMode('calendar')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-3 py-1.5 rounded-lg transition-colors text-sm flex items-center ${
                 viewMode === 'calendar'
                   ? 'bg-primary-600 text-white'
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
             >
-              <Calendar className="w-4 h-4 mr-2" />
+              <Calendar className="w-4 h-4 mr-1.5" />
               Calendário
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-3 py-1.5 rounded-lg transition-colors text-sm flex items-center ${
                 viewMode === 'list'
                   ? 'bg-primary-600 text-white'
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
             >
-              <FileText className="w-4 h-4 mr-2" />
+              <FileText className="w-4 h-4 mr-1.5" />
               Lista
             </button>
           </div>
         </div>
+
+        {/* Jornada do Paciente - Explicação do Fluxo */}
+        <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-500/30 rounded-xl p-6 mb-6">
+          <div className="flex items-start space-x-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <Brain className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-semibold text-white mb-3">🎯 Sua Jornada de Cuidado</h3>
+              <p className="text-slate-300 mb-4 text-sm">
+                Para garantir o melhor atendimento, seguimos uma jornada estruturada que começa com sua avaliação clínica inicial.
+              </p>
+              
+              {/* Fluxo em Passos */}
+              <div className="space-y-4 mb-4">
+                {/* Passo 1: Avaliação Clínica */}
+                <div className="bg-slate-800/50 rounded-lg p-4 border border-blue-500/20">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      1
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-white font-semibold mb-1">🧠 Avaliação Clínica Inicial</h4>
+                      <p className="text-slate-300 text-sm mb-2">
+                        Realize uma avaliação clínica completa com a IA Residente Nôa Esperança usando o protocolo IMRE.
+                        Esta avaliação é <strong className="text-white">privada e confidencial</strong> - apenas você pode ver o conteúdo completo do relatório.
+                      </p>
+                      <button
+                        onClick={() => navigate('/app/chat-noa-esperanca')}
+                        className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center space-x-2"
+                      >
+                        <Brain className="w-4 h-4" />
+                        <span>Iniciar Avaliação Clínica</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Passo 2: Relatório */}
+                <div className="bg-slate-800/50 rounded-lg p-4 border border-purple-500/20">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      2
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-white font-semibold mb-1">📋 Relatório Gerado</h4>
+                      <p className="text-slate-300 text-sm mb-2">
+                        Após a avaliação, a IA gera um relatório clínico completo que fica disponível no seu histórico de saúde.
+                        <strong className="text-white"> Você controla o compartilhamento</strong> - o médico não recebe automaticamente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Passo 3: Compartilhamento */}
+                <div className="bg-slate-800/50 rounded-lg p-4 border border-green-500/20">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      3
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-white font-semibold mb-1">🔐 Compartilhamento Seguro</h4>
+                      <p className="text-slate-300 text-sm mb-2">
+                        Quando você agendar uma consulta, você pode <strong className="text-white">opcionalmente compartilhar</strong> o relatório com o profissional.
+                        O médico saberá que um relatório existe, mas só verá o conteúdo se você compartilhar explicitamente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Passo 4: Consulta */}
+                <div className="bg-slate-800/50 rounded-lg p-4 border border-cyan-500/20">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      4
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-white font-semibold mb-1">📅 Agendar Consulta</h4>
+                      <p className="text-slate-300 text-sm">
+                        Após a avaliação, agende sua consulta com os profissionais da plataforma.
+                        Todas as suas consultas ficam integradas ao seu plano de cuidado personalizado.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                <p className="text-blue-300 text-xs">
+                  <strong className="text-blue-200">🔒 Segurança de Dados:</strong> Todos os seus dados são protegidos por sigilo médico e LGPD. 
+                  Você tem controle total sobre o compartilhamento do seu relatório de avaliação clínica.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card Próximas Consultas - Integrado ao Plano de Cuidado */}
+        <div className="bg-slate-800 rounded-xl p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-xl font-semibold text-white">📅 Próximas Consultas</h3>
+              {carePlan && (
+                <p className="text-sm text-slate-400 mt-1">
+                  Relacionadas ao seu plano de cuidado • Progresso: {carePlan.progress || 0}%
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setShowAppointmentModal(true)}
+              className="text-blue-400 hover:text-blue-300 text-sm flex items-center space-x-1"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Agendar nova consulta</span>
+            </button>
+          </div>
+          {upcomingAppointments.length > 0 ? (
+            <div className="space-y-3">
+              {upcomingAppointments.map((apt) => (
+                <div key={apt.id} className="bg-slate-700 rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex items-center space-x-4 flex-1">
+                    <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Calendar className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-semibold">{apt.professional}</p>
+                      <p className="text-slate-400 text-sm">
+                        {new Date(apt.date).toLocaleDateString('pt-BR')} às {apt.time}
+                      </p>
+                      <p className="text-slate-500 text-xs">{apt.service || apt.type}</p>
+                    </div>
+                    {carePlan && carePlan.nextReview && new Date(carePlan.nextReview) <= new Date(`${apt.date}T${apt.time}`) && (
+                      <div className="bg-green-500/20 border border-green-500/30 rounded-lg px-3 py-2">
+                        <p className="text-green-400 text-xs font-medium">Revisão do Plano</p>
+                      </div>
+                    )}
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs ml-4 ${
+                    apt.status === 'scheduled' ? 'bg-green-500/20 text-green-400' :
+                    apt.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
+                    'bg-red-500/20 text-red-400'
+                  }`}>
+                    {apt.status === 'scheduled' ? 'Agendada' :
+                     apt.status === 'completed' ? 'Concluída' : 'Cancelada'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Calendar className="w-16 h-16 text-slate-500 mx-auto mb-3" />
+              <p className="text-slate-400 mb-2">Nenhuma consulta agendada</p>
+              <p className="text-slate-500 text-sm mb-4">
+                Suas consultas estarão integradas ao seu plano de cuidado personalizado
+              </p>
+              <button
+                onClick={() => setShowAppointmentModal(true)}
+                className="text-blue-400 hover:text-blue-300 text-sm flex items-center space-x-1 mx-auto"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Agendar sua primeira consulta</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Informações do Plano de Cuidado */}
+        {carePlan && (
+          <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-xl p-4 mb-6">
+            <div className="flex items-center space-x-3 mb-3">
+              <Target className="w-5 h-5 text-blue-400" />
+              <h4 className="text-white font-semibold">Plano de Cuidado Personalizado</h4>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-slate-400 text-xs mb-1">Progresso do Tratamento</p>
+                <p className="text-white font-bold text-lg">{carePlan.progress || 0}%</p>
+              </div>
+              {carePlan.nextReview && (
+                <div>
+                  <p className="text-slate-400 text-xs mb-1">Próxima Revisão</p>
+                  <p className="text-white font-bold text-lg">
+                    {new Date(carePlan.nextReview).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              )}
+              {carePlan.medications && carePlan.medications.length > 0 && (
+                <div>
+                  <p className="text-slate-400 text-xs mb-1">Medicações Ativas</p>
+                  <p className="text-white font-bold text-lg">{carePlan.medications.length}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Conteúdo baseado na visualização */}
         {viewMode === 'calendar' && (
@@ -511,14 +811,20 @@ const PatientAppointments: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">Tipo de Serviço</label>
-                  <input
-                    type="text"
+                  <label className="block text-sm text-slate-400 mb-2">Tipo de Serviço <span className="text-red-400">*</span></label>
+                  <select
                     value={appointmentData.service}
                     onChange={(e) => setAppointmentData({...appointmentData, service: e.target.value})}
-                    placeholder="Ex: Avaliação Clínica Inicial com IA Residente"
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
-                  />
+                    required
+                  >
+                    <option value="">Selecione o tipo de serviço</option>
+                    <option value="avaliacao-clinica-inicial-noa">Avaliação clínica inicial com Nôa Esperança</option>
+                    <option value="consulta-primeira-vez">Consulta de primeira vez</option>
+                    <option value="consulta-retorno">Consulta de retorno</option>
+                    <option value="pareceres-clinicas-hospitais">Pareceres em clínicas e hospitais</option>
+                    <option value="consultas-domiciliares">Consultas domiciliares</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm text-slate-400 mb-2">Observações</label>

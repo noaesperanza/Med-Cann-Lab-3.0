@@ -120,3 +120,4 @@ FROM documents
 WHERE "isLinkedToAI" = TRUE
 ORDER BY "aiRelevance" DESC, title;
 
+

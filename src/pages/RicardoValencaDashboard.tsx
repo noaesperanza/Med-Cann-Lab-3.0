@@ -456,6 +456,51 @@ const RicardoValencaDashboard: React.FC = () => {
                 <p className="text-2xl font-bold text-purple-400">156</p>
               </div>
             </div>
+
+            {/* 👥 PAINEL DE TIPOS DE USUÁRIOS */}
+            <div>
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+                <Users className="w-6 h-6 mr-2 text-purple-400" />
+                <span>👥 Painel de Tipos de Usuários</span>
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {/* Card Paciente */}
+                <button
+                  onClick={() => navigate('/app/clinica/paciente/dashboard')}
+                  className="bg-gradient-to-r from-pink-500 to-rose-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium opacity-90">👤 Dashboard do Paciente</h3>
+                    <User className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs opacity-75 mt-1">Acessar dashboard do paciente</p>
+                </button>
+
+                {/* Card Profissional */}
+                <button
+                  onClick={() => navigate('/app/clinica/profissional/dashboard')}
+                  className="bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium opacity-90">👨‍⚕️ Dashboard do Profissional</h3>
+                    <Stethoscope className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs opacity-75 mt-1">Acessar dashboard do profissional</p>
+                </button>
+
+                {/* Card Aluno */}
+                <button
+                  onClick={() => navigate('/app/ensino/aluno/dashboard')}
+                  className="bg-gradient-to-r from-amber-500 to-orange-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium opacity-90">🎓 Dashboard do Aluno</h3>
+                    <GraduationCap className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs opacity-75 mt-1">Acessar dashboard do aluno</p>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

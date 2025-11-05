@@ -125,3 +125,4 @@ add column if not exists downloads integer not null default 0,
 
 **Performance:** ✅ Excelente com os índices criados
 
+

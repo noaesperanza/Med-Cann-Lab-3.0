@@ -10,26 +10,20 @@ import {
   Shield, 
   Clock,
   Stethoscope,
-  Brain,
   CheckCircle,
   Star,
   Activity,
   Target,
   BarChart3,
   BookOpen,
-  Pill,
-  Leaf,
-  Apple,
-  Zap,
   Users,
   ArrowRight,
-  PlayCircle,
   Video,
-  FileVideo,
-  GraduationCap
+  GraduationCap,
+  Brain,
+  Zap
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { useNoaPlatform } from '../contexts/NoaPlatformContext'
 import { clinicalReportService, ClinicalReport } from '../lib/clinicalReportService'
 import { supabase } from '../lib/supabase'
 
@@ -52,7 +46,6 @@ interface TherapeuticPlan {
 
 const PatientDashboard: React.FC = () => {
   const { user } = useAuth()
-  const { sendInitialMessage } = useNoaPlatform()
   const navigate = useNavigate()
   
   // Estados
@@ -113,12 +106,6 @@ const PatientDashboard: React.FC = () => {
     }
   }
 
-  // Função para iniciar avaliação clínica inicial
-  const handleStartClinicalAssessment = () => {
-    const imrePrompt = `Olá Nôa! Sou ${user?.name || 'um paciente'} e gostaria de realizar uma Avaliação Clínica Inicial seguindo o protocolo IMRE (Incentivador Mínimo do Relato Espontâneo) da Arte da Entrevista Clínica aplicada à Cannabis Medicinal. Por favor, inicie o protocolo IMRE para minha avaliação clínica inicial e, ao final, gere um relatório clínico que será salvo no meu dashboard.`
-    sendInitialMessage(imrePrompt)
-  }
-
   // Função para agendar consulta
   const handleScheduleAppointment = () => {
     navigate('/app/clinica/paciente/agendamentos')
@@ -136,7 +123,7 @@ const PatientDashboard: React.FC = () => {
       </div>
 
       {/* Cards de Ações Rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Agendar Consulta */}
         <button
           onClick={handleScheduleAppointment}
@@ -145,16 +132,6 @@ const PatientDashboard: React.FC = () => {
           <Calendar className="w-8 h-8 mb-3" />
           <h3 className="text-lg font-semibold mb-2">📅 Agendar Consulta</h3>
           <p className="text-sm text-white/80">Agende sua consulta com profissionais especializados</p>
-        </button>
-
-        {/* Avaliação Clínica */}
-        <button
-          onClick={handleStartClinicalAssessment}
-          className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
-        >
-          <Brain className="w-8 h-8 mb-3" />
-          <h3 className="text-lg font-semibold mb-2">🧠 Avaliação Clínica</h3>
-          <p className="text-sm text-white/80">Inicie avaliação com protocolo IMRE</p>
         </button>
 
         {/* Chat com Médico */}
@@ -167,115 +144,76 @@ const PatientDashboard: React.FC = () => {
           <p className="text-sm text-white/80">Comunicação direta com seu profissional</p>
         </button>
 
-        {/* Meus Relatórios */}
+        {/* Plano Terapêutico - Card Compacto */}
         <button
-          onClick={() => navigate('/app/clinica/paciente/relatorios')}
-          className="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+          onClick={() => setActiveTab('plano')}
+          className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left relative overflow-hidden"
         >
-          <FileText className="w-8 h-8 mb-3" />
-          <h3 className="text-lg font-semibold mb-2">📋 Meus Relatórios</h3>
-          <p className="text-sm text-white/80">Acesse seus relatórios clínicos</p>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+          <Brain className="w-8 h-8 mb-3 relative z-10" />
+          <h3 className="text-lg font-semibold mb-2 relative z-10">💊 Plano Terapêutico</h3>
+          <p className="text-sm text-white/80 relative z-10">
+            {therapeuticPlan 
+              ? `Progresso: ${therapeuticPlan.progress}% • ${therapeuticPlan.medications.length} medicações`
+              : 'Acesse suas prescrições integrativas'}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2 relative z-10">
+                         <span className="text-xs bg-white/20 px-2 py-1 rounded flex items-center space-x-1">
+               <Stethoscope className="w-3 h-3" />
+               <span>Biomédica</span>
+             </span>
+                           <span className="text-xs bg-white/20 px-2 py-1 rounded flex items-center space-x-1">
+                <Heart className="w-3 h-3" />
+                <span>MTC</span>
+              </span>
+            <span className="text-xs bg-white/20 px-2 py-1 rounded flex items-center space-x-1">
+              <Zap className="w-3 h-3" />
+              <span>Ayurvédica</span>
+            </span>
+            <span className="text-xs bg-white/20 px-2 py-1 rounded flex items-center space-x-1">
+              <Target className="w-3 h-3" />
+              <span>Homeopática</span>
+            </span>
+            <span className="text-xs bg-white/20 px-2 py-1 rounded flex items-center space-x-1">
+              <Brain className="w-3 h-3" />
+              <span>Integrativa</span>
+            </span>
+          </div>
         </button>
       </div>
 
-      {/* Próximas Consultas */}
-      <div className="bg-slate-800 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-white">📅 Próximas Consultas</h3>
-          <button
-            onClick={handleScheduleAppointment}
-            className="text-blue-400 hover:text-blue-300 text-sm flex items-center space-x-1"
-          >
-            <span>Agendar nova consulta</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-        {appointments.length > 0 ? (
-          <div className="space-y-3">
-            {appointments.map((apt) => (
-              <div key={apt.id} className="bg-slate-700 rounded-lg p-4 flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                    <Calendar className="w-6 h-6 text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-white font-semibold">{apt.professional}</p>
-                    <p className="text-slate-400 text-sm">{new Date(apt.date).toLocaleDateString('pt-BR')} às {apt.time}</p>
-                    <p className="text-slate-500 text-xs">{apt.type}</p>
-                  </div>
+      {/* Card de Orientações para Consulta */}
+      {appointments.length > 0 && appointments.some(apt => apt.status === 'scheduled') && (
+        <div className="bg-gradient-to-r from-blue-900/80 to-purple-900/80 rounded-xl p-6 border border-blue-500/30">
+          <div className="flex items-start space-x-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-semibold text-white mb-3">📋 Orientações para sua Consulta</h3>
+              <div className="space-y-2 text-slate-200">
+                <p className="text-sm">Para aproveitar ao máximo sua consulta, reúna os seguintes documentos:</p>
+                <ul className="list-disc list-inside space-y-1 text-sm ml-4">
+                  <li>Exames laboratoriais recentes (sangue, urina, etc.)</li>
+                  <li>Laudos de exames de imagem (ultrassom, tomografia, etc.)</li>
+                  <li>Prescrições médicas atuais e anteriores</li>
+                  <li>Histórico de medicações e tratamentos</li>
+                  <li>Relatórios de outras especialidades</li>
+                  <li>Documentos de avaliações anteriores (se houver)</li>
+                </ul>
+                <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <p className="text-xs text-blue-300">
+                    💡 <strong>Dica:</strong> Você pode fazer upload desses documentos na área de "Meus Relatórios" ou compartilhá-los diretamente no chat com o profissional.
+                  </p>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs ${
-                  apt.status === 'scheduled' ? 'bg-green-500/20 text-green-400' :
-                  apt.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
-                  'bg-red-500/20 text-red-400'
-                }`}>
-                  {apt.status === 'scheduled' ? 'Agendada' :
-                   apt.status === 'completed' ? 'Concluída' : 'Cancelada'}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <Calendar className="w-16 h-16 text-slate-500 mx-auto mb-3" />
-            <p className="text-slate-400 mb-2">Nenhuma consulta agendada</p>
-            <button
-              onClick={handleScheduleAppointment}
-              className="text-blue-400 hover:text-blue-300 text-sm"
-            >
-              Agendar sua primeira consulta
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Plano Terapêutico - Resumo */}
-      {therapeuticPlan && (
-        <div className="bg-slate-800 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-white">💊 Meu Plano Terapêutico</h3>
-            <button
-              onClick={() => setActiveTab('plano')}
-              className="text-blue-400 hover:text-blue-300 text-sm flex items-center space-x-1"
-            >
-              <span>Ver detalhes</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-slate-300 text-sm">Progresso do tratamento</span>
-              <span className="text-white font-semibold">{therapeuticPlan.progress}%</span>
-            </div>
-            <div className="w-full bg-slate-700 rounded-full h-3">
-              <div 
-                className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all"
-                style={{ width: `${therapeuticPlan.progress}%` }}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-slate-400 text-sm mb-2">Medicações ativas</p>
-              <div className="space-y-2">
-                {therapeuticPlan.medications.map((med, idx) => (
-                  <div key={idx} className="bg-slate-700 rounded-lg p-3">
-                    <p className="text-white font-medium">{med.name}</p>
-                    <p className="text-slate-400 text-xs">{med.dosage} • {med.frequency}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="text-slate-400 text-sm mb-2">Próxima revisão</p>
-              <div className="bg-slate-700 rounded-lg p-4">
-                <p className="text-white font-semibold">{therapeuticPlan.nextReview}</p>
-                <p className="text-slate-400 text-xs mt-1">Revisão do plano terapêutico</p>
               </div>
             </div>
           </div>
         </div>
       )}
+
+
+
 
       {/* Conteúdo Educacional - Preview */}
       <div className="bg-slate-800 rounded-xl p-6">
@@ -290,9 +228,9 @@ const PatientDashboard: React.FC = () => {
           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <Leaf className="w-8 h-8 text-green-400 mb-2" />
-            <h4 className="text-white font-semibold mb-1">Cannabis Medicinal</h4>
+                     <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
+                          <Heart className="w-8 h-8 text-green-400 mb-2" />
+             <h4 className="text-white font-semibold mb-1">Cannabis Medicinal</h4>
             <p className="text-slate-400 text-xs">Fundamentos e aplicações clínicas</p>
           </div>
           <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
@@ -457,7 +395,7 @@ const PatientDashboard: React.FC = () => {
                 <div key={idx} className="bg-slate-700 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <Pill className="w-6 h-6 text-green-400" />
+                                             <CheckCircle className="w-6 h-6 text-green-400" />
                       <div>
                         <p className="text-white font-semibold">{med.name}</p>
                         <p className="text-slate-400 text-sm">{med.dosage}</p>
@@ -490,7 +428,7 @@ const PatientDashboard: React.FC = () => {
         </>
       ) : (
         <div className="bg-slate-800 rounded-xl p-6 text-center">
-          <Pill className="w-16 h-16 text-slate-500 mx-auto mb-3" />
+                                           <CheckCircle className="w-16 h-16 text-slate-500 mx-auto mb-3" />
           <p className="text-slate-400 mb-4">Nenhum plano terapêutico ativo</p>
           <p className="text-slate-500 text-sm">Complete sua avaliação clínica inicial para receber seu plano personalizado</p>
         </div>
@@ -509,12 +447,12 @@ const PatientDashboard: React.FC = () => {
       {/* Cannabis Medicinal */}
       <div className="bg-slate-800 rounded-xl p-6">
         <div className="flex items-center space-x-3 mb-4">
-          <Leaf className="w-8 h-8 text-green-400" />
+                                                   <Heart className="w-8 h-8 text-green-400" />
           <h3 className="text-xl font-semibold text-white">Cannabis Medicinal</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <PlayCircle className="w-6 h-6 text-green-400 mb-2" />
+                                                   <Video className="w-6 h-6 text-green-400 mb-2" />
             <h4 className="text-white font-semibold mb-2">Fundamentos da Cannabis Medicinal</h4>
             <p className="text-slate-400 text-sm mb-3">Conceitos básicos, componentes ativos e mecanismos de ação</p>
             <span className="text-green-400 text-xs">Assistir vídeo →</span>
@@ -557,7 +495,7 @@ const PatientDashboard: React.FC = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <Apple className="w-6 h-6 text-blue-400 mb-2" />
+                                                   <CheckCircle className="w-6 h-6 text-blue-400 mb-2" />
             <h4 className="text-white font-semibold mb-2">Fatores Tradicionais</h4>
             <p className="text-slate-400 text-sm mb-3">Pressão arterial, diabetes, função renal, exames laboratoriais</p>
             <span className="text-blue-400 text-xs">Saiba mais →</span>
@@ -596,7 +534,7 @@ const PatientDashboard: React.FC = () => {
             <p className="text-slate-400 text-xs">Biblioteca de vídeos sobre saúde e bem-estar</p>
           </div>
           <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <FileVideo className="w-6 h-6 text-purple-400 mb-2" />
+            <Video className="w-6 h-6 text-purple-400 mb-2" />
             <h4 className="text-white font-semibold mb-2">Webinars</h4>
             <p className="text-slate-400 text-xs">Sessões ao vivo com especialistas</p>
           </div>

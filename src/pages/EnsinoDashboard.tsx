@@ -23,10 +23,12 @@ import {
   Activity,
   FlaskConical,
   Users,
-  FileText
+  FileText,
+  LayoutDashboard
 } from 'lucide-react'
 import { useNoa } from '../contexts/NoaContext'
 import NoaAnimatedAvatar from '../components/NoaAnimatedAvatar'
+import AlunoDashboard from './AlunoDashboard'
 
 const EnsinoDashboard: React.FC = () => {
   const navigate = useNavigate()
@@ -162,6 +164,7 @@ const EnsinoDashboard: React.FC = () => {
 
   const [selectedModule, setSelectedModule] = useState<number | null>(null)
   const [selectedLesson, setSelectedLesson] = useState<number | null>(null)
+  const [activeSection, setActiveSection] = useState<'dashboard' | 'cursos' | 'alunos' | 'ferramentas' | 'biblioteca' | 'calendario'>('dashboard')
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -203,19 +206,53 @@ const EnsinoDashboard: React.FC = () => {
       {/* Navigation Buttons - Horizontal */}
       <div className="bg-slate-800 border-b border-slate-700 p-4">
         <nav className="flex flex-wrap gap-2 justify-center">
-          <button onClick={() => handleNavigate('/app/ensino/profissional/gestao-alunos')} className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors">
+          <button 
+            onClick={() => setActiveSection('dashboard')} 
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              activeSection === 'dashboard' 
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white' 
+                : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span>🎓 Dashboard do Aluno</span>
+          </button>
+          <button 
+            onClick={() => setActiveSection('cursos')} 
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              activeSection === 'cursos' 
+                ? 'bg-slate-700 text-white' 
+                : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+            }`}
+          >
+            <GraduationCap className="w-5 h-5" />
+            <span>📚 Cursos</span>
+          </button>
+          <button 
+            onClick={() => handleNavigate('/app/ensino/profissional/gestao-alunos')} 
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+          >
             <Users className="w-5 h-5" />
             <span>👥 Gestão de Alunos</span>
           </button>
-          <button onClick={() => handleNavigate('/app/ensino/profissional/preparacao-aulas')} className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+          <button 
+            onClick={() => handleNavigate('/app/ensino/profissional/preparacao-aulas')} 
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+          >
             <FileText className="w-5 h-5" />
             <span>📝 Ferramentas Pedagógicas</span>
           </button>
-          <button onClick={() => handleNavigate('/app/library')} className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+          <button 
+            onClick={() => handleNavigate('/app/library')} 
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+          >
             <BookOpen className="w-5 h-5" />
             <span>📚 Biblioteca Médica</span>
           </button>
-          <button onClick={() => handleNavigate('/app/ensino-dashboard')} className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+          <button 
+            onClick={() => handleNavigate('/app/ensino-dashboard')} 
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+          >
             <Calendar className="w-5 h-5" />
             <span>📅 Calendário do Curso</span>
           </button>
@@ -225,7 +262,16 @@ const EnsinoDashboard: React.FC = () => {
       {/* Main Content */}
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
+          {/* Dashboard do Aluno */}
+          {activeSection === 'dashboard' && (
+            <div className="mb-8">
+              <AlunoDashboard />
+            </div>
+          )}
+
           {/* Cursos Disponíveis */}
+          {activeSection === 'cursos' && (
+            <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {/* Curso Pós-Graduação Cannabis Medicinal */}
             <div 
@@ -302,6 +348,8 @@ const EnsinoDashboard: React.FC = () => {
               </div>
             </div>
           </div>
+            </>
+          )}
         </div>
       </div>
 

@@ -201,3 +201,4 @@ Depois, evoluir para Solução 2 (RAG) quando necessário.
 - `src/services/knowledgeBaseIntegration.ts` (linhas 54-68, 300-400)
 - `src/services/noaKnowledgeBase.ts` (linhas 21-37)
 
+

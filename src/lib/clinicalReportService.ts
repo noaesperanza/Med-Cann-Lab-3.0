@@ -127,13 +127,22 @@ export class ClinicalReportService {
 
       if (error) {
         console.error('Erro ao buscar relatórios:', error)
-        return this.reports.filter(r => r.patient_id === patientId)
+        console.error('Detalhes do erro:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        return []
       }
 
       return data || []
     } catch (error) {
       console.error('Erro ao buscar relatórios:', error)
-      return this.reports.filter(r => r.patient_id === patientId)
+      if (error instanceof Error) {
+        console.error('Mensagem do erro:', error.message)
+      }
+      return []
     }
   }
 

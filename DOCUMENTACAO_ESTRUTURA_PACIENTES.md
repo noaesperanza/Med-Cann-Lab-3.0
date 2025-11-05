@@ -92,3 +92,4 @@ Com essas informações, podemos:
 - ✅ Respeitar políticas RLS já implementadas
 - ✅ Integrar com tabelas existentes corretamente
 
+

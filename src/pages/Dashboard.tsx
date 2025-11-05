@@ -42,7 +42,7 @@ const Dashboard: React.FC = () => {
     } else if (user.type === 'admin') {
       hasRedirectedRef.current = true
       navigate('/app/ricardo-valenca-dashboard', { replace: true })
-    } else if (!['professional', 'aluno'].includes(user.type)) {
+    } else if (!['professional', 'student', 'aluno'].includes(user.type)) { // Compatibilidade com 'aluno'
       hasRedirectedRef.current = true
       const defaultRoute = getDefaultRoute(user.type)
       navigate(defaultRoute, { replace: true })

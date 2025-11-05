@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { useNoaPlatform } from '../contexts/NoaPlatformContext'
 import { 
   BookOpen, FileText, Users, Clock, Search, Plus, Video, Presentation, 
   Edit, Save, Globe, Book, Upload, Download, ArrowLeft, 
   RotateCcw, HelpCircle, CheckCircle, XCircle, Image, File, 
-  Layout, Type, Sparkles
+  Layout, Type, Sparkles, Brain
 } from 'lucide-react'
 
 interface Case {
@@ -30,6 +31,7 @@ interface Lesson {
 export function LessonPreparation() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { openChat, sendInitialMessage } = useNoaPlatform()
   const [cases, setCases] = useState<Case[]>([])
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,7 +77,64 @@ export function LessonPreparation() {
   useEffect(() => {
     loadCases()
     loadLessons()
-  }, [])
+    loadSlides()
+    
+    // Listener para detectar quando a IA cria um slide
+    const handleSlideCreated = (event: CustomEvent) => {
+      const slideData = event.detail
+      if (slideData && slideData.title) {
+        console.log('📝 Slide criado pela IA detectado:', slideData)
+        
+        // Verificar se o slide já existe (evitar duplicatas)
+        const slideExists = slides.some(s => s.id === slideData.id || s.title === slideData.title)
+        if (slideExists) {
+          console.log('⚠️ Slide já existe, atualizando...')
+          setSlides(prev => prev.map(s => 
+            (s.id === slideData.id || s.title === slideData.title)
+              ? { ...s, title: slideData.title, content: slideData.content || s.content }
+              : s
+          ))
+        } else {
+          const newSlide = {
+            id: slideData.id || `slide_${Date.now()}`,
+            title: slideData.title,
+            content: slideData.content || '',
+            order: slides.length
+          }
+          setSlides(prev => {
+            const updated = [...prev, newSlide]
+            console.log('✅ Slide adicionado à lista:', updated.length, 'slides')
+            return updated
+          })
+          setCurrentSlide(slides.length)
+        }
+        
+        // Mudar para a aba de slides e recarregar do Supabase
+        setActiveTab('slides')
+        loadSlides()
+      }
+    }
+    
+    // Listener para detectar quando a IA atualiza um slide
+    const handleSlideUpdated = (event: CustomEvent) => {
+      const slideData = event.detail
+      if (slideData && slideData.id) {
+        setSlides(prev => prev.map(slide => 
+          slide.id === slideData.id 
+            ? { ...slide, title: slideData.title, content: slideData.content || slide.content }
+            : slide
+        ))
+      }
+    }
+    
+    window.addEventListener('slideCreated', handleSlideCreated as EventListener)
+    window.addEventListener('slideUpdated', handleSlideUpdated as EventListener)
+    
+    return () => {
+      window.removeEventListener('slideCreated', handleSlideCreated as EventListener)
+      window.removeEventListener('slideUpdated', handleSlideUpdated as EventListener)
+    }
+  }, [slides.length])
 
   const loadCases = async () => {
     try {
@@ -95,6 +154,89 @@ export function LessonPreparation() {
       }
     } catch (error) {
       console.error('Erro ao carregar casos:', error)
+    }
+  }
+
+  const loadSlides = async () => {
+    try {
+      if (!user?.id) return
+      
+      // Buscar slides do Supabase (usar documents com categoria 'slides')
+      const authorFilter = user.name || user.email
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('category', 'slides')
+        .or(`author.eq.${authorFilter},author.eq.${user.email}`)
+        .order('created_at', { ascending: true })
+      
+      if (error) {
+        console.warn('⚠️ Erro ao carregar slides do Supabase, usando estado local:', error)
+        return
+      }
+      
+      if (data && data.length > 0) {
+        const loadedSlides = data.map((doc, index) => ({
+          id: doc.id,
+          title: doc.title || `Slide ${index + 1}`,
+          content: doc.content || doc.summary || '',
+          order: index
+        }))
+        setSlides(loadedSlides)
+        if (loadedSlides.length > 0) {
+          setCurrentSlide(0)
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar slides:', error)
+    }
+  }
+
+  const saveSlide = async (slide: any) => {
+    try {
+      if (!user?.id) return
+      
+      const slideData = {
+        title: slide.title,
+        content: slide.content || '',
+        category: 'slides',
+        file_type: 'slide',
+        author: user.name || user.email,
+        summary: slide.content?.substring(0, 200) || '',
+        tags: ['slide', 'aula', 'pedagogico'],
+        keywords: ['slide', 'presentation'],
+        target_audience: ['student', 'professional'],
+        isLinkedToAI: true
+      }
+      
+      // Se o slide tem ID do Supabase (UUID), atualizar
+      if (slide.id && slide.id.length > 20 && !slide.id.startsWith('slide_')) {
+        // Atualizar slide existente no Supabase
+        const { error } = await supabase
+          .from('documents')
+          .update(slideData)
+          .eq('id', slide.id)
+        
+        if (error) throw error
+      } else {
+        // Criar novo slide
+        const { data, error } = await supabase
+          .from('documents')
+          .insert(slideData)
+          .select()
+          .single()
+        
+        if (error) throw error
+        
+        // Atualizar o slide local com o ID do banco
+        setSlides(prev => prev.map(s => 
+          s === slide ? { ...s, id: data.id } : s
+        ))
+      }
+      
+      console.log('✅ Slide salvo no Supabase')
+    } catch (error) {
+      console.error('❌ Erro ao salvar slide:', error)
     }
   }
 
@@ -624,23 +766,53 @@ export function LessonPreparation() {
         {activeTab === 'slides' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">Preparação de Slides</h2>
-              <button
-                onClick={() => {
-                  const newSlide = {
-                    id: Date.now().toString(),
-                    title: `Slide ${slides.length + 1}`,
-                    content: '',
-                    order: slides.length
-                  }
-                  setSlides([...slides, newSlide])
-                  setCurrentSlide(slides.length)
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
-              >
-                <Plus size={18} />
-                Novo Slide
-              </button>
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2">Preparação de Slides</h2>
+                <p className="text-slate-400 text-sm">
+                  Envie um PowerPoint ou crie slides do zero. A IA residente trabalhará com você na produção e análise.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    const fileInput = document.createElement('input')
+                    fileInput.type = 'file'
+                    fileInput.accept = '.pptx,.ppt'
+                    fileInput.onchange = async (e: any) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        openChat()
+                        sendInitialMessage(
+                          `Recebi seu arquivo PowerPoint: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB). ` +
+                          `Vou analisar o conteúdo dos slides, sugerir melhorias, ajudar na edição e preparar para publicação. ` +
+                          `Vamos começar a análise detalhada?`
+                        )
+                      }
+                    }
+                    fileInput.click()
+                  }}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+                >
+                  <Upload size={18} />
+                  Enviar PowerPoint
+                </button>
+                <button
+                  onClick={() => {
+                    const newSlide = {
+                      id: Date.now().toString(),
+                      title: `Slide ${slides.length + 1}`,
+                      content: '',
+                      order: slides.length
+                    }
+                    setSlides([...slides, newSlide])
+                    setCurrentSlide(slides.length)
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+                >
+                  <Plus size={18} />
+                  Novo Slide
+                </button>
+              </div>
             </div>
 
             {slides.length > 0 ? (
@@ -681,6 +853,11 @@ export function LessonPreparation() {
                             const updated = [...slides]
                             updated[currentSlide].title = e.target.value
                             setSlides(updated)
+                            // Salvar automaticamente após 2 segundos de inatividade
+                            clearTimeout((window as any).slideSaveTimeout)
+                            ;(window as any).slideSaveTimeout = setTimeout(() => {
+                              saveSlide(updated[currentSlide])
+                            }, 2000)
                           }}
                           className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Digite o título do slide..."
@@ -694,6 +871,11 @@ export function LessonPreparation() {
                             const updated = [...slides]
                             updated[currentSlide].content = e.target.value
                             setSlides(updated)
+                            // Salvar automaticamente após 2 segundos de inatividade
+                            clearTimeout((window as any).slideSaveTimeout)
+                            ;(window as any).slideSaveTimeout = setTimeout(() => {
+                              saveSlide(updated[currentSlide])
+                            }, 2000)
                           }}
                           rows={12}
                           className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -703,8 +885,12 @@ export function LessonPreparation() {
                       <div className="flex gap-3">
                         <button 
                           onClick={() => {
-                            // TODO: Implementar exportação PPT
-                            alert('Funcionalidade de exportação PPT será implementada em breve!')
+                            openChat()
+                            sendInitialMessage(
+                              `Vou ajudá-lo a exportar os slides para PowerPoint. ` +
+                              `Atualmente você tem ${slides.length} slides. ` +
+                              `Vamos preparar o arquivo PPT para download?`
+                            )
                           }}
                           className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
                         >
@@ -713,17 +899,31 @@ export function LessonPreparation() {
                         </button>
                         <button 
                           onClick={() => {
-                            // TODO: Integrar com IA para gerar conteúdo do slide
-                            const slideContent = `Baseado no contexto do curso, aqui está um conteúdo sugerido para o slide "${slides[currentSlide].title}".`
-                            const updated = [...slides]
-                            updated[currentSlide].content = slideContent
-                            setSlides(updated)
-                            alert('Conteúdo gerado com IA! (Demo)')
+                            openChat()
+                            sendInitialMessage(
+                              `Vou ajudá-lo a melhorar o slide "${slides[currentSlide].title}". ` +
+                              `Conteúdo atual: ${slides[currentSlide].content || '(vazio)'}. ` +
+                              `Vou analisar e sugerir melhorias, edições e otimizações. ` +
+                              `Vamos começar?`
+                            )
                           }}
                           className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
                         >
+                          <Brain size={18} />
+                          IA: Analisar/Editar
+                        </button>
+                        <button 
+                          onClick={() => {
+                            openChat()
+                            sendInitialMessage(
+                              `Vou gerar conteúdo para o slide "${slides[currentSlide].title}". ` +
+                              `Me diga o tema ou contexto que você quer abordar e eu vou criar um conteúdo profissional e bem estruturado.`
+                            )
+                          }}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
+                        >
                           <Sparkles size={18} />
-                          Gerar com IA
+                          IA: Gerar Conteúdo
                         </button>
                       </div>
                     </div>
@@ -734,21 +934,44 @@ export function LessonPreparation() {
               <div className="bg-slate-800 rounded-xl p-12 text-center">
                 <Presentation className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-400 mb-4">Nenhum slide criado ainda</p>
-                <button
-                  onClick={() => {
-                    const newSlide = {
-                      id: Date.now().toString(),
-                      title: 'Slide 1',
-                      content: '',
-                      order: 0
-                    }
-                    setSlides([newSlide])
-                    setCurrentSlide(0)
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold"
-                >
-                  Criar Primeiro Slide
-                </button>
+                <p className="text-slate-500 text-sm mb-6">
+                  Comece criando seu primeiro slide ou envie um PowerPoint para análise
+                </p>
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    onClick={() => {
+                      openChat()
+                      sendInitialMessage('Vamos criar seu primeiro slide! Me diga o tema ou assunto que você quer abordar e eu vou ajudá-lo a criar slides profissionais e bem estruturados.')
+                    }}
+                    className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2"
+                  >
+                    <Plus size={18} />
+                    Criar Primeiro Slide
+                  </button>
+                  <button
+                    onClick={() => {
+                      const fileInput = document.createElement('input')
+                      fileInput.type = 'file'
+                      fileInput.accept = '.pptx,.ppt'
+                      fileInput.onchange = async (e: any) => {
+                        const file = e.target.files[0]
+                        if (file) {
+                          openChat()
+                          sendInitialMessage(
+                            `Recebi seu arquivo PowerPoint: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB). ` +
+                            `Vou analisar o conteúdo dos slides, sugerir melhorias, ajudar na edição e preparar para publicação. ` +
+                            `Vamos começar a análise detalhada?`
+                          )
+                        }
+                      }
+                      fileInput.click()
+                    }}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2"
+                  >
+                    <Upload size={18} />
+                    Enviar PowerPoint
+                  </button>
+                </div>
               </div>
             )}
           </div>

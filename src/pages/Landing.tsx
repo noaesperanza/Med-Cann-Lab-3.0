@@ -25,7 +25,7 @@ const Landing: React.FC = () => {
   const navigate = useNavigate()
   const { register, login, isLoading: authLoading, user } = useAuth()
   const { success, error } = useToast()
-  const [activeProfile, setActiveProfile] = useState<'professional' | 'patient' | 'aluno' | null>(null)
+  const [activeProfile, setActiveProfile] = useState<'professional' | 'patient' | 'student' | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isLoginMode, setIsLoginMode] = useState(false)
@@ -78,7 +78,8 @@ const Landing: React.FC = () => {
         case 'patient':
           navigate('/app/clinica/paciente/dashboard')
           break
-        case 'aluno':
+        case 'student':
+        case 'aluno': // Compatibilidade com dados antigos
           navigate('/app/ensino/aluno/dashboard')
           break
         default:
@@ -96,7 +97,7 @@ const Landing: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    userType: 'professional' as 'patient' | 'professional' | 'admin' | 'aluno'
+    userType: 'professional' as 'patient' | 'professional' | 'admin' | 'student'
   })
   const [loginData, setLoginData] = useState({
     email: '',
@@ -104,6 +105,11 @@ const Landing: React.FC = () => {
   })
 
   const handleRegister = async () => {
+    if (!registerData.name || !registerData.email || !registerData.password) {
+      error('Preencha todos os campos obrigatórios')
+      return
+    }
+
     if (registerData.password !== registerData.confirmPassword) {
       error('As senhas não coincidem')
       return
@@ -116,7 +122,8 @@ const Landing: React.FC = () => {
 
     setIsLoading(true)
     try {
-      await register(registerData.email, registerData.password, registerData.name, registerData.userType)
+      console.log('📝 Iniciando registro:', registerData)
+      await register(registerData.email, registerData.password, registerData.userType, registerData.name)
       success('Conta criada com sucesso!')
       setRegisterData({
         name: '',
@@ -130,13 +137,15 @@ const Landing: React.FC = () => {
         navigate('/app/clinica/profissional/dashboard')
       } else if (registerData.userType === 'patient') {
         navigate('/app/clinica/paciente/dashboard')
-      } else if (registerData.userType === 'aluno') {
+      } else if (registerData.userType === 'student' || registerData.userType === 'aluno') {
         navigate('/app/ensino/aluno/dashboard')
       } else {
         navigate('/app/clinica/profissional/dashboard')
       }
-    } catch (err) {
-      error('Erro ao criar conta. Tente novamente.')
+    } catch (err: any) {
+      console.error('❌ Erro no handleRegister:', err)
+      const errorMessage = err?.message || 'Erro ao criar conta. Tente novamente.'
+      error(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -211,7 +220,7 @@ const Landing: React.FC = () => {
       ]
     },
     {
-      id: 'aluno',
+      id: 'student',
       title: 'Aluno',
       subtitle: 'Formação Médica',
       icon: <GraduationCap className="w-8 h-8" />,

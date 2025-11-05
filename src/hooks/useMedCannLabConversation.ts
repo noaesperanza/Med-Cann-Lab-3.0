@@ -84,7 +84,13 @@ export const useMedCannLabConversation = () => {
   // Inicializar IA apenas quando houver um usuário logado
   useEffect(() => {
     if (user && !residentRef.current) {
-      residentRef.current = new NoaResidentAI()
+      try {
+        residentRef.current = new NoaResidentAI()
+        console.log('✅ IA Residente inicializada para:', user.email)
+      } catch (error) {
+        console.error('❌ Erro ao inicializar IA Residente:', error)
+        setError('Erro ao inicializar IA residente. Tente recarregar a página.')
+      }
     } else if (!user && residentRef.current) {
       // Limpar IA quando usuário fizer logout
       residentRef.current = null
@@ -346,15 +352,22 @@ export const useMedCannLabConversation = () => {
     const trimmed = text.trim()
     if (!trimmed || isProcessing) return
 
-    // Verificar se há usuário logado e IA inicializada
+    // Verificar se há usuário logado
     if (!user) {
       setError('Por favor, faça login para usar a IA residente.')
       return
     }
 
+    // Garantir que a IA esteja inicializada (tentar novamente se necessário)
     if (!residentRef.current) {
-      setError('IA residente não inicializada. Aguarde um momento e tente novamente.')
-      return
+      try {
+        residentRef.current = new NoaResidentAI()
+        console.log('✅ IA Residente inicializada durante envio de mensagem')
+      } catch (error) {
+        console.error('❌ Erro ao inicializar IA Residente:', error)
+        setError('IA residente não inicializada. Aguarde um momento e tente novamente.')
+        return
+      }
     }
 
     setIsProcessing(true)
@@ -393,6 +406,123 @@ export const useMedCannLabConversation = () => {
       setMessages(prev => [...prev, assistantMessage])
       setLastIntent(intent)
       setUsedEndpoints(prev => [...prev, 'resident-ai'])
+
+      // Detectar se a IA mencionou ter criado um slide (mais robusto)
+      const responseLower = response.content.toLowerCase()
+      const slideKeywords = [
+        'criei um slide', 'criei slide', 'slide criado', 'slide foi criado', 
+        'slide disponível', 'slide está disponível', 'novo slide', 'slide pronto',
+        'slide gerado', 'slide foi gerado', 'preparação de slides', 'área de preparação de slides',
+        'criar slide', 'gerar slide', 'slide na área', 'na área de preparação'
+      ]
+      
+      const hasSlideMention = slideKeywords.some(keyword => responseLower.includes(keyword))
+      
+      // Também verificar se há estrutura de slide na resposta (título, conteúdo estruturado)
+      const hasSlideStructure = response.content.match(/#+\s+[^\n]+\n/s) || 
+                                response.content.match(/\*\*[^\*]+\*\*/) ||
+                                response.content.match(/slide[:\s]+[^\n]+/i)
+      
+      if (hasSlideMention || hasSlideStructure) {
+        // Extrair título do slide de várias formas
+        let slideTitle = `Slide ${new Date().toLocaleDateString('pt-BR')}`
+        
+        // Tentar extrair título de diferentes formatos
+        const titlePatterns = [
+          /slide[:\s]+"?([^"\n]+)"?/i,
+          /título[:\s]+"?([^"\n]+)"?/i,
+          /#+\s+([^\n]+)/,
+          /\*\*([^\*]+)\*\*/,
+          /slide\s+(\d+)[:\s]+([^\n]+)/i
+        ]
+        
+        for (const pattern of titlePatterns) {
+          const match = response.content.match(pattern)
+          if (match) {
+            slideTitle = match[1]?.trim() || match[2]?.trim() || slideTitle
+            if (slideTitle && slideTitle.length > 3) break
+          }
+        }
+        
+        // Extrair conteúdo do slide
+        let slideContent = response.content
+        
+        // Se a resposta contém estrutura de slide, tentar extrair melhor
+        const contentPatterns = [
+          /conteúdo[:\s]+([^\n]+)/i,
+          /slide[:\s]+[^\n]+\n([\s\S]+)/i,
+          /#+\s+[^\n]+\n([\s\S]+)/,
+        ]
+        
+        for (const pattern of contentPatterns) {
+          const match = response.content.match(pattern)
+          if (match && match[1]) {
+            slideContent = match[1].trim()
+            // Limitar conteúdo a tamanho razoável (primeiras 2000 caracteres)
+            if (slideContent.length > 2000) {
+              slideContent = slideContent.substring(0, 2000) + '...'
+            }
+            break
+          }
+        }
+        
+        // Se não encontrou conteúdo específico, usar a resposta inteira (limitada)
+        if (slideContent === response.content && slideContent.length > 500) {
+          slideContent = slideContent.substring(0, 2000) + '...'
+        }
+        
+        // Criar evento para notificar a criação do slide
+        const slideEvent = new CustomEvent('slideCreated', {
+          detail: {
+            id: `slide_${Date.now()}`,
+            title: slideTitle,
+            content: slideContent,
+            createdBy: 'ai'
+          }
+        })
+        window.dispatchEvent(slideEvent)
+        
+        // Salvar slide no Supabase
+        if (user?.id) {
+          try {
+            const { supabase } = await import('../lib/supabase')
+            const { data, error } = await supabase
+              .from('documents')
+              .insert({
+                title: slideTitle,
+                content: slideContent,
+                category: 'slides',
+                file_type: 'slide',
+                author: user.name || user.email,
+                summary: slideContent.substring(0, 200) || '',
+                tags: ['slide', 'aula', 'pedagogico', 'ai-generated'],
+                keywords: ['slide', 'presentation', 'ai'],
+                target_audience: ['student', 'professional'],
+                isLinkedToAI: true
+              })
+              .select()
+              .single()
+            
+            if (!error && data) {
+              console.log('✅ Slide criado pela IA e salvo no Supabase:', data.id)
+              // Atualizar evento com ID real do banco e recarregar slides na interface
+              const updatedEvent = new CustomEvent('slideCreated', {
+                detail: {
+                  id: data.id,
+                  title: slideTitle,
+                  content: slideContent,
+                  createdBy: 'ai'
+                }
+              })
+              window.dispatchEvent(updatedEvent)
+            } else if (error) {
+              console.error('❌ Erro ao salvar slide no Supabase:', error)
+            }
+          } catch (error) {
+            console.error('❌ Erro ao salvar slide criado pela IA:', error)
+          }
+        }
+      }
 
       if (response.type === 'error') {
         setError(response.content)
