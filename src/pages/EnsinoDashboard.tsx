@@ -185,86 +185,86 @@ const EnsinoDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       {/* Header */}
-      <div className="bg-slate-800 border-b border-slate-700 p-6">
+      <div className="bg-slate-800 border-b border-slate-700 p-3 md:p-4 lg:p-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-                         <button 
-               onClick={() => handleNavigate('/app/dashboard')}
-               className="flex items-center space-x-2 text-slate-300 hover:text-white transition-colors"
-             >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Voltar</span>
+          <div className="flex items-center space-x-2 md:space-x-4 min-w-0 flex-1">
+            <button 
+              onClick={() => handleNavigate('/app/dashboard')}
+              className="flex items-center space-x-1 md:space-x-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"
+            >
+              <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="hidden sm:inline text-sm md:text-base">Voltar</span>
             </button>
-            <div>
-              <h1 className="text-2xl font-bold text-white">🎓 Gestão de Ensino</h1>
-              <p className="text-slate-400">Gerenciamento de cursos, alunos e materiais educacionais</p>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-white truncate">🎓 Gestão de Ensino</h1>
+              <p className="text-xs md:text-sm text-slate-400 hidden sm:block">Gerenciamento de cursos, alunos e materiais educacionais</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Navigation Buttons - Horizontal */}
-      <div className="bg-slate-800 border-b border-slate-700 p-4">
-        <nav className="flex flex-wrap gap-2 justify-center">
+      <div className="bg-slate-800 border-b border-slate-700 p-2 md:p-3 lg:p-4">
+        <nav className="flex flex-wrap gap-1 md:gap-2 justify-center">
           <button 
             onClick={() => setActiveSection('dashboard')} 
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex items-center space-x-1 md:space-x-2 px-2 md:px-3 lg:px-4 py-1.5 md:py-2 rounded-lg transition-colors text-xs md:text-sm ${
               activeSection === 'dashboard' 
                 ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white' 
                 : 'text-slate-300 hover:bg-slate-700 hover:text-white'
             }`}
           >
-            <LayoutDashboard className="w-5 h-5" />
-            <span>🎓 Dashboard do Aluno</span>
+            <LayoutDashboard className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+            <span className="hidden sm:inline">🎓 Dashboard do Aluno</span>
           </button>
           <button 
             onClick={() => setActiveSection('cursos')} 
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex items-center space-x-1 md:space-x-2 px-2 md:px-3 lg:px-4 py-1.5 md:py-2 rounded-lg transition-colors text-xs md:text-sm ${
               activeSection === 'cursos' 
                 ? 'bg-slate-700 text-white' 
                 : 'text-slate-300 hover:bg-slate-700 hover:text-white'
             }`}
           >
-            <GraduationCap className="w-5 h-5" />
-            <span>📚 Cursos</span>
+            <GraduationCap className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+            <span className="hidden sm:inline">📚 Cursos</span>
           </button>
           <button 
             onClick={() => handleNavigate('/app/ensino/profissional/gestao-alunos')} 
-            className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+            className="flex items-center space-x-1 md:space-x-2 px-2 md:px-3 lg:px-4 py-1.5 md:py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors text-xs md:text-sm"
           >
-            <Users className="w-5 h-5" />
-            <span>👥 Gestão de Alunos</span>
+            <Users className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+            <span className="hidden sm:inline">👥 Gestão de Alunos</span>
           </button>
           <button 
             onClick={() => handleNavigate('/app/ensino/profissional/preparacao-aulas')} 
-            className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+            className="flex items-center space-x-1 md:space-x-2 px-2 md:px-3 lg:px-4 py-1.5 md:py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors text-xs md:text-sm"
           >
-            <FileText className="w-5 h-5" />
-            <span>📝 Ferramentas Pedagógicas</span>
+            <FileText className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+            <span className="hidden sm:inline">📝 Ferramentas</span>
           </button>
           <button 
             onClick={() => handleNavigate('/app/library')} 
-            className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+            className="flex items-center space-x-1 md:space-x-2 px-2 md:px-3 lg:px-4 py-1.5 md:py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors text-xs md:text-sm"
           >
-            <BookOpen className="w-5 h-5" />
-            <span>📚 Biblioteca Médica</span>
+            <BookOpen className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+            <span className="hidden sm:inline">📚 Biblioteca</span>
           </button>
           <button 
             onClick={() => handleNavigate('/app/ensino-dashboard')} 
-            className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+            className="flex items-center space-x-1 md:space-x-2 px-2 md:px-3 lg:px-4 py-1.5 md:py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors text-xs md:text-sm"
           >
-            <Calendar className="w-5 h-5" />
-            <span>📅 Calendário do Curso</span>
+            <Calendar className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+            <span className="hidden sm:inline">📅 Calendário</span>
           </button>
         </nav>
       </div>
 
       {/* Main Content */}
-      <div className="p-6">
+      <div className="p-2 md:p-4 lg:p-6">
         <div className="max-w-7xl mx-auto">
           {/* Dashboard do Aluno */}
           {activeSection === 'dashboard' && (
-            <div className="mb-8">
+            <div className="mb-4 md:mb-6 lg:mb-8">
               <AlunoDashboard />
             </div>
           )}
@@ -272,15 +272,15 @@ const EnsinoDashboard: React.FC = () => {
           {/* Cursos Disponíveis */}
           {activeSection === 'cursos' && (
             <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 lg:gap-6 mb-4 md:mb-6 lg:mb-8">
             {/* Curso Pós-Graduação Cannabis Medicinal */}
             <div 
               onClick={() => handleJoinClass('Pós-Graduação Cannabis Medicinal')}
-              className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all"
+              className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-4 md:p-5 lg:p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold text-white">🌿 Pós-Graduação Cannabis Medicinal</h3>
-                <GraduationCap className="w-8 h-8 text-white" />
+              <div className="flex items-center justify-between mb-3 md:mb-4">
+                <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white">🌿 Pós-Graduação Cannabis Medicinal</h3>
+                <GraduationCap className="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 text-white flex-shrink-0" />
               </div>
               <p className="text-white/90 mb-4">
                 Curso completo de cannabis medicinal com metodologia prática e casos clínicos reais. 
@@ -303,10 +303,10 @@ const EnsinoDashboard: React.FC = () => {
             {/* Curso Arte da Entrevista Clínica */}
             <div 
               onClick={() => handleJoinClass('Arte da Entrevista Clínica')}
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all"
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-4 md:p-5 lg:p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold text-white">🎭 Arte da Entrevista Clínica</h3>
+              <div className="flex items-center justify-between mb-3 md:mb-4">
+                <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white">🎭 Arte da Entrevista Clínica</h3>
                 <Heart className="w-8 h-8 text-white" />
               </div>
               <p className="text-white/90 mb-4">

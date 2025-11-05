@@ -149,25 +149,25 @@ const Courses: React.FC = () => {
 
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="container mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white dark:text-slate-900 dark:text-white mb-2">
+        <div className="mb-4 md:mb-6 lg:mb-8">
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white mb-2">
             Cursos e Especializações
           </h1>
-          <p className="text-gray-600 dark:text-gray-300">
+          <p className="text-sm md:text-base text-gray-600 dark:text-gray-300">
             Desenvolva suas habilidades médicas com nossos cursos especializados
           </p>
         </div>
 
         {/* Categories */}
-        <div className="mb-8">
-          <div className="flex flex-wrap gap-2 mb-4">
+        <div className="mb-4 md:mb-6 lg:mb-8">
+          <div className="flex flex-wrap gap-1 md:gap-2 mb-3 md:mb-4">
             {categories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 ${
+                className={`px-2 md:px-3 lg:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-colors duration-200 ${
                   selectedCategory === category.id
                     ? 'bg-primary-600 text-slate-900 dark:text-white'
                     : 'bg-slate-100/50 dark:bg-slate-800/80 text-gray-700 dark:text-gray-300 hover:bg-slate-100/30 dark:hover:bg-slate-700/50 border border-gray-200 dark:border-gray-600'
@@ -191,7 +191,7 @@ const Courses: React.FC = () => {
         </div>
 
         {/* Courses Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
           {filteredCourses.map((course) => (
             <div key={course.id} className="card card-hover overflow-hidden">
               {/* Course Image */}
@@ -344,9 +344,9 @@ const Courses: React.FC = () => {
 
         {/* Upload Modal */}
         {showUploadModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
             <div className="bg-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
+              <div className="p-4 md:p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold text-white">Adicionar Conteúdo ao Curso</h2>
                   <button

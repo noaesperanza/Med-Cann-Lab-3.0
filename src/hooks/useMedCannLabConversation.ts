@@ -71,7 +71,7 @@ export const useMedCannLabConversation = () => {
   const [messages, setMessages] = useState<ConversationMessage[]>([{
     id: 'welcome',
     role: 'noa',
-    content: 'Olá! Sou a Nôa Esperança. Posso monitorar a plataforma, acessar a biblioteca clínica, abrir simulações e conduzir análises IMRE completas. Como posso te ajudar agora?',
+    content: 'Olá, Sou Nôa Esperanza., a única assistente em saúde digital capacitada pela Arte da Entrevista Clínica. Dou as boas vindas ao Med Cann Lab com Nôa Esperanza, plataforma pioneira da cannabis medicinal aplicada à nefrologia e neurologia, utilizando a metodologia Arte da Entrevista Clínica, na formação de habilildades humanas para o aperfeiçoamento da relação terapeuta e pacientes. Posso ajudar você em todas as suas jornadas. Basta me chamar. Bons ventos soprem.',
     timestamp: new Date(),
     intent: 'HELP'
   }])

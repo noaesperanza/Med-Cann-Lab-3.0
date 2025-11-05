@@ -710,13 +710,13 @@ const ChatGlobal: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 md:space-y-6 lg:space-y-8 px-2 md:px-4">
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-white mb-2">
+      <div className="text-center px-4">
+        <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-white mb-2">
           Fórum de Conselheiros em Inteligência artificial na saúde
         </h1>
-        <p className="text-slate-300 text-lg">
+        <p className="text-slate-300 text-sm md:text-base lg:text-lg">
           Conecte-se com colegas, participe de debates e compartilhe conhecimento
         </p>
         {isAdmin && (
@@ -747,42 +747,42 @@ const ChatGlobal: React.FC = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-slate-800/80 rounded-lg p-2 border border-slate-700">
+      <div className="bg-slate-800/80 rounded-lg p-1 md:p-2 border border-slate-700">
         <div className="flex space-x-1">
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg transition-colors ${
+            className={`flex-1 flex items-center justify-center space-x-1 md:space-x-2 py-2 md:py-3 px-2 md:px-4 rounded-lg transition-colors text-sm md:text-base ${
               activeTab === 'chat'
                 ? 'bg-primary-600 text-white'
                 : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
             }`}
           >
-            <MessageSquare className="w-5 h-5" />
-            <span>Chat</span>
+            <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="hidden sm:inline">Chat</span>
           </button>
           <button
             onClick={() => setActiveTab('forum')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg transition-colors ${
+            className={`flex-1 flex items-center justify-center space-x-1 md:space-x-2 py-2 md:py-3 px-2 md:px-4 rounded-lg transition-colors text-sm md:text-base ${
               activeTab === 'forum'
                 ? 'bg-primary-600 text-white'
                 : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
             }`}
           >
-            <BookOpen className="w-5 h-5" />
-            <span>Fórum</span>
+            <BookOpen className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="hidden sm:inline">Fórum</span>
           </button>
           <button
             onClick={() => setActiveTab('friends')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg transition-colors ${
+            className={`flex-1 flex items-center justify-center space-x-1 md:space-x-2 py-2 md:py-3 px-2 md:px-4 rounded-lg transition-colors text-sm md:text-base ${
               activeTab === 'friends'
                 ? 'bg-primary-600 text-white'
                 : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
             }`}
           >
-            <Users className="w-5 h-5" />
-            <span>Amigos</span>
+            <Users className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="hidden sm:inline">Amigos</span>
             {friendRequests.length > 0 && (
-              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+              <span className="bg-red-500 text-white text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded-full">
                 {friendRequests.length}
               </span>
             )}
@@ -792,16 +792,16 @@ const ChatGlobal: React.FC = () => {
 
       {/* Chat Tab */}
       {activeTab === 'chat' && (
-        <div className={`grid gap-10 ${showModeration && isAdmin ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-4'}`}>
+        <div className={`grid gap-4 md:gap-6 lg:gap-10 ${showModeration && isAdmin ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-4'}`}>
           {/* Sidebar - Channels */}
-          <div className="lg:col-span-1">
-            <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-white">
+          <div className="lg:col-span-1 order-2 lg:order-1">
+            <div className="bg-slate-800/80 rounded-lg p-3 md:p-4 lg:p-6 border border-slate-700">
+              <div className="flex items-center justify-between mb-4 md:mb-6">
+                <h3 className="text-base md:text-lg font-semibold text-white">
                   📋 Canais
                 </h3>
                 <button className="p-2 text-slate-400 hover:text-primary-400 transition-colors">
-                  <Plus className="w-5 h-5" />
+                  <Plus className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
               </div>
 
@@ -839,8 +839,8 @@ const ChatGlobal: React.FC = () => {
             </div>
 
             {/* Online Users */}
-            <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700 mt-6">
-              <h3 className="text-lg font-semibold text-white mb-4">
+            <div className="bg-slate-800/80 rounded-lg p-3 md:p-4 lg:p-6 border border-slate-700 mt-4 md:mt-6">
+              <h3 className="text-base md:text-lg font-semibold text-white mb-3 md:mb-4">
                 👥 Online ({onlineUsers.filter(u => u.status === 'online').length})
               </h3>
               <div className="space-y-3">
@@ -879,44 +879,44 @@ const ChatGlobal: React.FC = () => {
           </div>
 
           {/* Chat Area */}
-          <div className={`${showModeration && isAdmin ? 'lg:col-span-2' : 'lg:col-span-2'}`}>
-            <div className="bg-slate-800/80 rounded-lg border border-slate-700 h-[600px] flex flex-col">
+          <div className={`${showModeration && isAdmin ? 'lg:col-span-2' : 'lg:col-span-2'} order-1 lg:order-2`}>
+            <div className="bg-slate-800/80 rounded-lg border border-slate-700 h-[400px] md:h-[500px] lg:h-[600px] flex flex-col">
               {/* Chat Header */}
-              <div className="p-4 border-b border-slate-700 bg-slate-700/50">
+              <div className="p-3 md:p-4 border-b border-slate-700 bg-slate-700/50">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base md:text-lg font-semibold text-white truncate">
                       {channels.find(c => c.id === activeChannel)?.name}
                     </h3>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-slate-400 text-xs md:text-sm">
                       {channels.find(c => c.id === activeChannel)?.members} membros
                     </p>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
                     {!isAdmin && (
                       <button
                         onClick={() => setShowModeratorRequest(true)}
-                        className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded transition-colors"
+                        className="p-1.5 md:p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded transition-colors"
                         title="Solicitar Moderador"
                       >
-                        <Flag className="w-5 h-5" />
+                        <Flag className="w-4 h-4 md:w-5 md:h-5" />
                       </button>
                     )}
-                    <button className="p-2 text-slate-400 hover:text-primary-400 transition-colors">
-                      <Video className="w-5 h-5" />
+                    <button className="p-1.5 md:p-2 text-slate-400 hover:text-primary-400 transition-colors hidden md:block">
+                      <Video className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
-                    <button className="p-2 text-slate-400 hover:text-green-400 transition-colors">
-                      <Phone className="w-5 h-5" />
+                    <button className="p-1.5 md:p-2 text-slate-400 hover:text-green-400 transition-colors hidden md:block">
+                      <Phone className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
-                    <button className="p-2 text-slate-400 hover:text-purple-400 transition-colors">
-                      <MoreVertical className="w-5 h-5" />
+                    <button className="p-1.5 md:p-2 text-slate-400 hover:text-purple-400 transition-colors">
+                      <MoreVertical className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
                   </div>
                 </div>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-3 md:space-y-4">
                 {/* Indicador de tempo real */}
                 <div className="text-center mb-4">
                   <div className="inline-flex items-center space-x-2 bg-green-500/20 border border-green-500/30 rounded-full px-4 py-2">
@@ -975,10 +975,10 @@ const ChatGlobal: React.FC = () => {
               </div>
 
               {/* Message Input */}
-              <div className="p-4 border-t border-slate-700">
-                <div className="flex items-center space-x-3">
-                  <button className="p-2 text-slate-400 hover:text-primary-400 transition-colors">
-                    <Paperclip className="w-5 h-5" />
+              <div className="p-2 md:p-4 border-t border-slate-700">
+                <div className="flex items-center space-x-1 md:space-x-2">
+                  <button className="p-1.5 md:p-2 text-slate-400 hover:text-primary-400 transition-colors hidden sm:block">
+                    <Paperclip className="w-4 h-4 md:w-5 md:h-5" />
                   </button>
                   <div className="flex-1 relative">
                     <input
@@ -987,28 +987,28 @@ const ChatGlobal: React.FC = () => {
                       onChange={(e) => setMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="Digite sua mensagem..."
-                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-2 md:px-4 py-2 md:py-3 text-sm md:text-base bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
-                  <button className="p-2 text-slate-400 hover:text-yellow-400 transition-colors">
-                    <Smile className="w-5 h-5" />
+                  <button className="p-1.5 md:p-2 text-slate-400 hover:text-yellow-400 transition-colors hidden sm:block">
+                    <Smile className="w-4 h-4 md:w-5 md:h-5" />
                   </button>
                   <button
                     onClick={isRecording ? () => setIsRecording(false) : startRecording}
-                    className={`p-2 transition-colors ${
+                    className={`p-1.5 md:p-2 transition-colors ${
                       isRecording 
                         ? 'text-red-400 hover:text-red-300' 
                         : 'text-slate-400 hover:text-red-400'
                     }`}
                   >
-                    {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                    {isRecording ? <MicOff className="w-4 h-4 md:w-5 md:h-5" /> : <Mic className="w-4 h-4 md:w-5 md:h-5" />}
                   </button>
                   <button
                     onClick={handleSendMessage}
                     disabled={isSending}
-                    className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-primary-600 hover:bg-primary-700 text-white px-2 md:px-4 py-2 md:py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   >
-                    <Send className="w-5 h-5" />
+                    <Send className="w-4 h-4 md:w-5 md:h-5" />
                   </button>
                 </div>
               </div>
@@ -1017,7 +1017,7 @@ const ChatGlobal: React.FC = () => {
 
           {/* Coluna de Notícias, Parcerias, Patrocinadores e Apoiadores */}
           {!showModeration && (
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 order-3 hidden lg:block">
               <div className="space-y-6">
                 {/* Notícias */}
                 <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
@@ -1529,8 +1529,8 @@ const ChatGlobal: React.FC = () => {
 
       {/* Modal para Solicitar Moderador */}
       {showModeratorRequest && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-lg p-4 md:p-6 w-full max-w-md mx-4">
             <h3 className="text-xl font-bold text-white mb-4">🚨 Solicitar Moderador</h3>
             <p className="text-slate-300 mb-4">
               Descreva brevemente o motivo da solicitação. Um moderador será notificado e entrará no chat.

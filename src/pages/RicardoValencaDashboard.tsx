@@ -229,76 +229,65 @@ const RicardoValencaDashboard: React.FC = () => {
   const renderDashboard = () => (
     <>
       {/* Navegação por Eixos */}
-      <div className="space-y-8 mb-8">
+      <div className="space-y-4 md:space-y-6 lg:space-y-8 mb-4 md:mb-6 lg:mb-8">
         {/* 🏥 EIXO CLÍNICA */}
         <div>
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center">
-            <Stethoscope className="w-6 h-6 mr-2 text-blue-400" />
+          <h2 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center">
+            <Stethoscope className="w-5 h-5 md:w-6 md:h-6 mr-2 text-blue-400" />
             <span>🏥 Eixo Clínica</span>
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <button
               onClick={() => navigate('/app/patients')}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium opacity-90">👥 Gestão de Pacientes</h3>
-                <Users className="w-6 h-6" />
+                <h3 className="text-xs md:text-sm font-medium opacity-90">👥 Gestão de Pacientes</h3>
+                <Users className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
               <p className="text-xs opacity-75 mt-1">Prontuário eletrônico</p>
             </button>
             
             <button
               onClick={() => navigate('/app/clinica/profissional/agendamentos')}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium opacity-90">📅 Agendamentos</h3>
-                <Calendar className="w-6 h-6" />
+                <h3 className="text-xs md:text-sm font-medium opacity-90">📅 Agendamentos</h3>
+                <Calendar className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
               <p className="text-xs opacity-75 mt-1">Agenda completa</p>
             </button>
             
             <button
               onClick={() => setActiveSection('relatorios-clinicos')}
-              className="bg-gradient-to-r from-amber-600 to-orange-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-amber-600 to-orange-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium opacity-90">📊 Relatórios Clínicos</h3>
-                <BarChart3 className="w-6 h-6" />
+                <h3 className="text-xs md:text-sm font-medium opacity-90">📊 Relatórios Clínicos</h3>
+                <BarChart3 className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
               <p className="text-xs opacity-75 mt-1">Relatórios da IA</p>
             </button>
             
             <button
-              onClick={() => navigate('/app/patient-onboarding')}
-              className="bg-gradient-to-r from-pink-600 to-rose-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium opacity-90">📝 Nova Avaliação</h3>
-                <FileText className="w-6 h-6" />
-              </div>
-              <p className="text-xs opacity-75 mt-1">Avaliação clínica inicial</p>
-            </button>
-            
-            <button
               onClick={() => setActiveSection('atendimento')}
-              className="bg-gradient-to-r from-red-600 to-orange-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-red-600 to-orange-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium opacity-90">Atendimento</h3>
-                <Stethoscope className="w-6 h-6" />
+                <h3 className="text-xs md:text-sm font-medium opacity-90">Atendimento</h3>
+                <Stethoscope className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
               <p className="text-xs opacity-75 mt-1">Sala de atendimento</p>
             </button>
             
             <button
               onClick={() => setActiveSection('prescricoes')}
-              className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium opacity-90">💊 Prescrições</h3>
-                <FileText className="w-6 h-6" />
+                <h3 className="text-xs md:text-sm font-medium opacity-90">💊 Prescrições</h3>
+                <FileText className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
               <p className="text-xs opacity-75 mt-1">Prescrições integrativas</p>
             </button>
@@ -307,26 +296,26 @@ const RicardoValencaDashboard: React.FC = () => {
 
         {/* OUTROS */}
         <div>
-          <h2 className="text-xl font-bold text-white mb-4">Outros</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <h2 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4">Outros</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             <button
               onClick={() => setActiveSection('financeiro')}
-              className="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium opacity-90">💰 Gestão Financeira</h3>
-                <TrendingUp className="w-6 h-6" />
+                <h3 className="text-xs md:text-sm font-medium opacity-90">💰 Gestão Financeira</h3>
+                <TrendingUp className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
               <p className="text-xs opacity-75 mt-1">Controle financeiro</p>
             </button>
             
             <button
               onClick={() => navigate('/app/profile')}
-              className="bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium opacity-90">👤 Meu Perfil</h3>
-                <User className="w-6 h-6" />
+                <h3 className="text-xs md:text-sm font-medium opacity-90">👤 Meu Perfil</h3>
+                <User className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
               <p className="text-xs opacity-75 mt-1">Configurações pessoais</p>
             </button>
@@ -336,124 +325,124 @@ const RicardoValencaDashboard: React.FC = () => {
         {/* 🔧 FUNCIONALIDADES ADMINISTRATIVAS */}
         {user?.type === 'admin' && (
           <div>
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center">
-              <Settings className="w-6 h-6 mr-2 text-orange-400" />
+            <h2 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center">
+              <Settings className="w-5 h-5 md:w-6 md:h-6 mr-2 text-orange-400" />
               <span>🔧 Funcionalidades Administrativas</span>
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <button className="bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
+              <button className="bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">👥 Usuários</h3>
-                  <Users className="w-6 h-6" />
+                  <h3 className="text-xs md:text-sm font-medium opacity-90">👥 Usuários</h3>
+                  <Users className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">Gestão de usuários do sistema</p>
               </button>
               
-              <button className="bg-gradient-to-r from-green-500 to-teal-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+              <button className="bg-gradient-to-r from-green-500 to-teal-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">🎓 Cursos</h3>
-                  <BookOpen className="w-6 h-6" />
+                  <h3 className="text-xs md:text-sm font-medium opacity-90">🎓 Cursos</h3>
+                  <BookOpen className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">Gestão de cursos e materiais</p>
               </button>
               
-              <button className="bg-gradient-to-r from-emerald-500 to-green-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+              <button className="bg-gradient-to-r from-emerald-500 to-green-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">💰 Financeiro</h3>
-                  <TrendingUp className="w-6 h-6" />
+                  <h3 className="text-xs md:text-sm font-medium opacity-90">💰 Financeiro</h3>
+                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">Controle financeiro e pagamentos</p>
               </button>
               
-              <button className="bg-gradient-to-r from-cyan-500 to-blue-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+              <button className="bg-gradient-to-r from-cyan-500 to-blue-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">💬 Chat Global + Moderação</h3>
-                  <MessageCircle className="w-6 h-6" />
+                  <h3 className="text-xs md:text-sm font-medium opacity-90">💬 Chat Global + Moderação</h3>
+                  <MessageCircle className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">Moderação de chats e conversas</p>
               </button>
               
-              <button className="bg-gradient-to-r from-orange-500 to-red-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+              <button className="bg-gradient-to-r from-orange-500 to-red-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">🏛️ Moderação Fórum</h3>
-                  <MessageCircle className="w-6 h-6" />
+                  <h3 className="text-xs md:text-sm font-medium opacity-90">🏛️ Moderação Fórum</h3>
+                  <MessageCircle className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">Gestão e moderação do fórum</p>
               </button>
               
-              <button className="bg-gradient-to-r from-yellow-500 to-orange-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+              <button className="bg-gradient-to-r from-yellow-500 to-orange-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">🏆 Ranking & Gamificação</h3>
-                  <Activity className="w-6 h-6" />
+                  <h3 className="text-xs md:text-sm font-medium opacity-90">🏆 Ranking & Gamificação</h3>
+                  <Activity className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">Sistema de pontos e rankings</p>
               </button>
               
-              <button className="bg-gradient-to-r from-indigo-500 to-purple-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+              <button className="bg-gradient-to-r from-indigo-500 to-purple-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">📁 Upload</h3>
-                  <Upload className="w-6 h-6" />
+                  <h3 className="text-xs md:text-sm font-medium opacity-90">📁 Upload</h3>
+                  <Upload className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">Upload de documentos e arquivos</p>
               </button>
               
-              <button className="bg-gradient-to-r from-pink-500 to-rose-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+              <button className="bg-gradient-to-r from-pink-500 to-rose-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">📊 Analytics</h3>
-                  <BarChart3 className="w-6 h-6" />
+                  <h3 className="text-xs md:text-sm font-medium opacity-90">📊 Analytics</h3>
+                  <BarChart3 className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">Análise de dados e relatórios</p>
               </button>
               
-              <button className="bg-gradient-to-r from-red-500 to-pink-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+              <button className="bg-gradient-to-r from-red-500 to-pink-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">🫀 Função Renal</h3>
-                  <Activity className="w-6 h-6" />
+                  <h3 className="text-xs md:text-sm font-medium opacity-90">🫀 Função Renal</h3>
+                  <Activity className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">Monitoramento de função renal</p>
               </button>
               
-              <button className="bg-gradient-to-r from-slate-500 to-gray-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+              <button className="bg-gradient-to-r from-slate-500 to-gray-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">⚙️ Sistema</h3>
-                  <Settings className="w-6 h-6" />
+                  <h3 className="text-xs md:text-sm font-medium opacity-90">⚙️ Sistema</h3>
+                  <Settings className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">Configurações do sistema</p>
               </button>
               
-              <button className="bg-gradient-to-r from-teal-500 to-cyan-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
+              <button className="bg-gradient-to-r from-teal-500 to-cyan-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">📚 Biblioteca</h3>
-                  <BookOpen className="w-6 h-6" />
+                  <h3 className="text-xs md:text-sm font-medium opacity-90">📚 Biblioteca</h3>
+                  <BookOpen className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">Biblioteca médica e documentos</p>
               </button>
               
               <button 
                 onClick={() => navigate('/app/ai-documents')}
-                className="bg-gradient-to-r from-violet-500 to-purple-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left cursor-pointer"
+                className="bg-gradient-to-r from-violet-500 to-purple-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">🤖 Chat IA Documentos</h3>
-                  <Brain className="w-6 h-6" />
+                  <h3 className="text-xs md:text-sm font-medium opacity-90">🤖 Chat IA Documentos</h3>
+                  <Brain className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1">IA para análise de documentos</p>
               </button>
             </div>
 
             {/* System Info */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                <p className="text-sm text-slate-400 mb-1">Sistema Online</p>
-                <p className="text-2xl font-bold text-green-400">99.9%</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6 lg:mb-8">
+              <div className="bg-slate-800/50 rounded-lg p-3 md:p-4 border border-slate-700">
+                <p className="text-xs md:text-sm text-slate-400 mb-1">Sistema Online</p>
+                <p className="text-xl md:text-2xl font-bold text-green-400">99.9%</p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                <p className="text-sm text-slate-400 mb-1">Usuários Ativos</p>
-                <p className="text-2xl font-bold text-blue-400">1,234</p>
+              <div className="bg-slate-800/50 rounded-lg p-3 md:p-4 border border-slate-700">
+                <p className="text-xs md:text-sm text-slate-400 mb-1">Usuários Ativos</p>
+                <p className="text-xl md:text-2xl font-bold text-blue-400">1,234</p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                <p className="text-sm text-slate-400 mb-1">Avaliações Hoje</p>
-                <p className="text-2xl font-bold text-purple-400">156</p>
+              <div className="bg-slate-800/50 rounded-lg p-3 md:p-4 border border-slate-700">
+                <p className="text-xs md:text-sm text-slate-400 mb-1">Avaliações Hoje</p>
+                <p className="text-xl md:text-2xl font-bold text-purple-400">156</p>
               </div>
             </div>
 

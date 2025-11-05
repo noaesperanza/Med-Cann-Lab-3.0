@@ -130,89 +130,89 @@ const PesquisaDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       {/* Header */}
-      <div className="bg-slate-800 border-b border-slate-700 p-6">
+      <div className="bg-slate-800 border-b border-slate-700 p-3 md:p-4 lg:p-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 md:space-x-4 min-w-0 flex-1">
             <button 
               onClick={() => navigate('/app/clinica/profissional/dashboard')}
-              className="flex items-center space-x-2 text-slate-300 hover:text-white transition-colors"
+              className="flex items-center space-x-1 md:space-x-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"
             >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Voltar</span>
+              <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="hidden sm:inline text-sm md:text-base">Voltar</span>
             </button>
-            <div>
-              <h1 className="text-2xl font-bold text-white">🔬 Eixo Pesquisa</h1>
-              <p className="text-slate-400">Área de Pesquisa - Estudos e Análises Clínicas</p>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-white truncate">🔬 Eixo Pesquisa</h1>
+              <p className="text-xs md:text-sm text-slate-400 hidden sm:block">Área de Pesquisa - Estudos e Análises Clínicas</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="p-6">
+      <div className="p-2 md:p-4 lg:p-6">
         <div className="max-w-7xl mx-auto">
           {/* Fórum Destaque */}
-          <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-xl p-8 mb-8 cursor-pointer hover:shadow-2xl hover:scale-[1.01] transition-all"
+          <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-xl p-4 md:p-6 lg:p-8 mb-4 md:mb-6 lg:mb-8 cursor-pointer hover:shadow-2xl hover:scale-[1.01] transition-all"
                onClick={() => navigate('/app/pesquisa/profissional/forum-casos')}>
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                    <MessageCircle className="w-8 h-8 text-white" />
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2 md:space-x-3 mb-3 md:mb-4">
+                  <div className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
+                    <MessageCircle className="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 text-white" />
                   </div>
-                  <div>
-                    <h2 className="text-3xl font-bold text-white mb-2">💬 Fórum de Conselheiros em IA na Saúde</h2>
-                    <p className="text-white/90 text-lg">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white mb-2">💬 Fórum de Conselheiros em IA na Saúde</h2>
+                    <p className="text-white/90 text-sm md:text-base lg:text-lg">
                       Discussão colaborativa de casos clínicos, integração de dados dos três eixos e 
                       troca de experiências entre profissionais
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-6 text-white/90">
-                  <div className="flex items-center space-x-2">
-                    <Users className="w-5 h-5" />
+                <div className="flex flex-wrap items-center gap-3 md:gap-4 lg:gap-6 text-white/90 text-xs md:text-sm">
+                  <div className="flex items-center space-x-1 md:space-x-2">
+                    <Users className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                     <span>1,247 participantes ativos</span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <MessageCircle className="w-5 h-5" />
+                  <div className="flex items-center space-x-1 md:space-x-2">
+                    <MessageCircle className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                     <span>456 casos discutidos</span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Star className="w-5 h-5" />
+                  <div className="flex items-center space-x-1 md:space-x-2">
+                    <Star className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                     <span>Discussões com IA integrada</span>
                   </div>
                 </div>
               </div>
-              <div className="ml-6">
-                <button className="bg-white text-purple-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100 transition-colors flex items-center space-x-2">
+              <div className="w-full md:w-auto md:ml-6">
+                <button className="w-full md:w-auto bg-white text-purple-600 px-4 md:px-6 lg:px-8 py-2 md:py-3 lg:py-4 rounded-lg font-bold text-sm md:text-base lg:text-lg hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2">
                   <span>Acessar Fórum</span>
-                  <ArrowLeft className="w-5 h-5 rotate-180" />
+                  <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 rotate-180" />
                 </button>
               </div>
             </div>
           </div>
 
           {/* Laboratório de Performance em Entrevista Clínica */}
-          <div className="bg-gradient-to-br from-purple-900/40 via-pink-900/40 to-blue-900/40 rounded-xl p-8 mb-8 border border-purple-500/20">
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex-1">
-                <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
-                    <Brain className="w-10 h-10 text-white" />
+          <div className="bg-gradient-to-br from-purple-900/40 via-pink-900/40 to-blue-900/40 rounded-xl p-4 md:p-6 lg:p-8 mb-4 md:mb-6 lg:mb-8 border border-purple-500/20">
+            <div className="flex flex-col md:flex-row items-start justify-between mb-4 md:mb-6 gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2 md:space-x-3 lg:space-x-4 mb-3 md:mb-4">
+                  <div className="w-16 h-16 md:w-18 md:h-18 lg:w-20 lg:h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+                    <Brain className="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 text-white" />
                   </div>
-                  <div>
-                    <h2 className="text-3xl font-bold text-white mb-2">Laboratório de Performance em Entrevista Clínica</h2>
-                    <p className="text-purple-200 text-lg">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white mb-2">Laboratório de Performance em Entrevista Clínica</h2>
+                    <p className="text-purple-200 text-sm md:text-base lg:text-lg">
                       Projetos inovadores que aplicam a metodologia AEC em diferentes contextos, desde pesquisa aplicada até intervenções comunitárias globais. 
                       Integração de Deep Learning e NLP para saúde humanizada.
                     </p>
                   </div>
                 </div>
                 
-                <div className="bg-slate-800/50 rounded-lg p-6 mb-6 border border-purple-500/20">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <Sparkles className="w-6 h-6 text-purple-400" />
-                    <h3 className="text-xl font-semibold text-white">Logo Nôa Esperança Pesquisa</h3>
+                <div className="bg-slate-800/50 rounded-lg p-4 md:p-5 lg:p-6 mb-4 md:mb-5 lg:mb-6 border border-purple-500/20">
+                  <div className="flex items-center space-x-2 md:space-x-3 mb-3">
+                    <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-purple-400 flex-shrink-0" />
+                    <h3 className="text-lg md:text-xl font-semibold text-white">Logo Nôa Esperança Pesquisa</h3>
                   </div>
                   <div className="space-y-2 text-purple-200">
                     <p><strong className="text-white">Seminário Setembro 2025</strong></p>
@@ -233,11 +233,11 @@ const PesquisaDashboard: React.FC = () => {
                   Aqui, a escuta clínica é treinada com rigor e sensibilidade, em situações reais da prática médica.
                 </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 lg:gap-6 mb-4 md:mb-5 lg:mb-6">
                   {/* O que acontece no LabPEC */}
-                  <div className="bg-slate-800/50 rounded-lg p-6 border border-purple-500/20">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
-                      <Play className="w-5 h-5 text-purple-400" />
+                  <div className="bg-slate-800/50 rounded-lg p-4 md:p-5 lg:p-6 border border-purple-500/20">
+                    <h3 className="text-base md:text-lg font-semibold text-white mb-3 md:mb-4 flex items-center space-x-2">
+                      <Play className="w-4 h-4 md:w-5 md:h-5 text-purple-400 flex-shrink-0" />
                       <span>🎭 O que acontece no LabPEC?</span>
                     </h3>
                     <ul className="space-y-3 text-purple-100">
@@ -257,9 +257,9 @@ const PesquisaDashboard: React.FC = () => {
                   </div>
 
                   {/* Por que participar? */}
-                  <div className="bg-slate-800/50 rounded-lg p-6 border border-purple-500/20">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
-                      <Target className="w-5 h-5 text-purple-400" />
+                  <div className="bg-slate-800/50 rounded-lg p-4 md:p-5 lg:p-6 border border-purple-500/20">
+                    <h3 className="text-base md:text-lg font-semibold text-white mb-3 md:mb-4 flex items-center space-x-2">
+                      <Target className="w-4 h-4 md:w-5 md:h-5 text-purple-400 flex-shrink-0" />
                       <span>🎯 Por que participar?</span>
                     </h3>
                     <ul className="space-y-3 text-purple-100">
@@ -283,9 +283,9 @@ const PesquisaDashboard: React.FC = () => {
                   </div>
 
                   {/* Para quem? */}
-                  <div className="bg-slate-800/50 rounded-lg p-6 border border-purple-500/20">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
-                      <Users className="w-5 h-5 text-purple-400" />
+                  <div className="bg-slate-800/50 rounded-lg p-4 md:p-5 lg:p-6 border border-purple-500/20">
+                    <h3 className="text-base md:text-lg font-semibold text-white mb-3 md:mb-4 flex items-center space-x-2">
+                      <Users className="w-4 h-4 md:w-5 md:h-5 text-purple-400 flex-shrink-0" />
                       <span>👥 Para quem?</span>
                     </h3>
                     <ul className="space-y-3 text-purple-100">
@@ -348,16 +348,16 @@ const PesquisaDashboard: React.FC = () => {
           <div className="mb-8">
             <div className="flex items-center space-x-3 mb-6">
               <Target className="w-8 h-8 text-purple-400" />
-              <h2 className="text-2xl font-bold text-white">Projetos de Aplicação AEC</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-white">Projetos de Aplicação AEC</h2>
             </div>
             <p className="text-slate-400 mb-6">
               Aplicações da Arte da Entrevista Clínica - Projetos inovadores que aplicam a metodologia AEC em diferentes contextos, 
               desde pesquisa aplicada até intervenções comunitárias globais.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 lg:gap-6">
               {/* Cidade Amiga dos Rins */}
-              <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 rounded-xl p-6 border border-blue-500/20 hover:border-blue-400 hover:shadow-xl transition-all">
+              <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 rounded-xl p-4 md:p-5 lg:p-6 border border-blue-500/20 hover:border-blue-400 hover:shadow-xl transition-all">
                 <div className="flex items-center space-x-3 mb-4">
                   <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
                     <MapPin className="w-6 h-6 text-blue-400" />
