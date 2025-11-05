@@ -1837,30 +1837,6 @@ const RicardoValencaDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header Personalizado */}
-      <div className="bg-gradient-to-r from-blue-800 to-indigo-700 border-b border-blue-600/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 rounded-full border-2 border-blue-300 bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">MCL</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Consultório Escola Dr. Eduardo Faveret</h1>
-              <p className="text-blue-200 text-sm">Pós-graduação em Cannabis Medicinal</p>
-            </div>
-          </div>
-          <div className="mt-4 md:mt-0 text-right">
-            <p className="text-blue-300 text-sm">Conectado como</p>
-            <p className="text-white font-semibold">
-              {user?.name || 'Convidado'}
-            </p>
-            <p className="text-blue-200 text-xs">
-              {user?.type === 'admin' ? '👑 Administrador' : user?.type === 'professional' ? '👨‍⚕️ Profissional' : '👤 Usuário'} • Visão completa do sistema
-            </p>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Renderizar seção ativa */}
         {activeSection === 'dashboard' && renderDashboard()}

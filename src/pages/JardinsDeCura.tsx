@@ -1,10 +1,13 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Globe, Users, Stethoscope, Target, BarChart3, Award, Brain, Heart, CheckCircle, Sparkles, BookOpen, GraduationCap } from 'lucide-react'
+import { ArrowLeft, Globe, Users, Stethoscope, Target, BarChart3, Award, Brain, Heart, CheckCircle, Sparkles, BookOpen, GraduationCap, Clock } from 'lucide-react'
 import { useNoaPlatform } from '../contexts/NoaPlatformContext'
+import { useAuth } from '../contexts/AuthContext'
+import NoaConversationalInterface from '../components/NoaConversationalInterface'
 
 const JardinsDeCura: React.FC = () => {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { sendInitialMessage, openChat } = useNoaPlatform()
 
   const handleSaibaMaisNoa = () => {
@@ -15,7 +18,11 @@ const JardinsDeCura: React.FC = () => {
   }
 
   const handleConhecerCursos = () => {
-    navigate('/app/ensino/profissional/arte-entrevista-clinica')
+    navigate('/curso-jardins-de-cura')
+  }
+
+  const handleIniciarCurso = () => {
+    navigate('/curso-jardins-de-cura')
   }
 
   return (
@@ -391,6 +398,100 @@ const JardinsDeCura: React.FC = () => {
           </div>
         </div>
 
+        {/* Curso de Formação */}
+        <div className="bg-gradient-to-br from-green-900/40 via-emerald-900/40 to-teal-900/40 rounded-2xl p-8 mb-8 border border-green-500/30">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex-1">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <GraduationCap className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-3xl font-bold text-white mb-2">Programa de Formação para ACS</h3>
+                  <p className="text-green-200 text-lg">Prevenção e Cuidado de Dengue com Arte da Entrevista Clínica</p>
+                </div>
+              </div>
+              
+              <p className="text-green-100 text-lg leading-relaxed mb-6">
+                Programa de treinamento otimizado para Agentes Comunitários de Saúde (ACS) em prevenção e cuidado de dengue. 
+                Alinhado com as Diretrizes Nacionais para Prevenção e Controle de Dengue e integrado com a metodologia 
+                Arte da Entrevista Clínica e Nôa Esperança.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-green-900/30 rounded-lg p-4 border border-green-500/30">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Clock className="w-5 h-5 text-green-300" />
+                    <span className="text-green-200 text-sm font-medium">Duração</span>
+                  </div>
+                  <p className="text-white font-bold">40 horas / 5 semanas</p>
+                </div>
+                <div className="bg-green-900/30 rounded-lg p-4 border border-green-500/30">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <BookOpen className="w-5 h-5 text-green-300" />
+                    <span className="text-green-200 text-sm font-medium">Módulos</span>
+                  </div>
+                  <p className="text-white font-bold">9 módulos</p>
+                </div>
+                <div className="bg-green-900/30 rounded-lg p-4 border border-green-500/30">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Award className="w-5 h-5 text-green-300" />
+                    <span className="text-green-200 text-sm font-medium">Certificado</span>
+                  </div>
+                  <p className="text-white font-bold">Sim</p>
+                </div>
+              </div>
+
+              <div className="bg-green-900/30 rounded-lg p-6 border border-green-500/30 mb-6">
+                <h4 className="text-xl font-semibold text-white mb-4 flex items-center">
+                  <Brain className="w-6 h-6 mr-2 text-green-400" />
+                  Conteúdo do Curso
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-green-300 font-semibold mb-2">📚 Módulos Técnicos:</p>
+                    <ul className="space-y-1 text-green-100 text-sm">
+                      <li>• Compreensão da Dengue</li>
+                      <li>• Classificação de Risco e Sinais Precoces</li>
+                      <li>• Vigilância e Visita Domiciliar</li>
+                      <li>• Controle Vetorial e Mobilização</li>
+                      <li>• Preparação para Cenários de Crise</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-green-300 font-semibold mb-2">💬 Habilidades Relacionais (AEC):</p>
+                    <ul className="space-y-1 text-green-100 text-sm">
+                      <li>• Presença e Escuta</li>
+                      <li>• Profundidade Narrativa</li>
+                      <li>• Contenção Emocional</li>
+                      <li>• Empoderamento</li>
+                      <li>• Diálogo Profissional</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={handleIniciarCurso}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-8 py-4 rounded-lg font-bold text-lg hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg flex items-center justify-center space-x-2"
+                >
+                  <GraduationCap className="w-5 h-5" />
+                  <span>Iniciar Curso</span>
+                </button>
+                
+                <button
+                  onClick={handleSaibaMaisNoa}
+                  className="bg-green-700/50 text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-green-700/70 transition-colors border-2 border-green-400/30 flex items-center justify-center space-x-2"
+                >
+                  <Brain className="w-5 h-5" />
+                  <span>Saiba mais com Nôa Esperança</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* CTA Section */}
         <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-8 border border-purple-400/50">
           <div className="text-center mb-6">
@@ -420,6 +521,13 @@ const JardinsDeCura: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Interface Conversacional Nôa Esperança - Conectada ao Projeto Jardins de Cura */}
+      <NoaConversationalInterface 
+        userName={user?.name || 'Usuário'}
+        userCode={user?.id || 'USER-001'}
+        position="bottom-right"
+      />
     </div>
   )
 }

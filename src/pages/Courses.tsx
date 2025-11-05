@@ -24,7 +24,8 @@ const Courses: React.FC = () => {
     { id: 'clinical', name: 'Clínica' },
     { id: 'cannabis', name: 'Cannabis Medicinal' },
     { id: 'interview', name: 'Entrevista Clínica' },
-    { id: 'certification', name: 'Certificações' }
+    { id: 'certification', name: 'Certificações' },
+    { id: 'community-health', name: 'Saúde Comunitária' }
   ]
 
   const courses = [
@@ -107,6 +108,27 @@ const Courses: React.FC = () => {
       isLive: true,
       nextClass: '2025-01-12T10:00:00Z',
       badges: ['AEC', 'Comunicação', 'Terapêutica']
+    },
+    {
+      id: 5,
+      title: 'Jardins de Cura - Formação para ACS',
+      description: 'Programa de Formação para Agentes Comunitários de Saúde em Prevenção e Cuidado de Dengue',
+      category: 'community-health',
+      duration: '40h',
+      students: 0,
+      rating: 0,
+      price: 'Gratuito',
+      originalPrice: null,
+      level: 'Básico a Intermediário',
+      image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI1MCIgdmlld0JveD0iMCAwIDQwMCAyNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBmaWxsPSIjOEI1Q0Y2Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTMwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDgiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+QjzwvdGV4dD4KPC9zdmc+',
+      instructor: 'Projeto Jardins de Cura',
+      lessons: 33,
+      completed: false,
+      progress: 0,
+      isLive: false,
+      nextClass: null,
+      badges: ['ACS', 'Saúde Comunitária', 'Dengue'],
+      href: '/curso-jardins-de-cura'
     }
   ]
 
@@ -282,7 +304,7 @@ const Courses: React.FC = () => {
                     </button>
                   ) : course.progress > 0 ? (
                     <Link
-                      to={`/course/${course.id}`}
+                      to={(course as any).href || `/course/${course.id}`}
                       className="w-full bg-primary-600 hover:bg-primary-700 text-slate-900 dark:text-white py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
                     >
                       <span className="mr-2">▶️</span>
@@ -290,7 +312,7 @@ const Courses: React.FC = () => {
                     </Link>
                   ) : (
                     <Link
-                      to={`/course/${course.id}`}
+                      to={(course as any).href || `/course/${course.id}`}
                       className="w-full bg-primary-600 hover:bg-primary-700 text-slate-900 dark:text-white py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
                     >
                       <span className="mr-2">▶️</span>

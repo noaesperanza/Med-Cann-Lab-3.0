@@ -383,26 +383,6 @@ const EduardoFaveretDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header Personalizado para Dr. Eduardo Faveret */}
-      <div className="bg-gradient-to-r from-green-800 to-emerald-700 border-b border-green-600/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-              <Award className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Dr. Eduardo Faveret</h1>
-              <p className="text-green-200 text-sm">Neurologista Pediátrico • Especialista em Epilepsia e Cannabis Medicinal</p>
-            </div>
-          </div>
-          <div className="mt-4 md:mt-0 text-right">
-            <p className="text-green-300 text-sm">Conectado como</p>
-            <p className="text-white font-semibold">Dr. Eduardo Faveret</p>
-            <p className="text-green-200 text-xs">CRM: 123456 • CRO: 654321</p>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Renderizar seção ativa */}
         {activeSection === 'dashboard' && renderDashboard()}

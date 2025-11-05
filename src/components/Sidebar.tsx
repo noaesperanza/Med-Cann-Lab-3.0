@@ -63,6 +63,12 @@ const Sidebar: React.FC<SidebarProps> = ({
     const adminItems = [
       // OUTROS
       { 
+        name: '💬 Fórum de Conselheiros em IA na Saúde', 
+        href: '/app/chat', 
+        icon: MessageCircle,
+        section: 'other'
+      },
+      { 
         name: '💰 Gestão Financeira', 
         href: '/app/professional-financial', 
         icon: BanknoteIcon,
@@ -86,6 +92,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     const professionalItems = [
       // OUTROS
+      { 
+        name: '💬 Fórum de Conselheiros em IA na Saúde', 
+        href: '/app/chat', 
+        icon: MessageCircle,
+        section: 'other'
+      },
       { 
         name: '💰 Gestão Financeira', 
         href: '/app/professional-financial', 

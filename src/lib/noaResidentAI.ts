@@ -128,8 +128,7 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
         userMessage,
         intent,
         platformData,
-        userEmail,
-        userId
+        userEmail
       )
 
       if (assistantResponse) {
@@ -221,7 +220,10 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     // Detectar treinamento
     if (lowerMessage.includes('treinamento') || lowerMessage.includes('curso') ||
         lowerMessage.includes('aprender') || lowerMessage.includes('ensinar') ||
-        lowerMessage.includes('método') || lowerMessage.includes('metodologia')) {
+        lowerMessage.includes('método') || lowerMessage.includes('metodologia') ||
+        lowerMessage.includes('jardins de cura') || lowerMessage.includes('jardins-de-cura') ||
+        lowerMessage.includes('acs') || lowerMessage.includes('agente comunitário') ||
+        lowerMessage.includes('dengue') || lowerMessage.includes('prevenção dengue')) {
       return 'training'
     }
     
@@ -800,7 +802,43 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
   }
 
   private async processTrainingQuery(message: string, userId?: string, platformData?: any, userEmail?: string): Promise<AIResponse> {
-    // Implementar treinamento especializado
+    const lowerMessage = message.toLowerCase()
+    
+    // Detectar contexto do curso Jardins de Cura
+    const isJardinsDeCuraContext = lowerMessage.includes('jardins de cura') || 
+                                   lowerMessage.includes('jardins-de-cura') ||
+                                   lowerMessage.includes('curso jardins') ||
+                                   lowerMessage.includes('projeto jardins') ||
+                                   platformData?.currentRoute?.includes('jardins-de-cura') ||
+                                   platformData?.currentRoute?.includes('jardins-de-cura')
+    
+    // Detectar contexto específico de dengue/ACS
+    const isDengueACSContext = lowerMessage.includes('dengue') ||
+                              lowerMessage.includes('acs') ||
+                              lowerMessage.includes('agente comunitário') ||
+                              lowerMessage.includes('prevenção dengue')
+    
+    if (isJardinsDeCuraContext || isDengueACSContext) {
+      return this.createResponse(
+        'Estou aqui para apoiá-lo no **Programa de Formação para Agentes Comunitários de Saúde** do projeto **Jardins de Cura**.\n\n' +
+        '**Sobre o Curso:**\n' +
+        '• Programa de 40 horas / 5 semanas\n' +
+        '• 9 módulos focados em Prevenção e Cuidado de Dengue\n' +
+        '• Integrado com a metodologia Arte da Entrevista Clínica (AEC)\n' +
+        '• Alinhado com as Diretrizes Nacionais para Prevenção e Controle de Dengue\n\n' +
+        '**Como posso ajudar:**\n' +
+        '• Explicar módulos e conteúdos do curso\n' +
+        '• Simular entrevistas clínicas com pacientes\n' +
+        '• Orientar sobre protocolos de prevenção de dengue\n' +
+        '• Aplicar técnicas da AEC em cenários práticos\n' +
+        '• Responder dúvidas sobre o projeto Jardins de Cura\n\n' +
+        'Em que posso ajudá-lo hoje?',
+        0.95,
+        'text'
+      )
+    }
+    
+    // Implementar treinamento especializado geral
     return this.createResponse(
       'Estou aqui para treiná-lo em metodologias clínicas avançadas, incluindo a Arte da Entrevista Clínica, protocolos de cannabis medicinal e práticas de nefrologia sustentável. Qual área você gostaria de aprofundar?',
       0.9,
@@ -1242,6 +1280,19 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     if (userType === 'professional' && email?.toLowerCase() !== 'eduardoscfaveret@gmail.com') {
       contextLines.push('- Usuário profissional: destaque dados clínicos, atendimentos, KPIs de pacientes e integrações. Evite falar sobre cronogramas de curso a menos que solicitado explícita e diretamente.')
       contextLines.push('- Responda de forma objetiva, sem repetir saudação ou nome em excesso.')
+    }
+
+    // Contexto específico do curso/projeto Jardins de Cura
+    if (currentRoute.includes('jardins-de-cura') || currentRoute.includes('curso-jardins')) {
+      contextLines.push('- CONTEXTO ATIVO: Usuário está na página do curso/projeto Jardins de Cura.')
+      contextLines.push('- Projeto: Jardins de Cura - Saúde Global & Equidade')
+      contextLines.push('- Curso: Programa de Formação para ACS - Prevenção e Cuidado de Dengue')
+      contextLines.push('- Duração: 40 horas / 5 semanas | 9 módulos')
+      contextLines.push('- Metodologia: Arte da Entrevista Clínica (AEC) integrada com Nôa Esperança')
+      contextLines.push('- Alinhamento: Diretrizes Nacionais para Prevenção e Controle de Dengue')
+      contextLines.push('- Foco: Capacitação de Agentes Comunitários de Saúde em prevenção e cuidado de dengue')
+      contextLines.push('- Quando perguntado sobre o curso ou projeto, forneça informações detalhadas sobre módulos, conteúdo, metodologia AEC e integração com Nôa Esperança.')
+      contextLines.push('- Ofereça simulações práticas de entrevistas clínicas aplicadas ao contexto de dengue.')
     }
 
     if (axisMenu) {

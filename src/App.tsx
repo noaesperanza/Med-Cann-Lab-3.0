@@ -29,6 +29,7 @@ import AdminSettings from './pages/AdminSettings'
 import AdminDashboardWrapper from './components/AdminDashboardWrapper'
 import ExperienciaPaciente from './pages/ExperienciaPaciente'
 import CursoEduardoFaveret from './pages/CursoEduardoFaveret'
+import CursoJardinsDeCura from './pages/CursoJardinsDeCura'
 import TermosLGPD from './pages/TermosLGPD'
 import TestPage from './pages/TestPage'
 import AIDocumentChat from './pages/AIDocumentChat'
@@ -85,6 +86,7 @@ function App() {
               <Route path="/termos-lgpd" element={<TermosLGPD />} />
               <Route path="/experiencia-paciente" element={<ExperienciaPaciente />} />
               <Route path="/curso-eduardo-faveret" element={<CursoEduardoFaveret />} />
+              <Route path="/curso-jardins-de-cura" element={<CursoJardinsDeCura />} />
               <Route path="/patient-onboarding" element={<PatientOnboarding />} />
               
               {/* Rotas estruturadas por eixo e tipo */}

@@ -1,15 +1,13 @@
 import React, { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { Menu, X, User, LogOut, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Menu, X, User, LogOut, Settings } from 'lucide-react'
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth()
   const location = useLocation()
-  const navigate = useNavigate()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
-  const [isAdminMode, setIsAdminMode] = useState(false)
 
   // Debug: verificar se o usuário é admin (removido para evitar spam)
   // console.log('🔍 Header - User type:', user?.type, 'isAdmin:', user?.type === 'admin')
@@ -17,28 +15,13 @@ const Header: React.FC = () => {
   const getNavigationByUserType = () => {
     if (!user) return []
     
-    // Se for admin e estiver no modo admin, mostrar menu admin
-    if (user.type === 'admin' && isAdminMode) {
-      return [
-        { name: '💬 Fórum de Conselheiros em IA na Saúde', href: '/app/chat' },
-      ]
-    }
-    
-    // Se for admin mas estiver no modo profissional, mostrar menu profissional
-    if (user.type === 'admin' && !isAdminMode) {
-      return [
-        { name: '💬 Fórum de Conselheiros em IA na Saúde', href: '/app/chat' },
-      ]
-    }
-    
     switch (user.type) {
       case 'patient':
         // Botões removidos - já estão no "Meu Dashboard de Saúde"
         return []
       case 'professional':
-        return [
-          { name: '💬 Fórum de Conselheiros em IA na Saúde', href: '/app/chat' },
-        ]
+        // Botão do fórum movido para a sidebar
+        return []
       case 'student':
         return [
           { name: '🎓 Dashboard Estudante', href: '/app/dashboard' },
@@ -76,11 +59,6 @@ const Header: React.FC = () => {
               </div>
               <div className="hidden sm:block">
                 <div className="text-white font-bold text-base md:text-lg">MedCannLab 3.0</div>
-                <div className="text-slate-400 text-xs md:text-sm">
-                  {user?.type === 'patient' 
-                    ? 'Programa de Cuidado Renal • Cannabis Medicinal'
-                    : 'Consultório Escola Dr. Eduardo Faveret • Pós-graduação em Cannabis Medicinal'}
-                </div>
               </div>
             </Link>
           </div>
