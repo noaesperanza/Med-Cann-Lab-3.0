@@ -19,20 +19,20 @@ import {
   Target,
   Award,
   Brain,
-  FlaskConical,
+  Beaker as FlaskConical,
   FileText,
   Users,
   BookOpen,
   GraduationCap,
   Stethoscope,
-  Link2,
+  Link as Link2,
   Zap,
   Play,
   Video,
   FileText as FileTextIcon,
   Globe,
   MapPin,
-  Sparkles
+  Sparkles as SparklesIcon
 } from 'lucide-react'
 
 const PesquisaDashboard: React.FC = () => {
@@ -128,9 +128,9 @@ const PesquisaDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <div className="min-h-screen bg-slate-900 text-white overflow-x-hidden w-full">
       {/* Header */}
-      <div className="bg-slate-800 border-b border-slate-700 p-3 md:p-4 lg:p-6">
+      <div className="bg-slate-800 border-b border-slate-700 p-3 md:p-4 lg:p-6 overflow-x-hidden w-full">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 md:space-x-4 min-w-0 flex-1">
             <button 
@@ -149,13 +149,13 @@ const PesquisaDashboard: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="p-2 md:p-4 lg:p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="p-2 md:p-4 lg:p-6 overflow-x-hidden w-full">
+        <div className="max-w-7xl mx-auto w-full overflow-x-hidden">
           {/* Fórum Destaque */}
-          <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-xl p-4 md:p-6 lg:p-8 mb-4 md:mb-6 lg:mb-8 cursor-pointer hover:shadow-2xl hover:scale-[1.01] transition-all"
+          <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-xl p-4 md:p-6 lg:p-8 mb-4 md:mb-6 lg:mb-8 cursor-pointer hover:shadow-2xl hover:scale-[1.01] transition-all overflow-hidden w-full max-w-full"
                onClick={() => navigate('/app/pesquisa/profissional/forum-casos')}>
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex-1 min-w-0">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 w-full overflow-x-hidden">
+              <div className="flex-1 min-w-0 overflow-x-hidden">
                 <div className="flex items-center space-x-2 md:space-x-3 mb-3 md:mb-4">
                   <div className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
                     <MessageCircle className="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 text-white" />
@@ -211,7 +211,7 @@ const PesquisaDashboard: React.FC = () => {
                 
                 <div className="bg-slate-800/50 rounded-lg p-4 md:p-5 lg:p-6 mb-4 md:mb-5 lg:mb-6 border border-purple-500/20">
                   <div className="flex items-center space-x-2 md:space-x-3 mb-3">
-                    <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-purple-400 flex-shrink-0" />
+                    <SparklesIcon className="w-5 h-5 md:w-6 md:h-6 text-purple-400 flex-shrink-0" />
                     <h3 className="text-lg md:text-xl font-semibold text-white">Logo Nôa Esperança Pesquisa</h3>
                   </div>
                   <div className="space-y-2 text-purple-200">
@@ -233,9 +233,9 @@ const PesquisaDashboard: React.FC = () => {
                   Aqui, a escuta clínica é treinada com rigor e sensibilidade, em situações reais da prática médica.
                 </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 lg:gap-6 mb-4 md:mb-5 lg:mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 lg:gap-6 mb-4 md:mb-5 lg:mb-6 w-full overflow-x-hidden">
                   {/* O que acontece no LabPEC */}
-                  <div className="bg-slate-800/50 rounded-lg p-4 md:p-5 lg:p-6 border border-purple-500/20">
+                  <div className="bg-slate-800/50 rounded-lg p-4 md:p-5 lg:p-6 border border-purple-500/20 overflow-hidden w-full max-w-full">
                     <h3 className="text-base md:text-lg font-semibold text-white mb-3 md:mb-4 flex items-center space-x-2">
                       <Play className="w-4 h-4 md:w-5 md:h-5 text-purple-400 flex-shrink-0" />
                       <span>🎭 O que acontece no LabPEC?</span>
@@ -355,9 +355,9 @@ const PesquisaDashboard: React.FC = () => {
               desde pesquisa aplicada até intervenções comunitárias globais.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 lg:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 lg:gap-6 w-full overflow-x-hidden">
               {/* Cidade Amiga dos Rins */}
-              <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 rounded-xl p-4 md:p-5 lg:p-6 border border-blue-500/20 hover:border-blue-400 hover:shadow-xl transition-all">
+              <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 rounded-xl p-4 md:p-5 lg:p-6 border border-blue-500/20 hover:border-blue-400 hover:shadow-xl transition-all overflow-hidden w-full max-w-full">
                 <div className="flex items-center space-x-3 mb-4">
                   <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
                     <MapPin className="w-6 h-6 text-blue-400" />
@@ -405,7 +405,7 @@ const PesquisaDashboard: React.FC = () => {
               </div>
 
               {/* MedCann Lab */}
-              <div className="bg-gradient-to-br from-green-900/40 to-teal-900/40 rounded-xl p-6 border border-green-500/20 hover:border-green-400 hover:shadow-xl transition-all">
+              <div className="bg-gradient-to-br from-green-900/40 to-teal-900/40 rounded-xl p-4 md:p-6 border border-green-500/20 hover:border-green-400 hover:shadow-xl transition-all overflow-hidden w-full max-w-full">
                 <div className="flex items-center space-x-4 mb-4">
                   <div className="w-20 h-20 bg-green-500/20 rounded-xl flex items-center justify-center overflow-hidden">
                     <img 
@@ -510,9 +510,9 @@ const PesquisaDashboard: React.FC = () => {
           </div>
 
           {/* Integração dos Três Eixos */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 w-full overflow-x-hidden">
             {/* Eixo Clínica */}
-            <div className="bg-slate-800 rounded-xl p-6 hover:bg-slate-750 transition-colors cursor-pointer"
+            <div className="bg-slate-800 rounded-xl p-4 md:p-6 hover:bg-slate-750 transition-colors cursor-pointer overflow-hidden w-full max-w-full"
                  onClick={() => navigate('/app/clinica/profissional/dashboard')}>
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
@@ -544,7 +544,7 @@ const PesquisaDashboard: React.FC = () => {
             </div>
 
             {/* Eixo Ensino */}
-            <div className="bg-slate-800 rounded-xl p-6 hover:bg-slate-750 transition-colors cursor-pointer"
+            <div className="bg-slate-800 rounded-xl p-4 md:p-6 hover:bg-slate-750 transition-colors cursor-pointer overflow-hidden w-full max-w-full"
                  onClick={() => navigate('/app/ensino/profissional/dashboard')}>
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
@@ -613,9 +613,9 @@ const PesquisaDashboard: React.FC = () => {
               <Link2 className="w-6 h-6 text-purple-400" />
               <span>Integrações e Conexões</span>
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full overflow-x-hidden">
               {/* Arte da Entrevista Clínica + Dados */}
-              <div className="bg-gradient-to-br from-blue-900/30 to-cyan-900/30 rounded-lg p-6 border border-blue-500/20">
+              <div className="bg-gradient-to-br from-blue-900/30 to-cyan-900/30 rounded-lg p-4 md:p-6 border border-blue-500/20 overflow-hidden w-full max-w-full">
                 <div className="flex items-center space-x-3 mb-4">
                   <BookOpen className="w-8 h-8 text-blue-400" />
                   <div>
@@ -679,8 +679,8 @@ const PesquisaDashboard: React.FC = () => {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-slate-800 rounded-xl p-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 w-full overflow-x-hidden">
+            <div className="bg-slate-800 rounded-xl p-4 md:p-6 overflow-hidden w-full max-w-full">
               <div className="flex items-center justify-between mb-4">
                 <div className="p-3 bg-pink-500/10 rounded-lg">
                   <FlaskConical className="w-6 h-6 text-pink-400" />
@@ -745,21 +745,21 @@ const PesquisaDashboard: React.FC = () => {
                 </div>
               ) : (
                 displayedStudies.map((study) => (
-                <div key={study.id} className="bg-slate-700 rounded-lg p-6 hover:bg-slate-650 transition-colors">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h4 className="text-lg font-semibold text-white">{study.title}</h4>
+                <div key={study.id} className="bg-slate-700 rounded-lg p-4 md:p-6 hover:bg-slate-650 transition-colors overflow-hidden w-full max-w-full">
+                  <div className="flex items-start justify-between mb-4 gap-2 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-3 mb-2 flex-wrap gap-2">
+                        <h4 className="text-lg font-semibold text-white break-words flex-1 min-w-0">{study.title}</h4>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(study.status)}`}>
                           {study.status}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-400 mb-3">{study.description}</p>
+                      <p className="text-sm text-slate-400 mb-3 break-words">{study.description}</p>
                       
-                      <div className="flex items-center space-x-4 text-sm text-slate-500 mb-4">
-                        <span>Participantes: {study.participants}</span>
-                        <span>Início: {study.startDate}</span>
-                        <span>Fim: {study.endDate}</span>
+                      <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-slate-500 mb-4">
+                        <span className="whitespace-nowrap">Participantes: {study.participants}</span>
+                        <span className="whitespace-nowrap">Início: {study.startDate}</span>
+                        <span className="whitespace-nowrap">Fim: {study.endDate}</span>
                       </div>
                     </div>
                     

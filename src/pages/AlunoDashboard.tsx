@@ -21,21 +21,16 @@ import {
   Award,
   BarChart3,
   Activity,
-  Instagram,
   Video,
-  Newspaper,
-  TestTube,
   Stethoscope,
-  Sparkles,
   Zap,
-  ExternalLink,
-  LayoutDashboard,
   FileText,
   Plus,
   Upload,
   Edit,
   Trash2,
-  Save,
+  Link as ExternalLink,
+  LayoutGrid as LayoutDashboard,
   Users
 } from 'lucide-react'
 import { useNoaPlatform } from '../contexts/NoaPlatformContext'
@@ -205,7 +200,7 @@ const AlunoDashboard: React.FC = () => {
                     : 'bg-slate-700 text-white hover:bg-slate-600'
                 }`}
               >
-                <Newspaper className="w-5 h-5" />
+                <FileText className="w-5 h-5" />
                 <span>Notícias</span>
               </button>
               
@@ -229,7 +224,7 @@ const AlunoDashboard: React.FC = () => {
                     : 'bg-slate-700 text-white hover:bg-slate-600'
                 }`}
               >
-                <TestTube className="w-5 h-5" />
+                <Activity className="w-5 h-5" />
                 <span>Teste de Nivelamento</span>
               </button>
               
@@ -280,7 +275,7 @@ const AlunoDashboard: React.FC = () => {
                 }}
                 className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-2 rounded-lg font-medium hover:from-green-600 hover:to-teal-600 transition-colors text-sm flex items-center justify-center space-x-2"
               >
-                <Sparkles className="w-4 h-4" />
+                <Zap className="w-4 h-4" />
                 <span>Conversar com Nôa</span>
               </button>
             </div>
@@ -288,8 +283,8 @@ const AlunoDashboard: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-6">
-          <div className="max-w-6xl mx-auto">
+        <div className="flex-1 p-4 md:p-6 overflow-x-hidden w-full">
+          <div className="max-w-6xl mx-auto w-full overflow-x-hidden">
             {/* Dashboard Principal */}
             {activeTab === 'dashboard' && (
               <>
@@ -360,10 +355,10 @@ const AlunoDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-8">
+            <div className="grid grid-cols-1 gap-8 w-full overflow-x-hidden">
               {/* Courses Section */}
-              <div>
-                <div className="bg-slate-800 rounded-xl p-6">
+              <div className="w-full overflow-x-hidden">
+                <div className="bg-slate-800 rounded-xl p-4 md:p-6 overflow-hidden w-full max-w-full">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-semibold text-white">Meu Curso Principal</h3>
                     <button className="bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-2 rounded-lg font-semibold hover:from-green-600 hover:to-teal-600 transition-colors">
@@ -372,21 +367,21 @@ const AlunoDashboard: React.FC = () => {
                   </div>
 
                   {/* Curso Principal */}
-                  <div className="bg-slate-700 rounded-lg p-6 mb-6 hover:bg-slate-650 transition-colors">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h4 className="text-lg font-semibold text-white">{mainCourse.title}</h4>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(mainCourse.status)}`}>
+                  <div className="bg-slate-700 rounded-lg p-4 md:p-6 mb-6 hover:bg-slate-650 transition-colors overflow-hidden w-full max-w-full">
+                    <div className="flex items-start justify-between mb-4 gap-2 flex-wrap">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3 mb-2 flex-wrap gap-2">
+                          <h4 className="text-lg font-semibold text-white break-words flex-1 min-w-0">{mainCourse.title}</h4>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getStatusColor(mainCourse.status)}`}>
                             {mainCourse.status}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-400 mb-3">{mainCourse.description}</p>
+                        <p className="text-sm text-slate-400 mb-3 break-words">{mainCourse.description}</p>
                         
-                        <div className="flex items-center space-x-4 text-sm text-slate-500 mb-4">
-                          <span>Instrutor: {mainCourse.instructor}</span>
-                          <span>Duração: {mainCourse.duration}</span>
-                          <span>Próxima aula: {mainCourse.nextClass}</span>
+                        <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-slate-500 mb-4">
+                          <span className="whitespace-nowrap">Instrutor: {mainCourse.instructor}</span>
+                          <span className="whitespace-nowrap">Duração: {mainCourse.duration}</span>
+                          <span className="whitespace-nowrap">Próxima aula: {mainCourse.nextClass || 'N/A'}</span>
                         </div>
                       </div>
                       
@@ -419,35 +414,35 @@ const AlunoDashboard: React.FC = () => {
                   </div>
 
                   {/* Módulos do Curso */}
-                  <div className="space-y-4">
-                    <h4 className="text-lg font-semibold text-white mb-4">Módulos do Curso</h4>
+                  <div className="space-y-4 w-full overflow-x-hidden">
+                    <h4 className="text-lg font-semibold text-white mb-4 break-words">Módulos do Curso</h4>
                     {mainCourse.modules.map((module, moduleIndex) => (
-                      <div key={module.id} className="bg-slate-700 rounded-lg p-5 hover:bg-slate-650 transition-colors border border-slate-600">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                      <div key={module.id} className="bg-slate-700 rounded-lg p-4 md:p-5 hover:bg-slate-650 transition-colors border border-slate-600 overflow-hidden w-full max-w-full">
+                        <div className="flex items-start justify-between mb-4 gap-2 flex-wrap">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-3 mb-2 flex-wrap gap-2">
+                              <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                                 {moduleIndex + 1}
                               </div>
-                              <div>
-                                <h5 className="text-md font-semibold text-white">{module.title}</h5>
+                              <div className="flex-1 min-w-0">
+                                <h5 className="text-md font-semibold text-white break-words">{module.title}</h5>
                                 <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${getStatusColor(module.status)}`}>
                                   {module.status}
                                 </span>
                               </div>
                             </div>
-                            <p className="text-sm text-slate-400 mb-3 ml-11">{module.description}</p>
+                            <p className="text-sm text-slate-400 mb-3 ml-0 md:ml-11 break-words">{module.description}</p>
                             
                             {/* Aulas do Módulo */}
                             {module.lessons && module.lessons.length > 0 && (
-                              <div className="ml-11 space-y-2">
-                                <p className="text-xs text-slate-500 font-medium mb-2">Aulas deste módulo:</p>
-                                <div className="grid grid-cols-1 gap-2">
+                              <div className="ml-0 md:ml-11 space-y-2 w-full overflow-x-hidden">
+                                <p className="text-xs text-slate-500 font-medium mb-2 break-words">Aulas deste módulo:</p>
+                                <div className="grid grid-cols-1 gap-2 w-full overflow-x-hidden">
                                   {module.lessons.map((lesson, lessonIndex) => (
-                                    <div key={lessonIndex} className="flex items-center space-x-2 text-sm text-slate-300 bg-slate-800 rounded-lg p-2 hover:bg-slate-750 transition-colors">
-                                      <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                                      <span className="flex-1">{lesson}</span>
-                                      <button className="p-1 hover:bg-slate-700 rounded transition-colors">
+                                    <div key={lessonIndex} className="flex items-center space-x-2 text-sm text-slate-300 bg-slate-800 rounded-lg p-2 hover:bg-slate-750 transition-colors overflow-hidden w-full max-w-full">
+                                      <div className="w-1.5 h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
+                                      <span className="flex-1 break-words min-w-0">{lesson}</span>
+                                      <button className="p-1 hover:bg-slate-700 rounded transition-colors flex-shrink-0">
                                         <Play className="w-3 h-3 text-green-400" />
                                       </button>
                                     </div>
@@ -456,13 +451,13 @@ const AlunoDashboard: React.FC = () => {
                               </div>
                             )}
                             
-                            <div className="flex items-center space-x-4 text-sm text-slate-500 mt-3 ml-11">
-                              <span>⏱️ Duração: {module.duration}</span>
-                              {module.lessons && <span>📚 {module.lessons.length} aulas</span>}
+                            <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-slate-500 mt-3 ml-0 md:ml-11">
+                              <span className="whitespace-nowrap">⏱️ Duração: {module.duration}</span>
+                              {module.lessons && <span className="whitespace-nowrap">📚 {module.lessons.length} aulas</span>}
                             </div>
                           </div>
                           
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 flex-shrink-0">
                             <button 
                               onClick={() => {
                                 navigate('/app/study-area', { state: { moduleId: module.id } })
@@ -558,7 +553,7 @@ const AlunoDashboard: React.FC = () => {
                   <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 hover:border-purple-500/50 transition-all">
                     <div className="flex items-center space-x-3 mb-4">
                       <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                        <Instagram className="w-6 h-6 text-white" />
+                        <Share2 className="w-6 h-6 text-white" />
                       </div>
                       <div>
                         <h3 className="text-xl font-bold text-white">Instagram</h3>
@@ -1108,7 +1103,7 @@ const AlunoDashboard: React.FC = () => {
                 {/* Botão de Iniciar Teste */}
                 <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
                   <div className="text-center">
-                    <TestTube className="w-16 h-16 mx-auto mb-4 text-yellow-400" />
+                    <Activity className="w-16 h-16 mx-auto mb-4 text-yellow-400" />
                     <h3 className="text-2xl font-bold text-white mb-2">Pronto para começar?</h3>
                     <p className="text-slate-300 mb-6">
                       O teste é adaptativo e se ajusta ao seu nível de conhecimento. 

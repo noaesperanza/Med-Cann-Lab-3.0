@@ -260,11 +260,11 @@ const EnsinoDashboard: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="p-2 md:p-4 lg:p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="p-2 md:p-4 lg:p-6 overflow-x-hidden w-full">
+        <div className="max-w-7xl mx-auto w-full overflow-x-hidden">
           {/* Dashboard do Aluno */}
           {activeSection === 'dashboard' && (
-            <div className="mb-4 md:mb-6 lg:mb-8">
+            <div className="mb-4 md:mb-6 lg:mb-8 w-full overflow-x-hidden">
               <AlunoDashboard />
             </div>
           )}
@@ -272,28 +272,28 @@ const EnsinoDashboard: React.FC = () => {
           {/* Cursos Disponíveis */}
           {activeSection === 'cursos' && (
             <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 lg:gap-6 mb-4 md:mb-6 lg:mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 lg:gap-6 mb-4 md:mb-6 lg:mb-8 w-full overflow-x-hidden">
             {/* Curso Pós-Graduação Cannabis Medicinal */}
             <div 
               onClick={() => handleJoinClass('Pós-Graduação Cannabis Medicinal')}
-              className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-4 md:p-5 lg:p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all"
+              className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-4 md:p-5 lg:p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all overflow-hidden w-full max-w-full"
             >
-              <div className="flex items-center justify-between mb-3 md:mb-4">
-                <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white">🌿 Pós-Graduação Cannabis Medicinal</h3>
+              <div className="flex items-center justify-between mb-3 md:mb-4 gap-2">
+                <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white break-words flex-1 min-w-0">🌿 Pós-Graduação Cannabis Medicinal</h3>
                 <GraduationCap className="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 text-white flex-shrink-0" />
               </div>
-              <p className="text-white/90 mb-4">
+              <p className="text-white/90 mb-4 break-words">
                 Curso completo de cannabis medicinal com metodologia prática e casos clínicos reais. 
                 Desenvolvido pelo Dr. Eduardo Faveret, especialista em medicina integrativa.
               </p>
-              <div className="flex items-center space-x-4 text-sm text-white/80 mb-4">
-                <span>Dr. Eduardo Faveret</span>
+              <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-sm text-white/80 mb-4">
+                <span className="whitespace-nowrap">Dr. Eduardo Faveret</span>
                 <span>•</span>
-                <span>360 horas</span>
+                <span className="whitespace-nowrap">360 horas</span>
                 <span>•</span>
-                <span>1247 alunos</span>
+                <span className="whitespace-nowrap">1247 alunos</span>
                 <span>•</span>
-                <span>⭐ 4.9</span>
+                <span className="whitespace-nowrap">⭐ 4.9</span>
               </div>
               <button className="w-full bg-white text-green-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
                 Acessar Curso
@@ -303,22 +303,22 @@ const EnsinoDashboard: React.FC = () => {
             {/* Curso Arte da Entrevista Clínica */}
             <div 
               onClick={() => handleJoinClass('Arte da Entrevista Clínica')}
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-4 md:p-5 lg:p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all"
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-4 md:p-5 lg:p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all overflow-hidden w-full max-w-full"
             >
-              <div className="flex items-center justify-between mb-3 md:mb-4">
-                <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white">🎭 Arte da Entrevista Clínica</h3>
-                <Heart className="w-8 h-8 text-white" />
+              <div className="flex items-center justify-between mb-3 md:mb-4 gap-2">
+                <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white break-words flex-1 min-w-0">🎭 Arte da Entrevista Clínica</h3>
+                <Heart className="w-8 h-8 text-white flex-shrink-0" />
               </div>
-              <p className="text-white/90 mb-4">
+              <p className="text-white/90 mb-4 break-words">
                 Metodologia completa de entrevista clínica aplicada à Cannabis Medicinal. 
                 Desenvolva habilidades de comunicação e avaliação clínica.
               </p>
-              <div className="flex items-center space-x-4 text-sm text-white/80 mb-4">
-                <span>Dr. Ricardo Valença</span>
+              <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-sm text-white/80 mb-4">
+                <span className="whitespace-nowrap">Dr. Ricardo Valença</span>
                 <span>•</span>
-                <span>40 horas</span>
+                <span className="whitespace-nowrap">40 horas</span>
                 <span>•</span>
-                <span>⭐ 5.0</span>
+                <span className="whitespace-nowrap">⭐ 5.0</span>
               </div>
               <button className="w-full bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
                 Acessar Curso
@@ -327,24 +327,24 @@ const EnsinoDashboard: React.FC = () => {
           </div>
 
           {/* Informações Adicionais */}
-          <div className="bg-slate-800 rounded-xl p-6">
-            <h3 className="text-xl font-semibold text-white mb-4">Informações sobre os Cursos</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-700 rounded-lg p-4">
-                <h4 className="font-semibold text-white mb-2">🌿 Pós-Graduação Cannabis Medicinal</h4>
-                <p className="text-slate-300 text-sm mb-2">
+          <div className="bg-slate-800 rounded-xl p-4 md:p-6 overflow-hidden w-full max-w-full">
+            <h3 className="text-xl font-semibold text-white mb-4 break-words">Informações sobre os Cursos</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full overflow-x-hidden">
+              <div className="bg-slate-700 rounded-lg p-4 overflow-hidden w-full max-w-full">
+                <h4 className="font-semibold text-white mb-2 break-words">🌿 Pós-Graduação Cannabis Medicinal</h4>
+                <p className="text-slate-300 text-sm mb-2 break-words">
                   Programa completo de especialização em Cannabis Medicinal com metodologia prática 
                   e casos clínicos reais desenvolvidos pelo Dr. Eduardo Faveret.
                 </p>
-                <p className="text-slate-400 text-xs">Inclui: Certificação, casos práticos, comunidade de alunos</p>
+                <p className="text-slate-400 text-xs break-words">Inclui: Certificação, casos práticos, comunidade de alunos</p>
               </div>
-              <div className="bg-slate-700 rounded-lg p-4">
-                <h4 className="font-semibold text-white mb-2">🎭 Arte da Entrevista Clínica</h4>
-                <p className="text-slate-300 text-sm mb-2">
+              <div className="bg-slate-700 rounded-lg p-4 overflow-hidden w-full max-w-full">
+                <h4 className="font-semibold text-white mb-2 break-words">🎭 Arte da Entrevista Clínica</h4>
+                <p className="text-slate-300 text-sm mb-2 break-words">
                   Metodologia desenvolvida pelo Dr. Ricardo Valença para entrevistas clínicas eficazes, 
                   com foco em comunicação empática e avaliação completa do paciente.
                 </p>
-                <p className="text-slate-400 text-xs">Inclui: Módulos práticos, casos clínicos, certificação</p>
+                <p className="text-slate-400 text-xs break-words">Inclui: Módulos práticos, casos clínicos, certificação</p>
               </div>
             </div>
           </div>
@@ -355,8 +355,8 @@ const EnsinoDashboard: React.FC = () => {
 
       {/* Chat Modal */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-xl w-96 h-[600px] flex flex-col">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
+          <div className="bg-slate-800 rounded-xl w-full max-w-md h-[90vh] max-h-[600px] flex flex-col overflow-hidden">
             {/* Chat Header */}
             <div className="p-4 border-b border-slate-700">
               <div className="flex items-center justify-between">

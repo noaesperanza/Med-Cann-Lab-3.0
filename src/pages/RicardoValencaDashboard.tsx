@@ -295,9 +295,9 @@ const RicardoValencaDashboard: React.FC = () => {
         </div>
 
         {/* OUTROS */}
-        <div>
-          <h2 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4">Outros</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+        <div className="w-full overflow-x-hidden">
+          <h2 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 break-words">Outros</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 w-full overflow-x-hidden">
             <button
               onClick={() => setActiveSection('financeiro')}
               className="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden"
@@ -324,12 +324,12 @@ const RicardoValencaDashboard: React.FC = () => {
 
         {/* 🔧 FUNCIONALIDADES ADMINISTRATIVAS */}
         {user?.type === 'admin' && (
-          <div>
-            <h2 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center">
-              <Settings className="w-5 h-5 md:w-6 md:h-6 mr-2 text-orange-400" />
+          <div className="w-full overflow-x-hidden">
+            <h2 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center break-words">
+              <Settings className="w-5 h-5 md:w-6 md:h-6 mr-2 text-orange-400 flex-shrink-0" />
               <span>🔧 Funcionalidades Administrativas</span>
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6 w-full overflow-x-hidden">
               <button className="bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden">
                 <div className="flex items-center justify-between mb-2 gap-2">
                   <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">👥 Usuários</h3>
@@ -1825,8 +1825,8 @@ const RicardoValencaDashboard: React.FC = () => {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-x-hidden w-full">
+      <div className="max-w-7xl mx-auto px-2 md:px-4 lg:px-6 py-4 md:py-6 lg:py-8 w-full overflow-x-hidden">
         {/* Renderizar seção ativa */}
         {activeSection === 'dashboard' && renderDashboard()}
         {activeSection === 'kpis-admin' && renderKPIsAdmin()}

@@ -148,8 +148,8 @@ const Courses: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="container mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8">
+    <div className="min-h-screen overflow-x-hidden w-full">
+      <div className="container mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8 w-full overflow-x-hidden">
         {/* Header */}
         <div className="mb-4 md:mb-6 lg:mb-8">
           <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white mb-2">
@@ -191,9 +191,9 @@ const Courses: React.FC = () => {
         </div>
 
         {/* Courses Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 w-full overflow-x-hidden">
           {filteredCourses.map((course) => (
-            <div key={course.id} className="card card-hover overflow-hidden">
+            <div key={course.id} className="card card-hover overflow-hidden w-full max-w-full">
               {/* Course Image */}
               <div className="relative h-48 bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/20 dark:to-accent-900/20">
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -228,10 +228,10 @@ const Courses: React.FC = () => {
                 </div>
 
                 {/* Title and Description */}
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white dark:text-slate-900 dark:text-white mb-2">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2 break-words">
                   {course.title}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">
+                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2 break-words">
                   {course.description}
                 </p>
 
