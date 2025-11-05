@@ -239,57 +239,57 @@ const RicardoValencaDashboard: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <button
               onClick={() => navigate('/app/patients')}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs md:text-sm font-medium opacity-90">👥 Gestão de Pacientes</h3>
+              <div className="flex items-center justify-between mb-2 gap-2">
+                <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">👥 Gestão de Pacientes</h3>
                 <Users className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
-              <p className="text-xs opacity-75 mt-1">Prontuário eletrônico</p>
+              <p className="text-xs opacity-75 mt-1 break-words">Prontuário eletrônico</p>
             </button>
             
             <button
               onClick={() => navigate('/app/clinica/profissional/agendamentos')}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs md:text-sm font-medium opacity-90">📅 Agendamentos</h3>
+              <div className="flex items-center justify-between mb-2 gap-2">
+                <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">📅 Agendamentos</h3>
                 <Calendar className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
-              <p className="text-xs opacity-75 mt-1">Agenda completa</p>
+              <p className="text-xs opacity-75 mt-1 break-words">Agenda completa</p>
             </button>
             
             <button
               onClick={() => setActiveSection('relatorios-clinicos')}
-              className="bg-gradient-to-r from-amber-600 to-orange-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-amber-600 to-orange-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs md:text-sm font-medium opacity-90">📊 Relatórios Clínicos</h3>
+              <div className="flex items-center justify-between mb-2 gap-2">
+                <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">📊 Relatórios Clínicos</h3>
                 <BarChart3 className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
-              <p className="text-xs opacity-75 mt-1">Relatórios da IA</p>
+              <p className="text-xs opacity-75 mt-1 break-words">Relatórios da IA</p>
             </button>
             
             <button
               onClick={() => setActiveSection('atendimento')}
-              className="bg-gradient-to-r from-red-600 to-orange-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-red-600 to-orange-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs md:text-sm font-medium opacity-90">Atendimento</h3>
+              <div className="flex items-center justify-between mb-2 gap-2">
+                <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">Atendimento</h3>
                 <Stethoscope className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
-              <p className="text-xs opacity-75 mt-1">Sala de atendimento</p>
+              <p className="text-xs opacity-75 mt-1 break-words">Sala de atendimento</p>
             </button>
             
             <button
               onClick={() => setActiveSection('prescricoes')}
-              className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs md:text-sm font-medium opacity-90">💊 Prescrições</h3>
+              <div className="flex items-center justify-between mb-2 gap-2">
+                <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">💊 Prescrições</h3>
                 <FileText className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
-              <p className="text-xs opacity-75 mt-1">Prescrições integrativas</p>
+              <p className="text-xs opacity-75 mt-1 break-words">Prescrições integrativas</p>
             </button>
           </div>
         </div>
@@ -300,24 +300,24 @@ const RicardoValencaDashboard: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             <button
               onClick={() => setActiveSection('financeiro')}
-              className="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs md:text-sm font-medium opacity-90">💰 Gestão Financeira</h3>
+              <div className="flex items-center justify-between mb-2 gap-2">
+                <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">💰 Gestão Financeira</h3>
                 <TrendingUp className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
-              <p className="text-xs opacity-75 mt-1">Controle financeiro</p>
+              <p className="text-xs opacity-75 mt-1 break-words">Controle financeiro</p>
             </button>
             
             <button
               onClick={() => navigate('/app/profile')}
-              className="bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs md:text-sm font-medium opacity-90">👤 Meu Perfil</h3>
+              <div className="flex items-center justify-between mb-2 gap-2">
+                <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">👤 Meu Perfil</h3>
                 <User className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
               </div>
-              <p className="text-xs opacity-75 mt-1">Configurações pessoais</p>
+              <p className="text-xs opacity-75 mt-1 break-words">Configurações pessoais</p>
             </button>
           </div>
         </div>
@@ -330,103 +330,103 @@ const RicardoValencaDashboard: React.FC = () => {
               <span>🔧 Funcionalidades Administrativas</span>
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
-              <button className="bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90">👥 Usuários</h3>
+              <button className="bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">👥 Usuários</h3>
                   <Users className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
-                <p className="text-xs opacity-75 mt-1">Gestão de usuários do sistema</p>
+                <p className="text-xs opacity-75 mt-1 break-words">Gestão de usuários do sistema</p>
               </button>
               
-              <button className="bg-gradient-to-r from-green-500 to-teal-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90">🎓 Cursos</h3>
+              <button className="bg-gradient-to-r from-green-500 to-teal-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">🎓 Cursos</h3>
                   <BookOpen className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
-                <p className="text-xs opacity-75 mt-1">Gestão de cursos e materiais</p>
+                <p className="text-xs opacity-75 mt-1 break-words">Gestão de cursos e materiais</p>
               </button>
               
-              <button className="bg-gradient-to-r from-emerald-500 to-green-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90">💰 Financeiro</h3>
+              <button className="bg-gradient-to-r from-emerald-500 to-green-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">💰 Financeiro</h3>
                   <TrendingUp className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
-                <p className="text-xs opacity-75 mt-1">Controle financeiro e pagamentos</p>
+                <p className="text-xs opacity-75 mt-1 break-words">Controle financeiro e pagamentos</p>
               </button>
               
-              <button className="bg-gradient-to-r from-cyan-500 to-blue-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90">💬 Chat Global + Moderação</h3>
+              <button className="bg-gradient-to-r from-cyan-500 to-blue-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">💬 Chat Global + Moderação</h3>
                   <MessageCircle className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
-                <p className="text-xs opacity-75 mt-1">Moderação de chats e conversas</p>
+                <p className="text-xs opacity-75 mt-1 break-words">Moderação de chats e conversas</p>
               </button>
               
-              <button className="bg-gradient-to-r from-orange-500 to-red-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90">🏛️ Moderação Fórum</h3>
+              <button className="bg-gradient-to-r from-orange-500 to-red-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">🏛️ Moderação Fórum</h3>
                   <MessageCircle className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
-                <p className="text-xs opacity-75 mt-1">Gestão e moderação do fórum</p>
+                <p className="text-xs opacity-75 mt-1 break-words">Gestão e moderação do fórum</p>
               </button>
               
-              <button className="bg-gradient-to-r from-yellow-500 to-orange-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90">🏆 Ranking & Gamificação</h3>
+              <button className="bg-gradient-to-r from-yellow-500 to-orange-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">🏆 Ranking & Gamificação</h3>
                   <Activity className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
-                <p className="text-xs opacity-75 mt-1">Sistema de pontos e rankings</p>
+                <p className="text-xs opacity-75 mt-1 break-words">Sistema de pontos e rankings</p>
               </button>
               
-              <button className="bg-gradient-to-r from-indigo-500 to-purple-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90">📁 Upload</h3>
+              <button className="bg-gradient-to-r from-indigo-500 to-purple-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">📁 Upload</h3>
                   <Upload className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
-                <p className="text-xs opacity-75 mt-1">Upload de documentos e arquivos</p>
+                <p className="text-xs opacity-75 mt-1 break-words">Upload de documentos e arquivos</p>
               </button>
               
-              <button className="bg-gradient-to-r from-pink-500 to-rose-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90">📊 Analytics</h3>
+              <button className="bg-gradient-to-r from-pink-500 to-rose-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">📊 Analytics</h3>
                   <BarChart3 className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
-                <p className="text-xs opacity-75 mt-1">Análise de dados e relatórios</p>
+                <p className="text-xs opacity-75 mt-1 break-words">Análise de dados e relatórios</p>
               </button>
               
-              <button className="bg-gradient-to-r from-red-500 to-pink-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90">🫀 Função Renal</h3>
+              <button className="bg-gradient-to-r from-red-500 to-pink-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">🫀 Função Renal</h3>
                   <Activity className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
-                <p className="text-xs opacity-75 mt-1">Monitoramento de função renal</p>
+                <p className="text-xs opacity-75 mt-1 break-words">Monitoramento de função renal</p>
               </button>
               
-              <button className="bg-gradient-to-r from-slate-500 to-gray-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90">⚙️ Sistema</h3>
+              <button className="bg-gradient-to-r from-slate-500 to-gray-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">⚙️ Sistema</h3>
                   <Settings className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
-                <p className="text-xs opacity-75 mt-1">Configurações do sistema</p>
+                <p className="text-xs opacity-75 mt-1 break-words">Configurações do sistema</p>
               </button>
               
-              <button className="bg-gradient-to-r from-teal-500 to-cyan-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90">📚 Biblioteca</h3>
+              <button className="bg-gradient-to-r from-teal-500 to-cyan-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">📚 Biblioteca</h3>
                   <BookOpen className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
-                <p className="text-xs opacity-75 mt-1">Biblioteca médica e documentos</p>
+                <p className="text-xs opacity-75 mt-1 break-words">Biblioteca médica e documentos</p>
               </button>
               
               <button 
                 onClick={() => navigate('/app/ai-documents')}
-                className="bg-gradient-to-r from-violet-500 to-purple-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left cursor-pointer"
+                className="bg-gradient-to-r from-violet-500 to-purple-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left cursor-pointer overflow-hidden"
               >
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90">🤖 Chat IA Documentos</h3>
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">🤖 Chat IA Documentos</h3>
                   <Brain className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
-                <p className="text-xs opacity-75 mt-1">IA para análise de documentos</p>
+                <p className="text-xs opacity-75 mt-1 break-words">IA para análise de documentos</p>
               </button>
             </div>
 

@@ -71,7 +71,7 @@ export const useMedCannLabConversation = () => {
   const [messages, setMessages] = useState<ConversationMessage[]>([{
     id: 'welcome',
     role: 'noa',
-    content: 'Olá, Sou Nôa Esperanza., a única assistente em saúde digital capacitada pela Arte da Entrevista Clínica. Dou as boas vindas ao Med Cann Lab com Nôa Esperanza, plataforma pioneira da cannabis medicinal aplicada à nefrologia e neurologia, utilizando a metodologia Arte da Entrevista Clínica, na formação de habilildades humanas para o aperfeiçoamento da relação terapeuta e pacientes. Posso ajudar você em todas as suas jornadas. Basta me chamar. Bons ventos soprem.',
+    content: 'Olá, Sou Nôa Esperanza., a única assistente em saúde digital capacitada pela Arte da Entrevista Clínica. Dou as boas vindas ao Med Cann Lab com Nôa Esperanza, plataforma pioneira da cannabis medicinal aplicada à nefrologia e neurologia, utilizando a metodologia Arte da Entrevista Clínica, na formação de habilildades humanas para o aperfeiçoamento da relação terapeuta e pacientes. Posso ajudar você em todas as suas jornadas. Basta me chamar. Bons ventos sóprem.',
     timestamp: new Date(),
     intent: 'HELP'
   }])
@@ -347,6 +347,42 @@ export const useMedCannLabConversation = () => {
       }
     }
   }, [messages, voicesReady, updateMessageContent])
+
+  // Auto-falar mensagem de boas-vindas quando o usuário acessa o app pela primeira vez
+  const hasSpokenWelcomeRef = useRef(false)
+  useEffect(() => {
+    if (user && voicesReady && messages.length === 1 && messages[0].id === 'welcome' && !hasSpokenWelcomeRef.current) {
+      const welcomeMessage = messages[0]
+      const fullContent = welcomeMessage.content
+      
+      if (fullContent && typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis) {
+        hasSpokenWelcomeRef.current = true
+        
+        const sanitized = sanitizeForSpeech(fullContent)
+        const utterance = new SpeechSynthesisUtterance(sanitized)
+        
+        const voices = voicesRef.current
+        if (voices && voices.length > 0) {
+          const preferred = voices.filter(voice => voice.lang && voice.lang.toLowerCase() === 'pt-br')
+          const victoria = preferred.find(voice => /vit[oó]ria/i.test(voice.name))
+          const fallback = preferred.find(voice => /bia|camila|carol|helo[ií]sa|brasil|female|feminina/i.test(voice.name))
+          const selectedVoice = victoria || fallback || preferred[0] || voices[0]
+          if (selectedVoice) {
+            utterance.voice = selectedVoice
+          }
+        }
+        
+        utterance.onstart = () => setIsSpeaking(true)
+        utterance.onend = () => setIsSpeaking(false)
+        utterance.onerror = () => setIsSpeaking(false)
+        
+        // Aguardar um pouco para garantir que o usuário está pronto
+        setTimeout(() => {
+          window.speechSynthesis.speak(utterance)
+        }, 1000)
+      }
+    }
+  }, [user, voicesReady, messages])
 
   const sendMessage = useCallback(async (text: string, options: SendMessageOptions = {}) => {
     const trimmed = text.trim()
