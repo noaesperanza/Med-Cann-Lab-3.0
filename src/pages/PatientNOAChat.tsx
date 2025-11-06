@@ -76,7 +76,7 @@ Por favor, inicie o protocolo IMRE para minha avaliação clínica inicial.`
             
             <div className="text-center">
               <p className="text-lg text-slate-300 mb-4">
-                🌬️ Bons ventos soprem! Sou Nôa Esperança, sua IA Residente.
+                🌬️ Bons ventos sóprem! Sou Nôa Esperança, sua IA Residente.
               </p>
               <p className="text-sm text-slate-400 mb-4">
                 Especializada em avaliações clínicas e treinamentos

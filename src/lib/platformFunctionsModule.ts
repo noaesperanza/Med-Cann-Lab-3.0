@@ -15,7 +15,7 @@ import { clinicalReportService } from './clinicalReportService'
 import { supabase } from './supabase'
 
 export interface PlatformIntent {
-  type: 'ASSESSMENT_START' | 'ASSESSMENT_COMPLETE' | 'REPORT_GENERATE' | 'DASHBOARD_QUERY' | 'PATIENTS_QUERY' | 'REPORTS_COUNT_QUERY' | 'APPOINTMENTS_QUERY' | 'KPIS_QUERY' | 'NOTIFY_PROFESSIONAL' | 'NONE'
+  type: 'ASSESSMENT_START' | 'ASSESSMENT_COMPLETE' | 'REPORT_GENERATE' | 'DASHBOARD_QUERY' | 'PATIENTS_QUERY' | 'REPORTS_COUNT_QUERY' | 'APPOINTMENTS_QUERY' | 'APPOINTMENT_CREATE' | 'PATIENT_CREATE' | 'KPIS_QUERY' | 'NOTIFY_PROFESSIONAL' | 'NONE'
   confidence: number
   metadata?: any
 }
@@ -133,9 +133,34 @@ export class PlatformFunctionsModule {
     if (lowerMessage.includes('agendamento') || 
         lowerMessage.includes('consulta') ||
         lowerMessage.includes('agenda')) {
+      // Verificar se é criação de agendamento
+      if (lowerMessage.includes('agendar') || 
+          lowerMessage.includes('marcar') ||
+          lowerMessage.includes('criar agendamento') ||
+          lowerMessage.includes('nova consulta') ||
+          lowerMessage.includes('marcar consulta')) {
+        return {
+          type: 'APPOINTMENT_CREATE',
+          confidence: 0.9,
+          metadata: { userId }
+        }
+      }
       return {
         type: 'APPOINTMENTS_QUERY',
         confidence: 0.85,
+        metadata: { userId }
+      }
+    }
+    
+    // Detectar criação de novo paciente
+    if (lowerMessage.includes('novo paciente') ||
+        lowerMessage.includes('cadastrar paciente') ||
+        lowerMessage.includes('adicionar paciente') ||
+        lowerMessage.includes('registrar paciente') ||
+        (lowerMessage.includes('paciente') && (lowerMessage.includes('novo') || lowerMessage.includes('cadastrar') || lowerMessage.includes('adicionar')))) {
+      return {
+        type: 'PATIENT_CREATE',
+        confidence: 0.9,
         metadata: { userId }
       }
     }
@@ -186,6 +211,12 @@ export class PlatformFunctionsModule {
 
         case 'APPOINTMENTS_QUERY':
           return await this.queryAppointments(userId)
+
+        case 'APPOINTMENT_CREATE':
+          return await this.createAppointment(userId, intent.metadata)
+
+        case 'PATIENT_CREATE':
+          return await this.createPatient(userId, intent.metadata)
 
         case 'KPIS_QUERY':
           return await this.queryKPIs(userId)
@@ -568,12 +599,28 @@ export class PlatformFunctionsModule {
    */
   private async queryAppointments(userId: string): Promise<PlatformActionResult> {
     try {
-      // Buscar agendamentos (se a tabela existir)
-      const { data: appointments, error } = await supabase
+      // A tabela de agendamentos usa a coluna professional_id como referência no banco atual
+      let appointmentsQuery = supabase
         .from('appointments')
         .select('*')
-        .eq('doctor_id', userId)
+        .eq('professional_id', userId)
         .order('appointment_date', { ascending: true })
+
+      let { data: appointments, error } = await appointmentsQuery
+
+      if (error?.code === 'PGRST116') {
+        // tabela não existe, tratar abaixo
+      } else if (error?.code === '42703') {
+        // Coluna professional_id inexistente (instância antiga) – tentar doctor_id como fallback
+        const fallbackResult = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('doctor_id', userId)
+          .order('appointment_date', { ascending: true })
+
+        appointments = fallbackResult.data
+        error = fallbackResult.error
+      }
 
       if (error && error.code !== 'PGRST116') { // Ignorar erro se tabela não existir
         throw error
@@ -659,6 +706,198 @@ export class PlatformFunctionsModule {
       return {
         success: false,
         error: error.message || 'Erro ao buscar KPIs',
+        requiresResponse: true
+      }
+    }
+  }
+
+  /**
+   * Criar agendamento por voz
+   */
+  private async createAppointment(userId: string, metadata?: any): Promise<PlatformActionResult> {
+    try {
+      // Esta função será chamada quando o usuário solicitar criar um agendamento por voz
+      // A IA irá coletar as informações necessárias através da conversa
+      // Por enquanto, retornamos sucesso indicando que a IA deve coletar os dados
+      return {
+        success: true,
+        data: {
+          action: 'APPOINTMENT_CREATE',
+          requiresData: true,
+          fields: ['patient_name', 'appointment_date', 'appointment_time', 'type', 'notes']
+        },
+        requiresResponse: true // A IA deve perguntar os dados necessários
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erro ao processar criação de agendamento',
+        requiresResponse: true
+      }
+    }
+  }
+
+  /**
+   * Criar novo paciente por voz
+   */
+  private async createPatient(userId: string, metadata?: any): Promise<PlatformActionResult> {
+    try {
+      // Esta função será chamada quando o usuário solicitar cadastrar um novo paciente por voz
+      // A IA irá coletar as informações necessárias através da conversa
+      return {
+        success: true,
+        data: {
+          action: 'PATIENT_CREATE',
+          requiresData: true,
+          fields: ['name', 'cpf', 'phone', 'email', 'birth_date', 'gender']
+        },
+        requiresResponse: true // A IA deve perguntar os dados necessários
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erro ao processar cadastro de paciente',
+        requiresResponse: true
+      }
+    }
+  }
+
+  /**
+   * Salvar agendamento criado por voz (chamado após a IA coletar os dados)
+   */
+  async saveAppointmentFromVoice(appointmentData: {
+    patient_name: string
+    appointment_date: string
+    appointment_time: string
+    type?: string
+    notes?: string
+    doctor_id?: string
+  }): Promise<PlatformActionResult> {
+    try {
+      // Buscar ID do paciente pelo nome
+      const { data: patientData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('name', appointmentData.patient_name)
+        .eq('type', 'patient')
+        .single()
+
+      if (!patientData) {
+        return {
+          success: false,
+          error: `Paciente "${appointmentData.patient_name}" não encontrado. Por favor, cadastre o paciente primeiro.`,
+          requiresResponse: true
+        }
+      }
+
+      // Combinar data e hora
+      const appointmentDateTime = new Date(`${appointmentData.appointment_date}T${appointmentData.appointment_time}`)
+
+      // Salvar agendamento
+      // Usar professional_id se doctor_id não estiver disponível (compatibilidade)
+      const professionalId = appointmentData.doctor_id || null
+      
+      const insertData: any = {
+        patient_id: patientData.id,
+        title: appointmentData.type || 'Consulta Médica',
+        appointment_date: appointmentDateTime.toISOString(),
+        duration: 60,
+        status: 'scheduled',
+        type: appointmentData.type || 'consultation',
+        is_remote: false,
+        notes: appointmentData.notes || ''
+      }
+      
+      // Adicionar doctor_id se disponível, senão usar professional_id
+      if (professionalId) {
+        insertData.doctor_id = professionalId
+        insertData.professional_id = professionalId
+      }
+      
+      const { data, error } = await supabase
+        .from('appointments')
+        .insert(insertData)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      return {
+        success: true,
+        data: {
+          appointmentId: data.id,
+          appointmentCreated: true
+        },
+        requiresResponse: true
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erro ao salvar agendamento',
+        requiresResponse: true
+      }
+    }
+  }
+
+  /**
+   * Salvar paciente criado por voz (chamado após a IA coletar os dados)
+   */
+  async savePatientFromVoice(patientData: {
+    name: string
+    cpf?: string
+    phone?: string
+    email?: string
+    birth_date?: string
+    gender?: string
+  }): Promise<PlatformActionResult> {
+    try {
+      // Verificar se o paciente já existe
+      if (patientData.cpf) {
+        const { data: existingPatient } = await supabase
+          .from('users')
+          .select('id')
+          .eq('cpf', patientData.cpf)
+          .eq('type', 'patient')
+          .single()
+
+        if (existingPatient) {
+          return {
+            success: false,
+            error: `Paciente com CPF ${patientData.cpf} já está cadastrado.`,
+            requiresResponse: true
+          }
+        }
+      }
+
+      // Criar novo paciente
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          name: patientData.name,
+          cpf: patientData.cpf || null,
+          phone: patientData.phone || null,
+          email: patientData.email || null,
+          type: 'patient',
+          birth_date: patientData.birth_date || null,
+          gender: patientData.gender || null
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      return {
+        success: true,
+        data: {
+          patientId: data.id,
+          patientCreated: true
+        },
+        requiresResponse: true
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Erro ao cadastrar paciente',
         requiresResponse: true
       }
     }

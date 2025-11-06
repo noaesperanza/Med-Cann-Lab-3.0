@@ -95,20 +95,25 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
 
   async processMessage(userMessage: string, userId?: string, userEmail?: string): Promise<AIResponse> {
     if (this.isProcessing) {
+      console.log('⏳ IA já está processando, aguardando...')
       return this.createResponse('Aguarde, estou processando sua mensagem anterior...', 0.5)
     }
 
     this.isProcessing = true
+    console.log('🤖 [NoaResidentAI] Processando mensagem:', userMessage.substring(0, 100) + '...')
 
     try {
       // Ler dados da plataforma em tempo real
       const platformData = this.getPlatformData()
+      console.log('📊 Dados da plataforma carregados')
       
       // Detectar intenção da mensagem
       const intent = this.detectIntent(userMessage)
+      console.log('🎯 Intenção detectada:', intent)
       
       // Detectar intenção de função da plataforma
       const platformIntent = this.platformFunctions.detectIntent(userMessage, userId)
+      console.log('🔧 Intenção de plataforma:', platformIntent.type)
       
       // Se for função da plataforma, executar ação ANTES de chamar o Assistant
       let platformActionResult: any = null
@@ -124,6 +129,7 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
       }
       
       // SEMPRE usar o Assistant para gerar a resposta (mantém personalidade da Nôa)
+      console.log('🔗 Chamando Assistant API...')
       const assistantResponse = await this.getAssistantResponse(
         userMessage,
         intent,
@@ -132,6 +138,7 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
       )
 
       if (assistantResponse) {
+        console.log('✅ Resposta do Assistant recebida:', assistantResponse.content.substring(0, 100) + '...')
         // Se houve ação da plataforma bem-sucedida, adicionar metadata
         if (platformActionResult?.success) {
           assistantResponse.metadata = {
@@ -215,6 +222,18 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
         lowerMessage.includes('tratamento') || lowerMessage.includes('sintoma') ||
         lowerMessage.includes('medicamento') || lowerMessage.includes('terapia')) {
       return 'clinical'
+    }
+    
+    // Detectar agendamento de consulta
+    if (lowerMessage.includes('agendar') || lowerMessage.includes('marcar consulta') ||
+        lowerMessage.includes('nova consulta') || lowerMessage.includes('marcar')) {
+      return 'appointment'
+    }
+    
+    // Detectar cadastro de paciente
+    if (lowerMessage.includes('novo paciente') || lowerMessage.includes('cadastrar paciente') ||
+        lowerMessage.includes('adicionar paciente') || lowerMessage.includes('registrar paciente')) {
+      return 'patient_registration'
     }
     
     // Detectar treinamento
@@ -466,7 +485,7 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
       this.platformFunctions.updateAssessmentState(userId, assessment)
 
       return this.createResponse(
-        '🌬️ Bons ventos soprem! Sou Nôa Esperança, sua IA Residente especializada em avaliações clínicas.\n\n' +
+        '🌬️ Bons ventos sóprem! Sou Nôa Esperança, sua IA Residente especializada em avaliações clínicas.\n\n' +
         'Vamos iniciar sua **Avaliação Clínica Inicial** seguindo o protocolo **IMRE** (Investigação, Metodologia, Resultado, Evolução) da Arte da Entrevista Clínica aplicada à Cannabis Medicinal.\n\n' +
         '**FASE 1: INVESTIGAÇÃO (I)**\n\n' +
         'Por favor, apresente-se brevemente e diga qual é o **motivo principal** da sua consulta hoje. O que gostaria de investigar ou entender melhor?',
@@ -819,7 +838,7 @@ Gere apenas a próxima pergunta sobre hábitos de vida.`
 
     return this.createResponse(
       '✅ **AVALIAÇÃO CLÍNICA INICIAL CONCLUÍDA COM SUCESSO!**\n\n' +
-      '🌬️ Bons ventos soprem!\n\n' +
+      '🌬️ Bons ventos sóprem!\n\n' +
       'Sua avaliação clínica inicial seguindo o protocolo IMRE foi finalizada e seu **relatório clínico foi gerado e salvo no seu dashboard**.\n\n' +
       '**RESUMO DO RELATÓRIO:**\n' +
       `- ID do Relatório: ${report.id}\n` +
@@ -1018,7 +1037,7 @@ Gere apenas a próxima pergunta sobre hábitos de vida.`
     }
 
     return this.createResponse(
-      'Olá, Sou Nôa Esperanza., a única assistente em saúde digital capacitada pela Arte da Entrevista Clínica. Dou as boas vindas ao Med Cann Lab com Nôa Esperanza, plataforma pioneira da cannabis medicinal aplicada à nefrologia e neurologia, utilizando a metodologia Arte da Entrevista Clínica, na formação de habilildades humanas para o aperfeiçoamento da relação terapeuta e pacientes. Posso ajudar você em todas as suas jornadas. Basta me chamar. Bons ventos sóprem.',
+      'Sou Nôa Esperanza. Apresente-se também e diga o que trouxe você aqui? Você pode utilizar o chat aqui embaixo à direita para responder ou pedir ajuda. Bons ventos sóprem.',
       0.8,
       'text'
     )

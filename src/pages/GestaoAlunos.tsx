@@ -55,10 +55,11 @@ const GestaoAlunos: React.FC = () => {
       setLoading(true)
 
       // Buscar alunos (usuários do tipo 'aluno' ou 'student') da tabela users
+      // Usar 'student' para Supabase (inglês)
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('id, name, email, phone, type, created_at')
-        .eq('type', 'aluno')
+        .eq('type', 'student')
         .order('created_at', { ascending: false })
 
       if (usersError) {

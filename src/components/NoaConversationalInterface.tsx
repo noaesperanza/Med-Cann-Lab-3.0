@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Mic, MicOff, X, Send, Loader2, Activity, BookOpen, Brain, Upload } from 'lucide-react'
+import { Mic, MicOff, X, Send, Loader2, Activity, BookOpen, Brain, Upload, Maximize2, Minimize2, User } from 'lucide-react'
 import clsx from 'clsx'
 import NoaAnimatedAvatar from './NoaAnimatedAvatar'
 import { useNoaPlatform } from '../contexts/NoaPlatformContext'
@@ -7,6 +7,7 @@ import { useMedCannLabConversation } from '../hooks/useMedCannLabConversation'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { KnowledgeBaseIntegration } from '../services/knowledgeBaseIntegration'
+import { normalizeUserType } from '../lib/userTypes'
 
 interface NoaConversationalInterfaceProps {
   userCode?: string
@@ -63,6 +64,7 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
 }) => {
   const { isOpen: contextIsOpen, pendingMessage, clearPendingMessage, closeChat } = useNoaPlatform()
   const [isOpen, setIsOpen] = useState(hideButton || contextIsOpen)
+  const [isExpanded, setIsExpanded] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -72,10 +74,19 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
   const [uploadCategory, setUploadCategory] = useState('ai-documents')
   const [uploadArea, setUploadArea] = useState('cannabis')
   const [uploadUserType, setUploadUserType] = useState<string[]>(['professional', 'student'])
+  // Estados para gravação de consulta
+  const [isRecordingConsultation, setIsRecordingConsultation] = useState(false)
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
+  const [consultationTranscript, setConsultationTranscript] = useState<string[]>([])
+  const [consultationStartTime, setConsultationStartTime] = useState<Date | null>(null)
+  const [showPatientSelector, setShowPatientSelector] = useState(false)
+  const [availablePatients, setAvailablePatients] = useState<any[]>([])
+  const [isSavingConsultation, setIsSavingConsultation] = useState(false)
   const recognitionRef = useRef<RecognitionHandle | null>(null)
-  const prevIsSpeakingRef = useRef(false)
+  const consultationRecognitionRef = useRef<any>(null) // Para gravação de consulta
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const isListeningRef = useRef(false) // Ref para verificar estado atual de isListening
   const { user } = useAuth()
 
   const {
@@ -130,6 +141,9 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
   }, [sendMessage])
 
   const stopListening = useCallback(() => {
+    // Atualizar ref PRIMEIRO para evitar reinício
+    isListeningRef.current = false
+    
     const handle = recognitionRef.current
     if (handle) {
       handle.stopped = true
@@ -137,10 +151,15 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
         window.clearTimeout(handle.timer)
         handle.timer = undefined
       }
+      // Remover callbacks para evitar reinício
       handle.recognition.onresult = null
       handle.recognition.onerror = null
       handle.recognition.onend = null
-      handle.recognition.stop()
+      try {
+        handle.recognition.stop()
+      } catch (e) {
+        // Ignorar erros ao parar
+      }
       const text = handle.buffer.trim()
       if (text.length > 0) {
         sendMessage(text, { preferVoice: true })
@@ -152,12 +171,26 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
 
   const startListening = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      console.warn('Reconhecimento de voz não suportado neste navegador.')
+      console.warn('⚠️ Reconhecimento de voz não suportado neste navegador.')
       return
     }
 
+    // Não iniciar se já estiver escutando
+    if (isListening) {
+      console.log('ℹ️ Já está escutando, ignorando startListening')
+      return
+    }
+
+    // Parar fala da IA imediatamente quando iniciar escuta
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+    }
     window.dispatchEvent(new Event('noaStopSpeech'))
+    
+    // Parar qualquer escuta anterior
     stopListening()
+    
+    console.log('🎤 Iniciando escuta de voz...')
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     const recognition: any = new SpeechRecognition()
@@ -174,6 +207,7 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
     const flush = () => {
       const text = handle.buffer.trim()
       if (text.length > 0) {
+        console.log('📤 Enviando mensagem capturada por voz:', text)
         sendMessage(text, { preferVoice: true })
         handle.buffer = ''
       }
@@ -192,62 +226,120 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i]
         if (result.isFinal) {
-          handle.buffer += `${result[0].transcript.trim()} `
-          scheduleFlush()
+          const transcript = result[0].transcript.trim()
+          if (transcript.length > 0) {
+            handle.buffer += `${transcript} `
+            scheduleFlush()
+            console.log('🎤 Texto capturado:', transcript)
+          }
         }
       }
     }
 
     recognition.onerror = (event: any) => {
-      console.error('Erro no reconhecimento de voz:', event.error)
+      // Ignorar erros não críticos silenciosamente
+      if (event.error === 'no-speech' || event.error === 'aborted') {
+        return
+      }
+      
+      // Para erros críticos, logar
+      if (event.error !== 'network') {
+        console.error('❌ Erro no reconhecimento de voz:', event.error)
+      }
+      
       if (handle.timer) {
         window.clearTimeout(handle.timer)
         handle.timer = undefined
       }
       flush()
-      setIsListening(false)
-      recognitionRef.current = null
+      
+      // Só parar se for erro crítico
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        handle.stopped = true
+        setIsListening(false)
+        isListeningRef.current = false
+        recognitionRef.current = null
+        console.warn('⚠️ Permissão de microfone negada')
+      }
     }
 
     recognition.onend = () => {
-      if (handle.timer) {
-        window.clearTimeout(handle.timer)
-        handle.timer = undefined
+      // Se o handle foi removido ou mudou, ou foi explicitamente parado, não reiniciar
+      if (recognitionRef.current !== handle || handle.stopped) {
+        setIsListening(false)
+        isListeningRef.current = false
+        return
       }
-      flush()
-      setIsListening(false)
-      recognitionRef.current = null
+
+      // Se o usuário ainda quer o microfone ativo, reiniciar
+      if (isListeningRef.current && !handle.stopped) {
+        // Pequeno delay antes de reiniciar para evitar loops
+        setTimeout(() => {
+          // Verificar novamente se ainda deve estar ativo
+          if (recognitionRef.current === handle && !handle.stopped && isListeningRef.current) {
+            try {
+              recognition.start()
+              console.log('🔄 Reiniciando escuta de voz')
+            } catch (e: any) {
+              // Se falhar porque já está rodando, tudo bem
+              if (e.message && e.message.includes('already started')) {
+                return
+              }
+              // Se for outro erro, tentar novamente após um delay maior
+              setTimeout(() => {
+                if (recognitionRef.current === handle && !handle.stopped && isListeningRef.current) {
+                  try {
+                    recognition.start()
+                  } catch (e2) {
+                    // Se ainda falhar, parar apenas se não for "already started"
+                    if (!(e2 as any)?.message?.includes('already started')) {
+                      console.log('🛑 Erro ao reiniciar escuta:', e2)
+                    }
+                  }
+                }
+              }, 500)
+            }
+          } else {
+            // Se as condições mudaram, parar
+            setIsListening(false)
+            isListeningRef.current = false
+            recognitionRef.current = null
+            console.log('🛑 Escuta de voz finalizada')
+          }
+        }, 100)
+      } else {
+        // Se não estiver mais ativo, parar
+        setIsListening(false)
+        isListeningRef.current = false
+        recognitionRef.current = null
+        console.log('🛑 Escuta de voz finalizada')
+      }
     }
 
-    recognition.start()
-    setIsListening(true)
-  }, [sendMessage, stopListening])
+    try {
+      recognition.start()
+      setIsListening(true)
+      isListeningRef.current = true // Atualizar ref
+      console.log('✅ Escuta de voz iniciada com sucesso')
+    } catch (error: any) {
+      console.error('❌ Erro ao iniciar escuta:', error)
+      setIsListening(false)
+      isListeningRef.current = false
+      recognitionRef.current = null
+    }
+  }, [sendMessage, stopListening, isListening])
 
   // Parar microfone quando a IA começar a processar
   useEffect(() => {
     if (isProcessing && isListening) {
+      // Atualizar ref antes de parar para evitar reinício
+      isListeningRef.current = false
       stopListening()
     }
   }, [isProcessing, isListening, stopListening])
 
-  // Auto-iniciar microfone quando a IA terminar de falar
-  useEffect(() => {
-    // Quando a IA termina de falar (isSpeaking muda de true para false)
-    if (prevIsSpeakingRef.current && !isSpeaking && isOpen && !isProcessing) {
-      // Aguardar um pequeno delay para garantir que a síntese de voz terminou completamente
-      const timer = setTimeout(() => {
-        // Verificar se não está já escutando, se o chat está aberto e não está processando
-        if (!isListening && isOpen && !isProcessing) {
-          startListening()
-        }
-      }, 300) // 300ms de delay para transição suave
-
-      return () => clearTimeout(timer)
-    }
-    
-    // Atualizar referência para próximo ciclo
-    prevIsSpeakingRef.current = isSpeaking
-  }, [isSpeaking, isOpen, isListening, isProcessing, startListening])
+  // REMOVIDO: Auto-iniciar microfone e detecção de voz contínua
+  // O microfone agora só funciona quando o usuário clica no botão manualmente
 
   const handleSend = useCallback(() => {
     if (!inputValue.trim()) return
@@ -273,6 +365,227 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
       startListening()
     }
   }, [isListening, startListening, stopListening])
+
+  // Carregar pacientes disponíveis
+  const loadPatients = useCallback(async () => {
+    if (!user) return
+
+    try {
+      const userType = normalizeUserType(user.type)
+      if (userType !== 'profissional' && userType !== 'admin') return
+
+      // Buscar pacientes do profissional
+      // Primeiro buscar assessments, depois buscar dados dos pacientes
+      const { data: assessments, error } = await supabase
+        .from('clinical_assessments')
+        .select('patient_id')
+        .eq('doctor_id', user.id)
+        .not('patient_id', 'is', null)
+
+      if (error) {
+        console.error('Erro ao carregar pacientes:', error)
+        return
+      }
+
+      // Extrair IDs únicos de pacientes
+      const patientIds = [...new Set(assessments?.map((a: any) => a.patient_id).filter(Boolean) || [])]
+
+      if (patientIds.length === 0) {
+        setAvailablePatients([])
+        return
+      }
+
+      // Buscar dados dos pacientes
+      const { data: patients, error: patientsError } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .in('id', patientIds)
+
+      if (patientsError) {
+        console.error('Erro ao carregar dados dos pacientes:', patientsError)
+        return
+      }
+
+      // Mapear pacientes
+      setAvailablePatients(patients || [])
+    } catch (error) {
+      console.error('Erro ao carregar pacientes:', error)
+    }
+  }, [user])
+
+  // Iniciar gravação de consulta
+  const handleStartConsultationRecording = useCallback(async () => {
+    if (!user) return
+
+    const userType = normalizeUserType(user.type)
+    if (userType !== 'profissional' && userType !== 'admin') {
+      sendMessage('Apenas profissionais podem gravar consultas.', { preferVoice: false })
+      return
+    }
+
+    // Se não houver paciente selecionado, mostrar seletor
+    if (!selectedPatientId) {
+      await loadPatients()
+      setShowPatientSelector(true)
+      sendMessage('Por favor, selecione o paciente para iniciar a gravação da consulta.', { preferVoice: false })
+      return
+    }
+
+    // Parar escuta normal
+    if (isListening) {
+      stopListening()
+    }
+
+    // Iniciar gravação de consulta
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      sendMessage('Reconhecimento de voz não suportado neste navegador.', { preferVoice: false })
+      return
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const recognition: any = new SpeechRecognition()
+    recognition.lang = 'pt-BR'
+    recognition.continuous = true
+    recognition.interimResults = true
+
+    const transcriptBuffer: string[] = []
+
+    recognition.onresult = (event: any) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i]
+        if (result.isFinal) {
+          const transcript = result[0].transcript.trim()
+          transcriptBuffer.push(transcript)
+          setConsultationTranscript(prev => [...prev, transcript])
+          
+          // Adicionar mensagem visual no chat
+          sendMessage(`[Gravação] ${transcript}`, { preferVoice: false })
+        }
+      }
+    }
+
+    recognition.onerror = (event: any) => {
+      console.error('Erro na gravação:', event.error)
+      if (event.error === 'no-speech') {
+        // Reiniciar se não houver fala
+        try {
+          recognition.start()
+        } catch (e) {
+          // Ignorar
+        }
+      }
+    }
+
+    recognition.onend = () => {
+      if (isRecordingConsultation) {
+        try {
+          recognition.start()
+        } catch (e) {
+          // Ignorar
+        }
+      }
+    }
+
+    try {
+      recognition.start()
+      consultationRecognitionRef.current = recognition
+      setIsRecordingConsultation(true)
+      setConsultationStartTime(new Date())
+      setConsultationTranscript([])
+      sendMessage('🎙️ Gravação de consulta iniciada. Diga "Parar gravação" para finalizar.', { preferVoice: false })
+    } catch (e) {
+      console.error('Erro ao iniciar gravação:', e)
+      sendMessage('Erro ao iniciar gravação. Tente novamente.', { preferVoice: false })
+    }
+  }, [user, selectedPatientId, isListening, stopListening, isRecordingConsultation, sendMessage, loadPatients])
+
+  // Parar gravação e salvar consulta
+  const handleStopConsultationRecording = useCallback(async () => {
+    if (!isRecordingConsultation || !user || !selectedPatientId) return
+
+    setIsSavingConsultation(true)
+
+    // Parar reconhecimento de voz
+    if (consultationRecognitionRef.current) {
+      try {
+        consultationRecognitionRef.current.stop()
+        consultationRecognitionRef.current = null
+      } catch (e) {
+        // Ignorar
+      }
+    }
+
+    const endTime = new Date()
+    const duration = consultationStartTime 
+      ? Math.round((endTime.getTime() - consultationStartTime.getTime()) / 1000 / 60) // minutos
+      : 0
+
+    const fullTranscript = consultationTranscript.join(' ')
+
+    try {
+      // Salvar em clinical_assessments
+      const { data: assessment, error: assessmentError } = await supabase
+        .from('clinical_assessments')
+        .insert({
+          patient_id: selectedPatientId,
+          doctor_id: user.id,
+          assessment_type: 'CONSULTA',
+          status: 'completed',
+          data: {
+            transcript: fullTranscript,
+            duration_minutes: duration,
+            start_time: consultationStartTime?.toISOString(),
+            end_time: endTime.toISOString()
+          },
+          clinical_report: `Consulta gravada em ${consultationStartTime?.toLocaleString('pt-BR')}\n\nTranscrição:\n${fullTranscript}`,
+          created_at: consultationStartTime?.toISOString() || new Date().toISOString(),
+          updated_at: endTime.toISOString()
+        })
+        .select()
+        .single()
+
+      if (assessmentError) {
+        throw assessmentError
+      }
+
+      // Salvar também em clinical_reports se a tabela existir
+      try {
+        await supabase
+          .from('clinical_reports')
+          .insert({
+            patient_id: selectedPatientId,
+            professional_id: user.id,
+            assessment_id: assessment.id,
+            report_data: {
+              type: 'CONSULTA',
+              transcript: fullTranscript,
+              duration_minutes: duration,
+              date: consultationStartTime?.toISOString()
+            },
+            status: 'generated'
+          })
+      } catch (reportError) {
+        // Ignorar se a tabela não existir
+        console.warn('Tabela clinical_reports não disponível:', reportError)
+      }
+
+      sendMessage(`✅ Consulta gravada e salva com sucesso! Duração: ${duration} minutos.`, { preferVoice: false })
+      
+      // Resetar estados
+      setIsRecordingConsultation(false)
+      setConsultationTranscript([])
+      setConsultationStartTime(null)
+      setSelectedPatientId(null)
+    } catch (error: any) {
+      console.error('Erro ao salvar consulta:', error)
+      sendMessage(`❌ Erro ao salvar consulta: ${error.message || 'Erro desconhecido'}`, { preferVoice: false })
+    } finally {
+      setIsSavingConsultation(false)
+    }
+  }, [isRecordingConsultation, user, selectedPatientId, consultationStartTime, consultationTranscript, sendMessage])
+
+  // REMOVIDO: Detecção de voz contínua e comando "Escute-se, Nôa!"
+  // O microfone agora só funciona quando o usuário clica no botão manualmente
 
   const handleQuickCommand = useCallback((command: string) => {
     setInputValue('')
@@ -452,32 +765,124 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
       )}
 
       {isOpen && (
-        <div className={clsx('fixed z-50 w-[420px] max-w-[92vw] h-[640px] bg-slate-900/95 border border-slate-700 rounded-3xl shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden', positionClasses)}>
+        <div className={clsx(
+          'fixed z-50 bg-slate-900/95 border border-slate-700 rounded-3xl shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden transition-all duration-300',
+          isExpanded 
+            ? 'left-[80px] lg:left-[320px] right-4 top-4 bottom-4' // Expandido: da barra lateral (80px quando colapsada, 320px quando expandida) até a borda direita
+            : position === 'bottom-right' 
+              ? 'bottom-4 right-4 w-[600px] max-w-[calc(100vw-2rem)] h-[720px] max-h-[calc(100vh-2rem)]'
+              : position === 'bottom-left'
+                ? 'bottom-4 left-4 w-[600px] max-w-[calc(100vw-2rem)] h-[720px] max-h-[calc(100vh-2rem)]'
+                : position === 'top-right'
+                  ? 'top-4 right-4 w-[600px] max-w-[calc(100vw-2rem)] h-[720px] max-h-[calc(100vh-2rem)]'
+                  : 'top-4 left-4 w-[600px] max-w-[calc(100vw-2rem)] h-[720px] max-h-[calc(100vh-2rem)]'
+        )}>
           <div className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-sky-500 px-5 py-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <NoaAnimatedAvatar size="md" isListening={isListening} isSpeaking={isSpeaking} />
+              <NoaAnimatedAvatar size={isExpanded ? "lg" : "md"} isListening={isListening} isSpeaking={isSpeaking} />
               <div>
                 <p className="text-sm text-emerald-100">Nôa Esperança • IA Residente</p>
                 <p className="text-xs text-emerald-50/80">{userName} • {userCode}</p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                setIsOpen(false)
-                closeChat()
-                stopListening()
-                window.dispatchEvent(new Event('noaChatClosed'))
-              }}
-              className="p-2 rounded-full text-white/80 hover:bg-white/10 transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="p-2 rounded-full text-white/80 hover:bg-white/10 transition"
+                title={isExpanded ? "Minimizar" : "Expandir"}
+              >
+                {isExpanded ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={() => {
+                  setIsOpen(false)
+                  setIsExpanded(false)
+                  closeChat()
+                  stopListening()
+                  window.dispatchEvent(new Event('noaChatClosed'))
+                }}
+                className="p-2 rounded-full text-white/80 hover:bg-white/10 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           <div className="border-b border-slate-800 bg-slate-900/80 px-5 py-2 flex items-center justify-between text-xs text-slate-400">
             <span className="flex items-center gap-1"><Activity className="w-3 h-3" /> Último fluxo: {lastIntent ?? 'Exploração'}</span>
             <span className="flex items-center gap-1 text-slate-400">{messages.length - 1} interações</span>
+            {isRecordingConsultation && (
+              <span className="flex items-center gap-1 text-red-400 animate-pulse">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                Gravando consulta...
+              </span>
+            )}
           </div>
+
+          {/* Seletor de Paciente */}
+          {showPatientSelector && !isRecordingConsultation && (
+            <div className="border-b border-slate-800 bg-slate-900/90 px-5 py-4">
+              <p className="text-sm text-slate-300 mb-3">Selecione o paciente:</p>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {availablePatients.length === 0 ? (
+                  <p className="text-xs text-slate-400">Nenhum paciente encontrado. Você precisa ter pelo menos uma avaliação clínica com um paciente.</p>
+                ) : (
+                  availablePatients.map((patient: any) => (
+                    <button
+                      key={patient.id}
+                      onClick={() => {
+                        setSelectedPatientId(patient.id)
+                        setShowPatientSelector(false)
+                        handleStartConsultationRecording()
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm flex items-center gap-2 transition"
+                    >
+                      <User className="w-4 h-4" />
+                      <span>{patient.name || patient.email}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <button
+                onClick={() => setShowPatientSelector(false)}
+                className="mt-3 text-xs text-slate-400 hover:text-slate-200"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+
+          {/* Controles de Gravação de Consulta (apenas para profissionais) */}
+          {user && (normalizeUserType(user.type) === 'profissional' || normalizeUserType(user.type) === 'admin') && !showPatientSelector && (
+            <div className="border-b border-slate-800 bg-slate-900/80 px-5 py-3">
+              {!isRecordingConsultation ? (
+                <button
+                  onClick={handleStartConsultationRecording}
+                  className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition"
+                >
+                  <Mic className="w-4 h-4 text-white" />
+                  Iniciar Gravação de Consulta
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm text-slate-300">
+                    <span>Gravando consulta...</span>
+                    <span className="text-red-400 animate-pulse">
+                      {consultationStartTime && Math.floor((new Date().getTime() - consultationStartTime.getTime()) / 1000)}s
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleStopConsultationRecording}
+                    disabled={isSavingConsultation}
+                    className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <X className="w-4 h-4" />
+                    {isSavingConsultation ? 'Salvando...' : 'Parar e Salvar Consulta'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800">
             <p className="text-xs text-slate-300 mb-2">Comandos rápidos</p>
@@ -564,14 +969,30 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
 
               <button
                 onClick={toggleListening}
-                className={clsx('p-3 rounded-2xl border transition',
+                disabled={isProcessing || isRecordingConsultation}
+                className={clsx(
+                  'p-3 rounded-2xl border transition-all duration-300',
                   isListening
-                    ? 'bg-emerald-600 text-white border-emerald-400'
-                    : 'border-slate-700 text-slate-300 hover:border-emerald-400 hover:text-emerald-200'
+                    ? 'bg-emerald-600 text-white border-emerald-400 shadow-lg shadow-emerald-500/50 hover:bg-emerald-500'
+                    : isSpeaking
+                    ? 'bg-blue-600 text-white border-blue-400 shadow-lg shadow-blue-500/50'
+                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:border-emerald-400 hover:text-emerald-200'
                 )}
-                title={isListening ? 'Parar captura de voz' : 'Ativar comandos por voz'}
+                title={
+                  isListening 
+                    ? 'Parar captura de voz' 
+                    : isSpeaking 
+                    ? 'IA está falando' 
+                    : 'Ativar comandos por voz'
+                }
               >
-                {isListening ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                {isListening ? (
+                  <Mic className="w-4 h-4 text-white" />
+                ) : isSpeaking ? (
+                  <Activity className="w-4 h-4 text-white animate-pulse" />
+                ) : (
+                  <MicOff className="w-4 h-4" />
+                )}
               </button>
 
               <input

@@ -60,73 +60,116 @@ const AlunoDashboard: React.FC = () => {
     if (!user) return
 
     try {
-      // Buscar cursos em que o aluno está inscrito
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from('course_enrollments')
-        .select(`
-          *,
-          course:courses(*)
-        `)
-        .eq('user_id', user.id)
+      // Buscar especificamente o curso "Pós-graduação em Cannabis Medicinal" do Dr. Eduardo Faveret
+      // Usar query mais simples para evitar erro 500
+      const { data: courses, error: coursesError } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('is_published', true)
+        .or('title.ilike.%cannabis%,title.ilike.%eduardo%,instructor.ilike.%eduardo%')
+        .limit(1)
 
-      if (enrollmentsError) {
-        console.error('Erro ao carregar cursos:', enrollmentsError)
+      if (coursesError) {
+        console.error('Erro ao buscar curso:', coursesError)
+        setLoading(false)
         return
       }
 
-      // Buscar módulos dos cursos
-      if (enrollments && enrollments.length > 0) {
-        const courseIds = enrollments.map((e: any) => e.course_id)
-        const { data: modules } = await supabase
-          .from('course_modules')
-          .select('*')
-          .in('course_id', courseIds)
-          .order('order_index', { ascending: true })
+      const course = courses && courses.length > 0 ? courses[0] : null
 
-        // Transformar para o formato esperado
-        const firstEnrollment = enrollments[0]
-        const course = firstEnrollment.course
-        const courseModules = (modules || []).filter((m: any) => m.course_id === course.id)
-
-        setMainCourse({
-          id: course.id,
-          title: course.title,
-          subtitle: 'Curso Online - Plataforma Nôa Esperança',
-          description: course.description || '',
-          progress: firstEnrollment.progress || 0,
-          status: firstEnrollment.status === 'completed' ? 'Concluído' : 'Em Andamento',
-          instructor: 'Equipe Nôa Esperança',
-          duration: `${course.duration || 0} horas`,
-          nextClass: null,
-          color: 'from-green-500 to-teal-500',
-          logo: '🎯',
-          modules: courseModules.map((m: any) => ({
-            id: m.id,
-            title: m.title,
-            description: m.description || '',
-            progress: 0, // TODO: Calcular progresso por módulo
-            status: 'Disponível',
-            duration: `${m.duration || 0} minutos`,
-            lessons: [] // TODO: Adicionar lições
-          }))
-        })
-      } else {
-        // Se não houver cursos, usar curso padrão (hardcoded como fallback)
-        setMainCourse({
-          id: 'default',
-          title: 'A Arte da Entrevista Clínica',
-          subtitle: 'Curso Online - Plataforma Nôa Esperança',
-          description: 'Aprenda a metodologia Arte da Entrevista Clínica (AEC) aplicada à prática clínica moderna.',
-          progress: 0,
-          status: 'Em Andamento',
-          instructor: 'Equipe Nôa Esperança',
-          duration: '40 horas',
-          nextClass: null,
-          color: 'from-green-500 to-teal-500',
-          logo: '🎯',
-          modules: []
-        })
+      if (!course) {
+        console.log('Curso do Dr. Eduardo Faveret não encontrado')
+        setLoading(false)
+        return
       }
+
+      // Verificar se o aluno está inscrito, se não estiver, criar a inscrição
+      const { data: enrollment, error: enrollmentError } = await supabase
+        .from('course_enrollments')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('course_id', course.id)
+        .maybeSingle()
+
+      let userEnrollment = enrollment
+
+      // Se não estiver inscrito, criar a inscrição
+      if (!enrollment && enrollmentError?.code === 'PGRST116') {
+        const { data: newEnrollment, error: createError } = await supabase
+          .from('course_enrollments')
+          .insert({
+            user_id: user.id,
+            course_id: course.id,
+            progress: 0,
+            status: 'in_progress',
+            enrolled_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (createError) {
+          console.error('Erro ao criar inscrição:', createError)
+        } else {
+          userEnrollment = newEnrollment
+        }
+      } else if (!enrollment) {
+        // Tentar criar mesmo se não for erro PGRST116
+        const { data: newEnrollment, error: createError } = await supabase
+          .from('course_enrollments')
+          .insert({
+            user_id: user.id,
+            course_id: course.id,
+            progress: 0,
+            status: 'in_progress',
+            enrolled_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (!createError && newEnrollment) {
+          userEnrollment = newEnrollment
+        }
+      }
+
+      // Buscar módulos do curso
+      const { data: modules } = await supabase
+        .from('course_modules')
+        .select('*')
+        .eq('course_id', course.id)
+        .order('order_index', { ascending: true })
+
+      // Buscar número de alunos inscritos
+      const { count: studentsCount } = await supabase
+        .from('course_enrollments')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', course.id)
+
+      // Determinar instrutor
+      const instructor = course.instructor || 'Dr. Eduardo Faveret'
+
+      setMainCourse({
+        id: course.id,
+        title: course.title || 'Pós-Graduação em Cannabis Medicinal',
+        subtitle: 'Ambiente de Ensino, Clínica e Pesquisa - MedCannLab 3.0',
+        description: course.description || 'Curso completo de Pós-Graduação em Cannabis Medicinal, integrando os eixos de Ensino, Clínica e Pesquisa da plataforma MedCannLab 3.0.',
+        progress: userEnrollment?.progress || 0,
+        status: userEnrollment?.status === 'completed' ? 'Concluído' : 'Em Andamento',
+        instructor: instructor,
+        duration: course.duration_text || `${course.duration || 60} horas`,
+        nextClass: course.next_class_date ? new Date(course.next_class_date).toLocaleDateString('pt-BR') : null,
+        color: 'from-green-400 to-green-500',
+        logo: '🌿',
+        studentsCount: studentsCount || 0,
+        modules: (modules || []).map((m: any) => ({
+          id: m.id,
+          title: m.title,
+          description: m.description || '',
+          progress: 0, // TODO: Calcular progresso por módulo
+          status: 'Disponível',
+          duration: `${m.duration || 0} minutos`,
+          lessons: [] // TODO: Adicionar lições
+        }))
+      })
     } catch (error) {
       console.error('Erro ao carregar cursos:', error)
     } finally {
@@ -296,9 +339,9 @@ const AlunoDashboard: React.FC = () => {
             </nav>
 
             {/* IA Residente Mentora */}
-            <div className="mt-8 p-4 bg-gradient-to-r from-green-500/20 to-teal-500/20 rounded-lg border border-green-500/30">
+            <div className="mt-8 p-4 bg-gradient-to-r from-green-400/20 to-green-500/20 rounded-lg border border-green-400/30">
               <div className="flex items-center space-x-3 mb-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-teal-500 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-green-500 rounded-full flex items-center justify-center">
                   <Brain className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -309,9 +352,8 @@ const AlunoDashboard: React.FC = () => {
               <button
                 onClick={() => {
                   openChat()
-                  sendInitialMessage('Olá! Sou a Nôa Esperança, sua mentora individualizada. Como posso te ajudar hoje?')
                 }}
-                className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-2 rounded-lg font-medium hover:from-green-600 hover:to-teal-600 transition-colors text-sm flex items-center justify-center space-x-2"
+                className="w-full bg-gradient-to-r from-green-400 to-green-500 text-white px-4 py-2 rounded-lg font-medium hover:from-green-500 hover:to-green-600 transition-colors text-sm flex items-center justify-center space-x-2"
               >
                 <Zap className="w-4 h-4" />
                 <span>Conversar com Nôa</span>
@@ -327,13 +369,13 @@ const AlunoDashboard: React.FC = () => {
             {activeTab === 'dashboard' && (
               <>
             {/* Welcome Section */}
-            <div className="bg-gradient-to-r from-green-600 to-teal-500 rounded-xl p-6 mb-8 relative overflow-hidden">
+            <div className={`bg-gradient-to-r ${mainCourse.color || 'from-green-400 to-green-500'} rounded-xl p-6 mb-8 relative overflow-hidden`}>
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
               <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24"></div>
               <div className="relative z-10">
                 <div className="flex items-center space-x-4 mb-4">
                   <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-4xl">
-                    🎯
+                    {mainCourse.logo || '🌿'}
                   </div>
                   <div>
                     <h2 className="text-3xl font-bold text-white mb-1">{mainCourse.title}</h2>
@@ -346,52 +388,25 @@ const AlunoDashboard: React.FC = () => {
                 <div className="flex items-center space-x-4">
                   <button 
                     onClick={() => {
-                      console.log('Botão clicado, navegando para /app/study-area')
-                      navigate('/app/study-area')
+                      navigate('/app/ensino/profissional/pos-graduacao-cannabis')
                     }}
                     className="bg-white text-green-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors flex items-center space-x-2"
                   >
                     <Play className="w-5 h-5" />
-                    <span>Continuar Aprendizado</span>
+                    <span>Acessar Curso</span>
                   </button>
                   <div className="flex items-center space-x-4 text-white/80 text-sm">
                     <span>⏱️ {mainCourse.duration}</span>
                     <span>👨‍🏫 {mainCourse.instructor}</span>
                     <span>📚 {mainCourse.modules.length} Módulos</span>
+                    {mainCourse.studentsCount && (
+                      <span>👥 {mainCourse.studentsCount} Alunos</span>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Video Player Section */}
-            <div className="bg-slate-800 rounded-xl p-6 mb-8">
-              <h3 className="text-xl font-semibold text-white mb-4">Aulas em Vídeo</h3>
-              <div className="bg-slate-900 rounded-lg p-4">
-                <div className="aspect-video bg-slate-700 rounded-lg overflow-hidden">
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    src="https://www.youtube.com/embed/AGC3ZtGSPlY?si=V6fSuQYLxJRBvD-u&autoplay=0&rel=0&modestbranding=1"
-                    title="Aulas de Cannabis Medicinal"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                    className="rounded-lg"
-                  ></iframe>
-                </div>
-                <div className="mt-4">
-                  <h4 className="text-lg font-semibold text-white mb-2">Pós-Graduação em Cannabis Medicinal</h4>
-                  <p className="text-slate-400 text-sm mb-3">
-                    Acesse nossa playlist completa de aulas sobre Cannabis Medicinal e Arte da Entrevista Clínica.
-                  </p>
-                  <div className="flex items-center space-x-4 text-sm text-slate-500">
-                    <span>📚 Playlist Completa</span>
-                    <span>🎓 Certificação Inclusa</span>
-                    <span>📱 Acesso Mobile</span>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             <div className="grid grid-cols-1 gap-8 w-full overflow-x-hidden">
               {/* Courses Section */}
@@ -399,7 +414,10 @@ const AlunoDashboard: React.FC = () => {
                 <div className="bg-slate-800 rounded-xl p-4 md:p-6 overflow-hidden w-full max-w-full">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-semibold text-white">Meu Curso Principal</h3>
-                    <button className="bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-2 rounded-lg font-semibold hover:from-green-600 hover:to-teal-600 transition-colors">
+                    <button 
+                      onClick={() => navigate('/app/ensino/profissional/pos-graduacao-cannabis')}
+                      className="bg-gradient-to-r from-green-400 to-green-500 text-white px-4 py-2 rounded-lg font-semibold hover:from-green-500 hover:to-green-600 transition-colors"
+                    >
                       Ver Detalhes
                     </button>
                   </div>
@@ -459,7 +477,7 @@ const AlunoDashboard: React.FC = () => {
                         <div className="flex items-start justify-between mb-4 gap-2 flex-wrap">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center space-x-3 mb-2 flex-wrap gap-2">
-                              <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                              <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-green-500 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                                 {moduleIndex + 1}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -498,9 +516,9 @@ const AlunoDashboard: React.FC = () => {
                           <div className="flex items-center space-x-2 flex-shrink-0">
                             <button 
                               onClick={() => {
-                                navigate('/app/study-area', { state: { moduleId: module.id } })
+                                navigate('/app/ensino/profissional/pos-graduacao-cannabis', { state: { moduleId: module.id } })
                               }}
-                              className="p-2 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg hover:from-green-600 hover:to-teal-600 transition-colors text-white"
+                              className="p-2 bg-gradient-to-r from-green-400 to-green-500 rounded-lg hover:from-green-500 hover:to-green-600 transition-colors text-white"
                               title="Iniciar Módulo"
                             >
                               <Play className="w-4 h-4" />

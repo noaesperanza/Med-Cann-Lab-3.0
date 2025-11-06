@@ -68,13 +68,8 @@ export const useMedCannLabConversation = () => {
   const { user } = useAuth()
   const residentRef = useRef<NoaResidentAI | null>(null)
   const conversationIdRef = useRef<string>(createConversationId())
-  const [messages, setMessages] = useState<ConversationMessage[]>([{
-    id: 'welcome',
-    role: 'noa',
-    content: 'Olá, Sou Nôa Esperanza., a única assistente em saúde digital capacitada pela Arte da Entrevista Clínica. Dou as boas vindas ao Med Cann Lab com Nôa Esperanza, plataforma pioneira da cannabis medicinal aplicada à nefrologia e neurologia, utilizando a metodologia Arte da Entrevista Clínica, na formação de habilildades humanas para o aperfeiçoamento da relação terapeuta e pacientes. Posso ajudar você em todas as suas jornadas. Basta me chamar. Bons ventos sóprem.',
-    timestamp: new Date(),
-    intent: 'HELP'
-  }])
+  const [messages, setMessages] = useState<ConversationMessage[]>([])
+  const [hasShownWelcome, setHasShownWelcome] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [lastIntent, setLastIntent] = useState<ConversationalIntent | null>(null)
@@ -87,6 +82,19 @@ export const useMedCannLabConversation = () => {
       try {
         residentRef.current = new NoaResidentAI()
         console.log('✅ IA Residente inicializada para:', user.email)
+        
+        // Adicionar mensagem de boas-vindas apenas uma vez
+        if (!hasShownWelcome && messages.length === 0) {
+          const welcomeMessage: ConversationMessage = {
+            id: 'welcome',
+            role: 'noa',
+            content: 'Sou Nôa Esperanza. Apresente-se também e diga o que trouxe você aqui? Você pode utilizar o chat aqui embaixo à direita para responder ou pedir ajuda. Bons ventos sóprem.',
+            timestamp: new Date(),
+            intent: 'HELP'
+          }
+          setMessages([welcomeMessage])
+          setHasShownWelcome(true)
+        }
       } catch (error) {
         console.error('❌ Erro ao inicializar IA Residente:', error)
         setError('Erro ao inicializar IA residente. Tente recarregar a página.')
@@ -94,8 +102,10 @@ export const useMedCannLabConversation = () => {
     } else if (!user && residentRef.current) {
       // Limpar IA quando usuário fizer logout
       residentRef.current = null
+      setHasShownWelcome(false)
+      setMessages([])
     }
-  }, [user])
+  }, [user, hasShownWelcome, messages.length])
 
   const conversationId = useMemo(() => conversationIdRef.current, [])
   const lastSpokenMessageRef = useRef<string | null>(null)
@@ -198,6 +208,12 @@ export const useMedCannLabConversation = () => {
       return
     }
 
+    // Evitar falar mensagem de boas-vindas duplicada
+    // Se já foi falada uma vez, não falar novamente
+    if (lastMessage.id === 'welcome' && lastSpokenMessageRef.current === 'welcome') {
+      return
+    }
+
     const fullContent = (lastMessage.metadata as Record<string, any> | undefined)?.fullContent ?? lastMessage.content
 
     if (!fullContent) {
@@ -271,19 +287,35 @@ export const useMedCannLabConversation = () => {
 
     const utterance = new SpeechSynthesisUtterance(sanitized.length > 0 ? sanitized : fullContent)
     utterance.lang = 'pt-BR'
-    utterance.rate = 0.94
-    utterance.pitch = 0.78
+    utterance.rate = 1.15 // Andante (mais rápido que o anterior 0.94)
     utterance.volume = 0.93
 
     const voices = voicesRef.current
     if (voices && voices.length > 0) {
       const preferred = voices.filter(voice => voice.lang && voice.lang.toLowerCase() === 'pt-br')
+      // Priorizar voz contralto (mais grave) para Nôa Esperanza - evitar vozes soprano
+      const contralto = preferred.find(voice => /contralto|grave|baixa|low|alto/i.test(voice.name))
       const victoria = preferred.find(voice => /vit[oó]ria/i.test(voice.name))
-      const fallback = preferred.find(voice => /bia|camila|carol|helo[ií]sa|brasil|female|feminina/i.test(voice.name))
-      const selectedVoice = victoria || fallback || preferred[0] || voices[0]
+      // Evitar vozes soprano (agudas)
+      const nonSoprano = preferred.filter(voice => !/soprano|aguda|high|tenor/i.test(voice.name))
+      const fallback = nonSoprano.find(voice => /bia|camila|carol|helo[ií]sa|brasil|female|feminina/i.test(voice.name))
+      // Usar contralto primeiro, depois victoria, depois fallback não-soprano
+      const selectedVoice = contralto || victoria || fallback || nonSoprano[0] || preferred[0] || voices[0]
       if (selectedVoice) {
         utterance.voice = selectedVoice
+        // Ajustar pitch para voz mais grave (contralto) - evitar soprano
+        if (contralto) {
+          utterance.pitch = 0.65 // Mais grave (contralto)
+        } else if (victoria) {
+          utterance.pitch = 0.75 // Ligeiramente mais grave
+        } else {
+          utterance.pitch = 0.78 // Padrão (evitar soprano)
+        }
+      } else {
+        utterance.pitch = 0.78 // Padrão se não encontrar voz
       }
+    } else {
+      utterance.pitch = 0.78 // Padrão se não houver vozes
     }
 
     utterance.onstart = () => setIsSpeaking(true)
@@ -332,9 +364,34 @@ export const useMedCannLabConversation = () => {
       setIsSpeaking(false)
     }
 
-    window.speechSynthesis.cancel()
-    window.speechSynthesis.resume?.()
-    window.speechSynthesis.speak(utterance)
+    // Cancelar qualquer fala anterior e falar
+    try {
+      window.speechSynthesis.cancel()
+      console.log('🔊 Iniciando síntese de voz para mensagem:', lastMessage.id)
+      // Pequeno delay para garantir que o cancelamento foi processado
+      setTimeout(() => {
+        try {
+          if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel()
+          }
+          window.speechSynthesis.speak(utterance)
+          console.log('✅ Síntese de voz iniciada. Voz:', utterance.voice?.name || 'padrão')
+        } catch (speakError) {
+          console.warn('⚠️ Erro ao iniciar síntese de voz:', speakError)
+          setIsSpeaking(false)
+        }
+      }, 50)
+    } catch (cancelError) {
+      console.warn('⚠️ Erro ao cancelar síntese de voz:', cancelError)
+      // Tentar falar mesmo assim
+      try {
+        window.speechSynthesis.speak(utterance)
+        console.log('✅ Síntese de voz iniciada (após erro de cancelamento)')
+      } catch (speakError) {
+        console.warn('⚠️ Erro ao iniciar síntese de voz:', speakError)
+        setIsSpeaking(false)
+      }
+    }
 
     return () => {
       const current = speechQueueRef.current
@@ -348,41 +405,8 @@ export const useMedCannLabConversation = () => {
     }
   }, [messages, voicesReady, updateMessageContent])
 
-  // Auto-falar mensagem de boas-vindas quando o usuário acessa o app pela primeira vez
-  const hasSpokenWelcomeRef = useRef(false)
-  useEffect(() => {
-    if (user && voicesReady && messages.length === 1 && messages[0].id === 'welcome' && !hasSpokenWelcomeRef.current) {
-      const welcomeMessage = messages[0]
-      const fullContent = welcomeMessage.content
-      
-      if (fullContent && typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis) {
-        hasSpokenWelcomeRef.current = true
-        
-        const sanitized = sanitizeForSpeech(fullContent)
-        const utterance = new SpeechSynthesisUtterance(sanitized)
-        
-        const voices = voicesRef.current
-        if (voices && voices.length > 0) {
-          const preferred = voices.filter(voice => voice.lang && voice.lang.toLowerCase() === 'pt-br')
-          const victoria = preferred.find(voice => /vit[oó]ria/i.test(voice.name))
-          const fallback = preferred.find(voice => /bia|camila|carol|helo[ií]sa|brasil|female|feminina/i.test(voice.name))
-          const selectedVoice = victoria || fallback || preferred[0] || voices[0]
-          if (selectedVoice) {
-            utterance.voice = selectedVoice
-          }
-        }
-        
-        utterance.onstart = () => setIsSpeaking(true)
-        utterance.onend = () => setIsSpeaking(false)
-        utterance.onerror = () => setIsSpeaking(false)
-        
-        // Aguardar um pouco para garantir que o usuário está pronto
-        setTimeout(() => {
-          window.speechSynthesis.speak(utterance)
-        }, 1000)
-      }
-    }
-  }, [user, voicesReady, messages])
+  // Removido: Auto-falar mensagem de boas-vindas duplicada
+  // A mensagem de boas-vindas já é falada pelo useEffect principal que processa todas as mensagens da Nôa
 
   const sendMessage = useCallback(async (text: string, options: SendMessageOptions = {}) => {
     const trimmed = text.trim()
@@ -420,7 +444,9 @@ export const useMedCannLabConversation = () => {
     setMessages(prev => [...prev, userMessage])
 
     try {
+      console.log('📨 Processando mensagem para IA:', trimmed.substring(0, 50) + '...')
       const response = await residentRef.current.processMessage(trimmed, user.id, user.email)
+      console.log('✅ Resposta da IA recebida:', response.content.substring(0, 100) + '...')
 
       const intent = mapResponseToIntent(response)
       const assistantMessage: ConversationMessage = {
@@ -442,6 +468,7 @@ export const useMedCannLabConversation = () => {
       setMessages(prev => [...prev, assistantMessage])
       setLastIntent(intent)
       setUsedEndpoints(prev => [...prev, 'resident-ai'])
+      console.log('💬 Mensagem da IA adicionada ao chat. Total de mensagens:', messages.length + 2)
 
       // Detectar se a IA mencionou ter criado um slide (mais robusto)
       const responseLower = response.content.toLowerCase()

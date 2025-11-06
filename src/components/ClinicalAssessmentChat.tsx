@@ -22,7 +22,7 @@ const ClinicalAssessmentChat: React.FC<ClinicalAssessmentChatProps> = ({ onClose
     {
       id: '1',
       isUser: false,
-      text: '🌬️ Bons ventos soprem! Vamos iniciar sua avaliação clínica usando o método IMRE Triaxial - Arte da Entrevista Clínica.\n\n**Primeira pergunta:** Por favor, apresente-se e diga em que posso ajudar hoje.',
+      text: '🌬️ Bons ventos sóprem! Vamos iniciar sua avaliação clínica usando o método IMRE Triaxial - Arte da Entrevista Clínica.\n\n**Primeira pergunta:** Por favor, apresente-se e diga em que posso ajudar hoje.',
       timestamp: new Date(),
       step: 1,
       stepTitle: 'Apresentação e Rapport'
