@@ -10,7 +10,10 @@ import {
   Clock,
   User,
   Edit,
-  Trash2
+  Trash2,
+  BookOpen,
+  Users,
+  Heart
 } from 'lucide-react'
 
 interface CasePost {
@@ -244,19 +247,77 @@ const ForumCasosClinicos: React.FC = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">
-                Fórum de Casos Clínicos
-              </h1>
-              <p className="text-slate-300">
-                Compartilhe casos, discuta protocolos e aprenda com a comunidade
-              </p>
+          <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-xl p-4 md:p-6 lg:p-8 mb-4 md:mb-6 border border-purple-500/50 shadow-xl overflow-hidden">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 md:mb-6 gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center space-x-3 mb-3 md:mb-4">
+                  <div className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
+                    <BookOpen className="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-white mb-2 break-words">
+                      🏛️ Fórum de Casos Clínicos
+                    </h1>
+                    <p className="text-white/90 text-sm md:text-base lg:text-lg break-words">
+                      Compartilhe casos, discuta protocolos e aprenda com a comunidade
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <button className="bg-white text-purple-600 px-4 md:px-6 lg:px-8 py-2 md:py-3 lg:py-4 rounded-xl font-bold text-sm md:text-base lg:text-lg hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg flex items-center justify-center space-x-2 flex-shrink-0 whitespace-nowrap">
+                <Plus className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
+                <span>Novo Caso</span>
+              </button>
             </div>
-            <button className="btn-primary flex items-center">
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Caso
-            </button>
+
+            {/* Acesso ético e seguro - Tipos de usuários no header */}
+            <div className="bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 rounded-xl p-3 md:p-4 border-2 border-purple-500/30 shadow-lg backdrop-blur-sm overflow-hidden">
+              <div className="flex items-center space-x-2 md:space-x-3 mb-2 md:mb-3">
+                <div className="p-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg shadow-md flex-shrink-0">
+                  <Award className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                </div>
+                <h3 className="text-base md:text-lg font-bold text-white">
+                  🔒 Acesso ético e seguro
+                </h3>
+              </div>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs md:text-sm">
+                <div className="flex items-center space-x-1">
+                  <Users className="w-3 h-3 md:w-4 md:h-4 text-purple-400 flex-shrink-0" />
+                  <span className="text-purple-200"><strong className="text-white">Profissional:</strong> Clínica, Ensino e Pesquisa</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <BookOpen className="w-3 h-3 md:w-4 md:h-4 text-green-400 flex-shrink-0" />
+                  <span className="text-purple-200"><strong className="text-white">Aluno:</strong> Ensino e Pesquisa</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Heart className="w-3 h-3 md:w-4 md:h-4 text-red-400 flex-shrink-0" />
+                  <span className="text-purple-200"><strong className="text-white">Paciente:</strong> Temas exclusivos sobre Ensino, Pesquisa e Saúde</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Banner de Avisos e Como Participar */}
+          <div className="bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 rounded-xl p-3 md:p-4 border-2 border-purple-500/30 shadow-lg backdrop-blur-sm overflow-hidden w-full max-w-full mb-4 md:mb-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4">
+              {/* Como Participar */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2 mb-2 md:mb-3">
+                  <div className="p-1.5 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg shadow-md flex-shrink-0">
+                    <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                  </div>
+                  <h3 className="text-base md:text-lg font-bold text-white">
+                    📖 Como Participar
+                  </h3>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs md:text-sm text-purple-200">
+                  <span>• Escolha um canal ou tema</span>
+                  <span>• Respeite o código de conduta</span>
+                  <span>• Contribua com conhecimento</span>
+                  <span>• Respeite as limitações do seu tipo</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Search and Filters */}

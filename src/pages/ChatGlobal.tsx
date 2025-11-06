@@ -65,6 +65,8 @@ const ChatGlobal: React.FC = () => {
   const [realtimeSubscription, setRealtimeSubscription] = useState<any>(null)
   const [showModeratorRequest, setShowModeratorRequest] = useState(false)
   const [requestReason, setRequestReason] = useState('')
+  const [friendRequests, setFriendRequests] = useState<any[]>([])
+  const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const [channels, setChannels] = useState([
@@ -475,13 +477,9 @@ const ChatGlobal: React.FC = () => {
     }
   }
 
-  const friendRequests = []
-
   useEffect(() => {
     scrollToBottom()
   }, [messages])
-
-  const [isSending, setIsSending] = useState(false)
 
   const handleSendMessage = async () => {
     if (!message.trim() || !user || isSending) return
@@ -712,38 +710,47 @@ const ChatGlobal: React.FC = () => {
   return (
     <div className="space-y-4 md:space-y-6 lg:space-y-8 px-2 md:px-4">
       {/* Header */}
-      <div className="text-center px-4">
-        <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-white mb-2">
-          Fórum de Conselheiros em Inteligência artificial na saúde
-        </h1>
-        <p className="text-slate-300 text-sm md:text-base lg:text-lg">
-          Conecte-se com colegas, participe de debates e compartilhe conhecimento
-        </p>
-        {isAdmin && (
-          <div className="mt-4 flex justify-center space-x-4">
-            <button
-              onClick={() => setShowModeration(!showModeration)}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
-                showModeration 
-                  ? 'bg-red-700 text-white' 
-                  : 'bg-red-600 hover:bg-red-700 text-white'
-              }`}
-            >
-              <Flag className="w-4 h-4" />
-              <span>{showModeration ? 'Ocultar Moderação' : 'Painel de Moderação'}</span>
-            </button>
-            <div className="bg-green-500/20 text-green-400 px-3 py-2 rounded-lg flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">Admin Online</span>
+      <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-xl p-4 md:p-6 lg:p-8 mb-4 md:mb-6 border border-purple-500/50 shadow-xl overflow-hidden">
+        <div className="text-center px-4">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0 mr-4">
+              <MessageSquare className="w-8 h-8 md:w-10 md:h-10 text-white" />
             </div>
-            {moderatorRequests.length > 0 && (
-              <div className="bg-orange-500/20 text-orange-400 px-3 py-2 rounded-lg flex items-center space-x-2">
-                <Flag className="w-4 h-4" />
-                <span className="text-sm font-medium">{moderatorRequests.length} Solicitações</span>
-              </div>
-            )}
+            <div>
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2 break-words">
+                💬 Fórum de Conselheiros em IA na Saúde
+              </h1>
+              <p className="text-white/90 text-sm md:text-base lg:text-lg">
+                Conecte-se com colegas, participe de debates e compartilhe conhecimento
+              </p>
+            </div>
           </div>
-        )}
+          {isAdmin && (
+            <div className="mt-4 flex justify-center space-x-4">
+              <button
+                onClick={() => setShowModeration(!showModeration)}
+                className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
+                  showModeration 
+                    ? 'bg-red-700 text-white' 
+                    : 'bg-red-600 hover:bg-red-700 text-white'
+                }`}
+              >
+                <Flag className="w-4 h-4" />
+                <span>{showModeration ? 'Ocultar Moderação' : 'Painel de Moderação'}</span>
+              </button>
+              <div className="bg-green-500/20 text-green-400 px-3 py-2 rounded-lg flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium">Admin Online</span>
+              </div>
+              {moderatorRequests.length > 0 && (
+                <div className="bg-orange-500/20 text-orange-400 px-3 py-2 rounded-lg flex items-center space-x-2">
+                  <Flag className="w-4 h-4" />
+                  <span className="text-sm font-medium">{moderatorRequests.length} Solicitações</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Navigation Tabs */}
@@ -787,6 +794,59 @@ const ChatGlobal: React.FC = () => {
               </span>
             )}
           </button>
+        </div>
+      </div>
+
+      {/* Banner de Avisos - Como Participar e Limitações por Tipo */}
+      <div className="bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 rounded-xl p-3 md:p-4 border-2 border-purple-500/30 shadow-lg backdrop-blur-sm overflow-hidden w-full max-w-full mb-4 md:mb-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4">
+          {/* Como Participar */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center space-x-2 mb-2 md:mb-3">
+              <div className="p-1.5 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg shadow-md flex-shrink-0">
+                <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-white" />
+              </div>
+              <h3 className="text-base md:text-lg font-bold text-white">
+                📖 Como Participar
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs md:text-sm text-purple-200">
+              <span>• Escolha um canal ou tema</span>
+              <span>• Respeite o código de conduta</span>
+              <span>• Contribua com conhecimento e experiências relevantes</span>
+              <span>• Respeite as limitações do seu tipo de usuário</span>
+            </div>
+          </div>
+
+          {/* Limitações por Tipo */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center space-x-2 mb-2 md:mb-3">
+              <div className="p-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg shadow-md flex-shrink-0">
+                <Award className="w-4 h-4 md:w-5 md:h-5 text-white" />
+              </div>
+              <h3 className="text-base md:text-lg font-bold text-white">
+                ⚠️ Limitações por Tipo
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs md:text-sm">
+              <div className="flex items-start space-x-1">
+                <Users className="w-3 h-3 md:w-4 md:h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                <span className="text-purple-200"><strong className="text-white">Profissional:</strong> Acesso completo a todos os canais e temas. Pode criar debates e moderar discussões.</span>
+              </div>
+              <div className="flex items-start space-x-1">
+                <Award className="w-3 h-3 md:w-4 md:h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <span className="text-purple-200"><strong className="text-white">Admin:</strong> Acesso total e controle administrativo. Pode gerenciar usuários e conteúdo.</span>
+              </div>
+              <div className="flex items-start space-x-1">
+                <BookOpen className="w-3 h-3 md:w-4 md:h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                <span className="text-purple-200"><strong className="text-white">Aluno:</strong> Acesso a canais educacionais e temas de pesquisa. Participação limitada em debates clínicos.</span>
+              </div>
+              <div className="flex items-start space-x-1">
+                <Heart className="w-3 h-3 md:w-4 md:h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                <span className="text-purple-200"><strong className="text-white">Paciente:</strong> Acesso a canais de suporte e discussões gerais. Participação em temas específicos pode ser limitada.</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
