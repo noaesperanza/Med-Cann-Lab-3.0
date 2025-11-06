@@ -9,6 +9,7 @@ import NoaConversationalInterface from './NoaConversationalInterface'
 import Breadcrumbs from './Breadcrumbs'
 import NavegacaoIndividualizada from './NavegacaoIndividualizada'
 import MobileResponsiveWrapper from './MobileResponsiveWrapper'
+import { normalizeUserType } from '../lib/userTypes'
 
 const Layout: React.FC = () => {
   const { user, isLoading } = useAuth()
@@ -75,6 +76,9 @@ const Layout: React.FC = () => {
     )
   }
 
+  // Normalizar tipo de usuário
+  const normalizedUserType = user ? normalizeUserType(user.type) : null
+  
   // Verificar se o email não foi confirmado
   if (user?.type === 'unconfirmed') {
     return (
@@ -115,7 +119,7 @@ const Layout: React.FC = () => {
   }
 
   // Layout específico para pacientes (sem sidebar externa)
-  if (user?.type === 'patient') {
+  if (normalizedUserType === 'paciente') {
     return (
       <ProtectedRoute>
         <MobileResponsiveWrapper>

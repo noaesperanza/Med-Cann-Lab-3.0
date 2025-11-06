@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   BookOpen, 
   Clock, 
@@ -11,6 +11,8 @@ import {
   MessageCircle,
   User
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 
 interface Module {
   id: string
@@ -45,24 +47,185 @@ interface Assignment {
 }
 
 const CursoEduardoFaveret: React.FC = () => {
+  const { user } = useAuth()
   const [activeModule, setActiveModule] = useState<string | null>(null)
   const [showAssignments, setShowAssignments] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
-
-  const courseInfo = {
-    title: 'Curso Eduardo Faveret - Cannabis Medicinal',
+  const [loading, setLoading] = useState(true)
+  const [courseInfo, setCourseInfo] = useState({
+    title: 'Pós-Graduação em Cannabis Medicinal',
     instructor: 'Dr. Eduardo Faveret',
     duration: '2 meses / 60 horas',
-    students: 1247,
-    rating: 4.9,
+    students: 0,
+    rating: 0,
     level: 'Avançado',
     language: 'Português',
     certificate: true,
     price: 'R$ 1.999',
     originalPrice: 'R$ 2.999'
+  })
+  const [modules, setModules] = useState<Module[]>([])
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [userProgress, setUserProgress] = useState({
+    progress: 0,
+    completedModules: 0,
+    totalModules: 0,
+    points: 0,
+    completedLessons: 0,
+    totalLessons: 0
+  })
+
+  useEffect(() => {
+    loadCourseData()
+  }, [user])
+
+  const loadCourseData = async () => {
+    if (!user) return
+
+    try {
+      setLoading(true)
+
+      // Buscar curso do Dr. Eduardo (pode ser identificado por título ou instructor)
+      // Assumindo que o curso tem um título específico ou pode ser buscado por categoria
+      const { data: courses, error: coursesError } = await supabase
+        .from('courses')
+        .select('*')
+        .or('title.ilike.%cannabis medicinal%,title.ilike.%eduardo%')
+        .eq('is_published', true)
+        .limit(1)
+
+      if (coursesError) {
+        console.error('Erro ao buscar curso:', coursesError)
+        return
+      }
+
+      const course = courses && courses.length > 0 ? courses[0] : null
+
+      if (course) {
+        // Buscar número de alunos
+        const { count: studentsCount } = await supabase
+          .from('course_enrollments')
+          .select('*', { count: 'exact', head: true })
+          .eq('course_id', course.id)
+
+        // Buscar progresso do usuário atual
+        const { data: enrollment, error: enrollmentError } = await supabase
+          .from('course_enrollments')
+          .select('*')
+          .eq('course_id', course.id)
+          .eq('user_id', user.id)
+          .single()
+
+        // Buscar módulos do curso
+        const { data: courseModules, error: modulesError } = await supabase
+          .from('course_modules')
+          .select('*')
+          .eq('course_id', course.id)
+          .order('order_index', { ascending: true })
+
+        if (modulesError) {
+          console.error('Erro ao buscar módulos:', modulesError)
+        }
+
+        // Atualizar courseInfo
+        const durationHours = course.duration || 60
+        const months = Math.round((durationHours / 30) * 10) / 10
+        setCourseInfo({
+          title: course.title || 'Pós-Graduação em Cannabis Medicinal',
+          instructor: 'Dr. Eduardo Faveret',
+          duration: `${months} meses / ${durationHours} horas`,
+          students: studentsCount || 0,
+          rating: 4.9, // Pode ser calculado depois com avaliações
+          level: course.difficulty === 'advanced' ? 'Avançado' : course.difficulty === 'intermediate' ? 'Intermediário' : 'Iniciante',
+          language: 'Português',
+          certificate: true,
+          price: course.price ? `R$ ${course.price.toFixed(2).replace('.', ',')}` : 'R$ 1.999',
+          originalPrice: 'R$ 2.999'
+        })
+
+        // Calcular progresso baseado no índice do módulo e progresso geral
+        const totalModules = courseModules?.length || 1
+        const completedModules = enrollment ? Math.floor((enrollment.progress || 0) / 100 * totalModules) : 0
+
+        // Converter módulos para o formato esperado
+        const formattedModules: Module[] = (courseModules || []).map((module: any, index: number) => {
+          const isCompleted = index < completedModules
+          const moduleProgress = isCompleted ? 100 : (index === completedModules ? (enrollment?.progress || 0) % (100 / totalModules) * (totalModules / 100) : 0)
+          const isLocked = index > completedModules // Bloquear se módulo anterior não estiver completo
+
+          return {
+            id: module.id,
+            title: module.title,
+            description: module.description || '',
+            duration: module.duration ? `${Math.round(module.duration / 60)}h` : '0h',
+            lessonCount: 1, // Cada módulo pode ter múltiplas lições, mas por enquanto 1
+            isCompleted: isCompleted,
+            progress: moduleProgress,
+            lessons: [{
+              id: module.id,
+              title: module.title,
+              type: (module.content_type as 'video' | 'reading' | 'quiz' | 'assignment') || 'video',
+              duration: module.duration ? `${module.duration}min` : '0min',
+              isCompleted: isCompleted,
+              isLocked: isLocked,
+              points: 50 // Pontos padrão, pode ser ajustado
+            }]
+          }
+        })
+
+        setModules(formattedModules)
+
+        // Calcular progresso do usuário
+        if (enrollment) {
+          const completedModules = formattedModules.filter(m => m.isCompleted).length
+          const totalPoints = formattedModules.reduce((acc, m) => {
+            return acc + m.lessons.filter(l => l.isCompleted).reduce((sum, l) => sum + l.points, 0)
+          }, 0)
+
+          setUserProgress({
+            progress: enrollment.progress || 0,
+            completedModules: completedModules,
+            totalModules: formattedModules.length,
+            points: totalPoints,
+            completedLessons: enrollment.completed_lessons || 0,
+            totalLessons: enrollment.total_lessons || formattedModules.length
+          })
+        } else {
+          // Se não está inscrito, criar inscrição
+          const { data: newEnrollment, error: createError } = await supabase
+            .from('course_enrollments')
+            .insert({
+              user_id: user.id,
+              course_id: course.id,
+              progress: 0,
+              completed_lessons: 0,
+              total_lessons: formattedModules.length,
+              status: 'enrolled'
+            })
+            .select()
+            .single()
+
+          if (!createError && newEnrollment) {
+            setUserProgress({
+              progress: 0,
+              completedModules: 0,
+              totalModules: formattedModules.length,
+              points: 0,
+              completedLessons: 0,
+              totalLessons: formattedModules.length
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do curso:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const modules: Module[] = [
+  // Dados mockados originais (mantidos como fallback se não houver curso no banco)
+  const mockModules: Module[] = [
     {
       id: '1',
       title: 'Introdução à Cannabis Medicinal',
@@ -468,7 +631,10 @@ const CursoEduardoFaveret: React.FC = () => {
     }
   ]
 
-  const assignments: Assignment[] = [
+  // Se não houver módulos carregados, usar mock
+  const displayModules = modules.length > 0 ? modules : mockModules
+
+  const mockAssignments: Assignment[] = [
     {
       id: '1',
       title: 'Análise de Caso Clínico - Dor Crônica',
@@ -494,6 +660,8 @@ const CursoEduardoFaveret: React.FC = () => {
       isSubmitted: false
     }
   ]
+
+  const displayAssignments = assignments.length > 0 ? assignments : mockAssignments
 
   const getLessonIcon = (type: string) => {
     switch (type) {
@@ -533,7 +701,9 @@ const CursoEduardoFaveret: React.FC = () => {
     })
   }
 
-  const totalProgress = modules.reduce((acc, module) => acc + module.progress, 0) / modules.length
+  const totalProgress = displayModules.length > 0 
+    ? displayModules.reduce((acc, module) => acc + module.progress, 0) / displayModules.length 
+    : userProgress.progress
 
   return (
     <div className="min-h-screen bg-slate-900 text-white">
@@ -596,11 +766,11 @@ const CursoEduardoFaveret: React.FC = () => {
                 <div className="space-y-2 text-sm text-gray-300">
                   <div className="flex justify-between">
                     <span>Módulos Concluídos:</span>
-                    <span>{modules.filter(m => m.isCompleted).length}/{modules.length}</span>
+                    <span>{userProgress.completedModules}/{userProgress.totalModules || displayModules.length}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Pontos Ganhos:</span>
-                    <span>1,250</span>
+                    <span>{userProgress.points.toLocaleString('pt-BR')}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Certificado:</span>
@@ -629,9 +799,11 @@ const CursoEduardoFaveret: React.FC = () => {
                 </button>
               </div>
 
-              {!showAssignments ? (
+              {loading ? (
+                <div className="text-center py-8 text-gray-400">Carregando curso...</div>
+              ) : !showAssignments ? (
                 <div className="space-y-4">
-                  {modules.map((module) => (
+                  {displayModules.map((module) => (
                     <div
                       key={module.id}
                       className={`p-4 border rounded-lg cursor-pointer transition-colors duration-200 ${
@@ -764,11 +936,11 @@ const CursoEduardoFaveret: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-300">Aulas Concluídas:</span>
-                  <span className="text-sm font-medium text-white">12/48</span>
+                  <span className="text-sm font-medium text-white">{userProgress.completedLessons}/{userProgress.totalLessons || displayModules.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-300">Pontos Ganhos:</span>
-                  <span className="text-sm font-medium text-white">1,250</span>
+                  <span className="text-sm font-medium text-white">{userProgress.points.toLocaleString('pt-BR')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-300">Ranking:</span>

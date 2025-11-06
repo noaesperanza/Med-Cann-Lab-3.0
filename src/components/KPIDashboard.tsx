@@ -13,6 +13,8 @@ import {
   Volume2,
   VolumeX
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 
 interface KPIData {
   id: string
@@ -31,155 +33,206 @@ interface KPIDashboardProps {
 }
 
 const KPIDashboard: React.FC<KPIDashboardProps> = ({ userType, userName }) => {
+  const { user } = useAuth()
   const [selectedLayer, setSelectedLayer] = useState<'clinico' | 'semantico' | 'administrativo'>('clinico')
   const [kpiData, setKpiData] = useState<KPIData[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<string>('')
 
-  // Dados mockados para demonstração
-  const mockKPIData: KPIData[] = [
-    // KPIs Clínicos
-    {
-      id: '1',
-      title: 'Pacientes Ativos',
-      value: 47,
-      change: 12,
-      trend: 'up',
-      category: 'clinico',
-      description: 'Pacientes em acompanhamento ativo',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '2',
-      title: 'Avaliações IMRE Completas',
-      value: 23,
-      change: 8,
-      trend: 'up',
-      category: 'clinico',
-      description: 'Protocolos IMRE finalizados este mês',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '3',
-      title: 'Taxa de Adesão ao Tratamento',
-      value: 89,
-      change: 3,
-      trend: 'up',
-      category: 'clinico',
-      description: 'Percentual de adesão ao protocolo terapêutico',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '4',
-      title: 'Melhora na Qualidade de Vida',
-      value: 76,
-      change: 5,
-      trend: 'up',
-      category: 'clinico',
-      description: 'Pacientes com melhora significativa',
-      timestamp: new Date().toISOString()
-    },
-    // KPIs Semânticos
-    {
-      id: '5',
-      title: 'Análises de Sentimento',
-      value: 94,
-      change: 2,
-      trend: 'up',
-      category: 'semantico',
-      description: 'Precisão na análise de sentimentos dos pacientes',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '6',
-      title: 'Extração de Sintomas',
-      value: 87,
-      change: 4,
-      trend: 'up',
-      category: 'semantico',
-      description: 'Eficácia na identificação de sintomas',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '7',
-      title: 'Classificação de Casos',
-      value: 91,
-      change: 1,
-      trend: 'stable',
-      category: 'semantico',
-      description: 'Precisão na classificação de casos clínicos',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '8',
-      title: 'Processamento de Linguagem Natural',
-      value: 88,
-      change: 3,
-      trend: 'up',
-      category: 'semantico',
-      description: 'Eficácia do NLP em relatórios clínicos',
-      timestamp: new Date().toISOString()
-    },
-    // KPIs Administrativos
-    {
-      id: '9',
-      title: 'Eficiência Operacional',
-      value: 82,
-      change: 6,
-      trend: 'up',
-      category: 'administrativo',
-      description: 'Tempo médio de processamento de consultas',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '10',
-      title: 'Satisfação do Paciente',
-      value: 93,
-      change: 2,
-      trend: 'up',
-      category: 'administrativo',
-      description: 'Índice de satisfação geral dos pacientes',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '11',
-      title: 'Utilização de Recursos',
-      value: 78,
-      change: 4,
-      trend: 'up',
-      category: 'administrativo',
-      description: 'Otimização do uso de recursos da plataforma',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: '12',
-      title: 'Tempo de Resposta',
-      value: 95,
-      change: 1,
-      trend: 'stable',
-      category: 'administrativo',
-      description: 'Tempo médio de resposta do sistema',
-      timestamp: new Date().toISOString()
-    }
-  ]
-
   useEffect(() => {
     loadKPIData()
     const interval = setInterval(loadKPIData, 30000) // Atualizar a cada 30 segundos
     return () => clearInterval(interval)
-  }, [selectedLayer])
+  }, [selectedLayer, user])
 
   const loadKPIData = async () => {
     setIsRefreshing(true)
     try {
-      // Simular carregamento de dados
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      const filteredData = mockKPIData.filter(kpi => kpi.category === selectedLayer)
-      setKpiData(filteredData)
+      const kpis: KPIData[] = []
+
+      if (selectedLayer === 'clinico') {
+        // KPIs Clínicos - dados reais do Supabase
+        const { data: assessments, error: assessmentsError } = await supabase
+          .from('clinical_assessments')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (!assessmentsError && assessments) {
+          const uniquePatients = new Set(assessments.map(a => a.patient_id))
+          const completedAssessments = assessments.filter(a => a.status === 'completed')
+          const imreAssessments = assessments.filter(a => a.assessment_type === 'IMRE')
+
+          kpis.push({
+            id: '1',
+            title: 'Pacientes Ativos',
+            value: uniquePatients.size,
+            change: 0,
+            trend: 'up',
+            category: 'clinico',
+            description: 'Pacientes em acompanhamento ativo',
+            timestamp: new Date().toISOString()
+          })
+
+          kpis.push({
+            id: '2',
+            title: 'Avaliações IMRE Completas',
+            value: imreAssessments.filter(a => a.status === 'completed').length,
+            change: 0,
+            trend: 'up',
+            category: 'clinico',
+            description: 'Protocolos IMRE finalizados',
+            timestamp: new Date().toISOString()
+          })
+
+          kpis.push({
+            id: '3',
+            title: 'Avaliações Completas',
+            value: completedAssessments.length,
+            change: 0,
+            trend: 'up',
+            category: 'clinico',
+            description: 'Total de avaliações completadas',
+            timestamp: new Date().toISOString()
+          })
+        }
+
+        // Buscar KPIs clínicos personalizados
+        const { data: clinicalKPIs, error: kpisError } = await supabase
+          .from('clinical_kpis')
+          .select('*')
+          .eq('category', 'neurologico')
+
+        if (!kpisError && clinicalKPIs) {
+          clinicalKPIs.forEach((kpi, index) => {
+            kpis.push({
+              id: `clinical-${kpi.id}`,
+              title: kpi.name,
+              value: kpi.current_value || 0,
+              change: 0,
+              trend: (kpi.trend as 'up' | 'down' | 'stable') || 'stable',
+              category: 'clinico',
+              description: kpi.description || '',
+              timestamp: kpi.last_updated || new Date().toISOString()
+            })
+          })
+        }
+      } else if (selectedLayer === 'semantico') {
+        // KPIs Semânticos - baseados em relatórios clínicos
+        const { data: reports, error: reportsError } = await supabase
+          .from('clinical_reports')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (!reportsError && reports) {
+          const totalReports = reports.length
+          const sharedReports = reports.filter(r => r.status === 'shared').length
+
+          kpis.push({
+            id: '5',
+            title: 'Relatórios Gerados',
+            value: totalReports,
+            change: 0,
+            trend: 'up',
+            category: 'semantico',
+            description: 'Total de relatórios clínicos gerados',
+            timestamp: new Date().toISOString()
+          })
+
+          kpis.push({
+            id: '6',
+            title: 'Relatórios Compartilhados',
+            value: sharedReports,
+            change: 0,
+            trend: 'up',
+            category: 'semantico',
+            description: 'Relatórios compartilhados com pacientes',
+            timestamp: new Date().toISOString()
+          })
+        }
+
+        // Buscar KPIs semânticos personalizados
+        const { data: semanticKPIs, error: kpisError } = await supabase
+          .from('clinical_kpis')
+          .select('*')
+          .in('category', ['comportamental', 'cognitivo', 'social'])
+
+        if (!kpisError && semanticKPIs) {
+          semanticKPIs.forEach((kpi) => {
+            kpis.push({
+              id: `semantic-${kpi.id}`,
+              title: kpi.name,
+              value: kpi.current_value || 0,
+              change: 0,
+              trend: (kpi.trend as 'up' | 'down' | 'stable') || 'stable',
+              category: 'semantico',
+              description: kpi.description || '',
+              timestamp: kpi.last_updated || new Date().toISOString()
+            })
+          })
+        }
+      } else if (selectedLayer === 'administrativo') {
+        // KPIs Administrativos
+        const { data: users, error: usersError } = await supabase
+          .from('users')
+          .select('id, type, created_at')
+
+        const { data: appointments, error: appointmentsError } = await supabase
+          .from('appointments')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (!usersError && users) {
+          const totalUsers = users.length
+          const activeUsers = users.filter(u => {
+            const createdDate = new Date(u.created_at)
+            const thirtyDaysAgo = new Date()
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+            return createdDate >= thirtyDaysAgo
+          }).length
+
+          kpis.push({
+            id: '9',
+            title: 'Total de Usuários',
+            value: totalUsers,
+            change: 0,
+            trend: 'up',
+            category: 'administrativo',
+            description: 'Total de usuários cadastrados na plataforma',
+            timestamp: new Date().toISOString()
+          })
+
+          kpis.push({
+            id: '10',
+            title: 'Usuários Ativos (30 dias)',
+            value: activeUsers,
+            change: 0,
+            trend: 'up',
+            category: 'administrativo',
+            description: 'Usuários ativos nos últimos 30 dias',
+            timestamp: new Date().toISOString()
+          })
+        }
+
+        if (!appointmentsError && appointments) {
+          kpis.push({
+            id: '11',
+            title: 'Total de Consultas',
+            value: appointments.length,
+            change: 0,
+            trend: 'up',
+            category: 'administrativo',
+            description: 'Total de consultas agendadas',
+            timestamp: new Date().toISOString()
+          })
+        }
+      }
+
+      setKpiData(kpis)
       setLastUpdate(new Date().toLocaleTimeString())
     } catch (error) {
       console.error('Erro ao carregar KPIs:', error)
+      setKpiData([])
     } finally {
       setIsRefreshing(false)
     }

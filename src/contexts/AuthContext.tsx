@@ -1,10 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { 
+  UserType, 
+  normalizeUserType, 
+  toEnglishType,
+  isValidUserType 
+} from '../lib/userTypes'
 
 interface User {
   id: string
   email: string
-  type: 'patient' | 'professional' | 'student' | 'admin' | 'unconfirmed'
+  type: UserType // Usa tipos em português: 'aluno' | 'profissional' | 'paciente' | 'admin'
   name: string
   crm?: string
   cro?: string
@@ -41,100 +47,117 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Função auxiliar para carregar usuário
   const loadUser = async (authUser: any) => {
-    // Determinar tipo de usuário baseado nos metadados
-    let userType: 'patient' | 'professional' | 'student' | 'admin' = 'patient'
+    let userType: UserType = 'paciente' // Padrão em português
     let userName = 'Usuário'
     const email = authUser.email || ''
     
     // Detectar nome baseado no email ou metadados
-    if (email.toLowerCase() === 'escutese@gmail.com' || email.toLowerCase() === 'escute-se@gmail.com') {
+    // Verificar emails especiais PRIMEIRO e guardar se é um email especial
+    const isAdminEmail = email === 'rrvalenca@gmail.com' || 
+                         email === 'rrvlenca@gmail.com' || 
+                         email === 'profrvalenca@gmail.com' || 
+                         email === 'iaianoaesperanza@gmail.com'
+    const isPatientEmail = email.toLowerCase() === 'escutese@gmail.com' || email.toLowerCase() === 'escute-se@gmail.com'
+    const isProfessionalEmail = email === 'eduardoscfaveret@gmail.com' || email.includes('faveret')
+    
+    if (isPatientEmail) {
       userName = 'Escutese'
-      userType = 'patient'
-    } else if (email.includes('ricardo') || email.includes('rrvalenca') || email.includes('rrvlenca') || email.includes('profrvalenca') || email.includes('valenca')) {
+      userType = 'paciente'
+      console.log('✅ Email paciente especial detectado:', email)
+    } else if (isAdminEmail) {
+      // Apenas emails específicos do Dr. Ricardo Valença - SEMPRE admin
       userName = 'Dr. Ricardo Valença'
-    } else if (email.includes('eduardo') || email.includes('faveret')) {
+      userType = 'admin'
+      console.log('✅ Email admin especial detectado:', email, '- Tipo FORÇADO como admin')
+    } else if (isProfessionalEmail) {
       userName = 'Dr. Eduardo Faveret'
+      userType = 'profissional'
+      console.log('✅ Email profissional especial detectado:', email)
     } else {
       userName = authUser.user_metadata?.name || email.split('@')[0] || 'Usuário'
     }
     
-    // Determinar tipo do usuário - Primeiro tentar buscar da tabela users
-    try {
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('type, name, email')
-        .eq('id', authUser.id)
-        .maybeSingle()
-      
-      if (!userError && userData) {
-        // Usar dados da tabela users se disponível
-        if (userData.type && ['patient', 'professional', 'student', 'admin', 'aluno'].includes(userData.type)) {
-          // Mapear 'aluno' para 'student' (compatibilidade com dados antigos)
-          const normalizedType = userData.type === 'aluno' ? 'student' : userData.type
-          userType = normalizedType as 'patient' | 'professional' | 'student' | 'admin'
+    // Determinar tipo do usuário - Buscar da tabela users APENAS se não for email especial
+    // Emails especiais têm PRIORIDADE ABSOLUTA sobre a tabela users
+    if (!isAdminEmail && !isPatientEmail && !isProfessionalEmail) {
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('type, name, email')
+          .eq('id', authUser.id)
+          .maybeSingle()
+        
+        if (!userError && userData && userData.type) {
+          // Normalizar tipo (aceita tanto português quanto inglês)
+          userType = normalizeUserType(userData.type)
+          if (userData.name && !userData.name.match(/^(patient|professional|student|admin|aluno|paciente|profissional)$/i)) {
+            userName = userData.name
+          }
+          console.log('✅ Tipo de usuário obtido da tabela users:', userData.type, '→ normalizado:', userType)
+        } else {
+          console.log('⚠️ Usuário não encontrado na tabela users, usando metadados')
         }
-        if (userData.name) {
-          userName = userData.name
-        }
-        console.log('✅ Tipo de usuário obtido da tabela users:', userType)
-      } else {
-        console.log('⚠️ Usuário não encontrado na tabela users, usando metadados')
+      } catch (error) {
+        console.warn('⚠️ Erro ao buscar tipo do usuário da tabela users:', error)
       }
-    } catch (error) {
-      console.warn('⚠️ Erro ao buscar tipo do usuário da tabela users:', error)
+    } else {
+      console.log('🔒 Email especial detectado, ignorando tipo da tabela users (prioridade absoluta)')
     }
     
     // Fallback: Determinar tipo do usuário baseado em metadados ou localStorage
-    if (userType === 'patient') { // Só usar fallback se ainda for o padrão
+    // APENAS se não for email especial e ainda for o padrão 'paciente'
+    if (!isAdminEmail && !isPatientEmail && !isProfessionalEmail && userType === 'paciente') {
+      // Verificar localStorage primeiro
       const testUserType = localStorage.getItem('test_user_type')
-      if (testUserType && ['patient', 'professional', 'student', 'admin', 'aluno'].includes(testUserType)) {
-        // Mapear 'aluno' para 'student' (compatibilidade com dados antigos)
-        userType = (testUserType === 'aluno' ? 'student' : testUserType) as 'patient' | 'professional' | 'student' | 'admin'
-      } else if (email === 'rrvalenca@gmail.com' || email === 'rrvlenca@gmail.com' || email === 'profrvalenca@gmail.com') {
-        userType = 'admin'
-      } else if (authUser.user_metadata?.type) {
-        const metadataType = String(authUser.user_metadata.type).toLowerCase()
-        if (['patient', 'professional', 'student', 'admin', 'aluno'].includes(metadataType)) {
-          // Mapear 'aluno' para 'student' (compatibilidade com dados antigos)
-          userType = (metadataType === 'aluno' ? 'student' : metadataType) as 'patient' | 'professional' | 'student' | 'admin'
-        }
-      } else if (authUser.user_metadata?.user_type) {
-        const metadataUserType = String(authUser.user_metadata.user_type).toLowerCase()
-        if (['patient', 'professional', 'student', 'admin', 'aluno'].includes(metadataUserType)) {
-          // Mapear 'aluno' para 'student' (compatibilidade com dados antigos)
-          userType = (metadataUserType === 'aluno' ? 'student' : metadataUserType) as 'patient' | 'professional' | 'student' | 'admin'
-        }
-      } else if (authUser.user_metadata?.role) {
-        const metadataRole = String(authUser.user_metadata.role).toLowerCase()
-        if (['patient', 'professional', 'student', 'admin', 'aluno'].includes(metadataRole)) {
-          // Mapear 'aluno' para 'student' (compatibilidade com dados antigos)
-          userType = (metadataRole === 'aluno' ? 'student' : metadataRole) as 'patient' | 'professional' | 'student' | 'admin'
-        }
+      if (testUserType && isValidUserType(testUserType)) {
+        userType = normalizeUserType(testUserType)
+        console.log('✅ Tipo obtido do localStorage:', testUserType, '→ normalizado:', userType)
+      }
+      // Verificar metadados do Supabase
+      else if (authUser.user_metadata?.type) {
+        userType = normalizeUserType(authUser.user_metadata.type)
+        console.log('✅ Tipo obtido dos metadados (type):', authUser.user_metadata.type, '→ normalizado:', userType)
+      }
+      else if (authUser.user_metadata?.user_type) {
+        userType = normalizeUserType(authUser.user_metadata.user_type)
+        console.log('✅ Tipo obtido dos metadados (user_type):', authUser.user_metadata.user_type, '→ normalizado:', userType)
+      }
+      else if (authUser.user_metadata?.role) {
+        userType = normalizeUserType(authUser.user_metadata.role)
+        console.log('✅ Tipo obtido dos metadados (role):', authUser.user_metadata.role, '→ normalizado:', userType)
       }
     }
     
-    // Garantir que o nome não seja um tipo válido
-    if (userName && ['patient', 'professional', 'student', 'admin', 'aluno'].includes(userName.toLowerCase())) {
+    // Garantir que o nome não seja um tipo válido (verificar se o nome é exatamente um tipo, não apenas contém)
+    if (userName && isValidUserType(userName.toLowerCase().trim())) {
+      console.warn(`⚠️ Nome do usuário é um tipo válido (${userName}), usando email como nome`)
       userName = email.split('@')[0] || 'Usuário'
     }
     
-    // Garantir que o tipo seja válido (mapear 'aluno' para 'student')
-    if (userType === 'aluno') {
-      userType = 'student'
+    // Verificar se o nome contém um tipo válido (como "Mário Valença" não deve ser confundido com tipo)
+    // Se o nome for exatamente igual a um tipo válido, usar email como nome
+    const nameLower = userName.toLowerCase().trim()
+    if (['aluno', 'profissional', 'paciente', 'admin', 'student', 'professional', 'patient'].includes(nameLower)) {
+      console.warn(`⚠️ Nome do usuário é exatamente um tipo válido (${userName}), usando email como nome`)
+      userName = email.split('@')[0] || 'Usuário'
     }
-    if (!['patient', 'professional', 'student', 'admin'].includes(userType)) {
-      userType = 'patient' // Padrão seguro
+    
+    // Garantir que o tipo seja válido (normalizeUserType já faz isso, mas garantimos aqui)
+    if (!isValidUserType(userType)) {
+      console.warn(`⚠️ Tipo de usuário inválido após normalização: ${userType}, usando padrão 'paciente'`)
+      userType = 'paciente'
     }
     
     const debugUser: User = {
       id: authUser.id,
       email: email,
-      type: userType,
+      type: userType, // Sempre em português
       name: userName,
       crm: authUser.user_metadata?.crm,
       cro: authUser.user_metadata?.cro
     }
     
+    console.log('✅ Usuário carregado:', { email, type: userType, name: userName })
     setUser(debugUser)
     setIsLoading(false)
   }
@@ -249,6 +272,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(error.message)
       }
       setUser(null)
+      // Limpar tipo visual do localStorage ao fazer logout
+      localStorage.removeItem('viewAsUserType')
+      localStorage.removeItem('selectedUserType')
       console.log('✅ Logout realizado com sucesso')
     } catch (error) {
       console.error('Erro no logout:', error)
@@ -261,16 +287,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (email: string, password: string, userType: string, name: string) => {
     try {
       setIsLoading(true)
-      console.log('📝 Tentando registrar:', { email, userType, name })
+      
+      // Normalizar tipo de usuário para português
+      const normalizedType = normalizeUserType(userType)
+      // Converter para inglês para salvar no Supabase (compatibilidade)
+      const englishType = toEnglishType(normalizedType)
+      
+      console.log('📝 Tentando registrar:', { email, userType, normalizedType, englishType, name })
       
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            type: userType,
+            type: englishType, // Salvar em inglês no Supabase para compatibilidade
             name: name,
-            user_type: userType
+            user_type: englishType,
+            // Também salvar em português para referência futura
+            type_pt: normalizedType
           }
         }
       })

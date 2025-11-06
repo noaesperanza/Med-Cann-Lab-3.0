@@ -17,6 +17,8 @@ import {
   Filter,
   Search
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 
 interface Appointment {
   id: string
@@ -46,6 +48,7 @@ interface EduardoSchedulingProps {
 }
 
 const EduardoScheduling: React.FC<EduardoSchedulingProps> = ({ className = '' }) => {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'calendar' | 'list' | 'analytics'>('calendar')
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
@@ -54,102 +57,107 @@ const EduardoScheduling: React.FC<EduardoSchedulingProps> = ({ className = '' })
   const [searchTerm, setSearchTerm] = useState('')
   const [filterSpecialty, setFilterSpecialty] = useState('all')
 
-  // Dados mockados específicos para Dr. Eduardo Faveret
-  const mockAppointments: Appointment[] = [
-    {
-      id: '1',
-      patientName: 'Maria Silva',
-      patientId: 'patient-1',
-      specialty: 'Cannabis Medicinal',
-      date: '2024-01-20',
-      time: '09:00',
-      duration: 60,
-      status: 'scheduled',
-      notes: 'Primeira consulta - Avaliação IMRE'
-    },
-    {
-      id: '2',
-      patientName: 'João Santos',
-      patientId: 'patient-2',
-      specialty: 'Cannabis Medicinal',
-      date: '2024-01-20',
-      time: '10:30',
-      duration: 45,
-      status: 'completed',
-      notes: 'Retorno - Ajuste de dosagem',
-      rating: 5,
-      revenue: 300
-    },
-    {
-      id: '3',
-      patientName: 'Ana Costa',
-      patientId: 'patient-3',
-      specialty: 'Cannabis Medicinal',
-      date: '2024-01-20',
-      time: '14:00',
-      duration: 60,
-      status: 'scheduled',
-      notes: 'Avaliação clínica inicial'
-    },
-    {
-      id: '4',
-      patientName: 'Pedro Oliveira',
-      patientId: 'patient-4',
-      specialty: 'Cannabis Medicinal',
-      date: '2024-01-21',
-      time: '08:30',
-      duration: 45,
-      status: 'completed',
-      notes: 'Follow-up - Melhora significativa',
-      rating: 5,
-      revenue: 300
-    },
-    {
-      id: '5',
-      patientName: 'Carla Mendes',
-      patientId: 'patient-5',
-      specialty: 'Cannabis Medicinal',
-      date: '2024-01-21',
-      time: '15:00',
-      duration: 60,
-      status: 'scheduled',
-      notes: 'Nova paciente - Dor crônica'
-    }
-  ]
-
-  const mockAnalytics: Analytics = {
-    totalAppointments: 156,
-    completionRate: 91,
-    averageRating: 4.7,
-    totalRevenue: 12500,
-    appointmentsBySpecialty: [
-      { specialty: 'Cannabis Medicinal', count: 89 },
-      { specialty: 'Nefrologia', count: 35 },
-      { specialty: 'Clínica Geral', count: 20 },
-      { specialty: 'Dor Crônica', count: 12 }
-    ],
-    occupancyByHour: [
-      { hour: '08:00-09:00', percentage: 80 },
-      { hour: '09:00-10:00', percentage: 90 },
-      { hour: '10:00-11:00', percentage: 75 },
-      { hour: '11:00-12:00', percentage: 60 },
-      { hour: '14:00-15:00', percentage: 100 },
-      { hour: '15:00-16:00', percentage: 80 },
-      { hour: '16:00-17:00', percentage: 70 }
-    ]
-  }
-
   useEffect(() => {
-    loadData()
-  }, [])
+    if (user) {
+      loadData()
+    }
+  }, [user])
 
   const loadData = async () => {
+    if (!user) return
+    
     setLoading(true)
     try {
-      // Simular carregamento
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setAppointments(mockAppointments)
-      setAnalytics(mockAnalytics)
+      // Buscar agendamentos do profissional atual
+      const { data: appointmentsData, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('professional_id', user.id)
+        .order('appointment_date', { ascending: true })
+
+      if (appointmentsError) {
+        console.error('Erro ao carregar agendamentos:', appointmentsError)
+        throw appointmentsError
+      }
+
+      // Buscar informações dos pacientes (se houver agendamentos)
+      let patientsMap = new Map()
+      if (appointmentsData && appointmentsData.length > 0) {
+        const patientIds = [...new Set(appointmentsData.map((apt: any) => apt.patient_id))]
+        const { data: patientsData } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .in('id', patientIds)
+
+        patientsMap = new Map((patientsData || []).map((p: any) => [p.id, p]))
+      }
+
+      // Transformar dados do Supabase para o formato esperado
+      const formattedAppointments: Appointment[] = (appointmentsData || []).map((apt: any) => {
+        const appointmentDate = new Date(apt.appointment_date)
+        const patient = patientsMap.get(apt.patient_id)
+        return {
+          id: apt.id,
+          patientName: patient?.name || 'Paciente',
+          patientId: apt.patient_id,
+          specialty: apt.type || 'Cannabis Medicinal',
+          date: appointmentDate.toISOString().split('T')[0],
+          time: appointmentDate.toTimeString().slice(0, 5),
+          duration: apt.duration || 60,
+          status: apt.status as 'scheduled' | 'completed' | 'cancelled' | 'no-show',
+          notes: apt.description || apt.notes,
+          rating: apt.rating,
+          revenue: apt.revenue
+        }
+      })
+
+      setAppointments(formattedAppointments)
+
+      // Calcular analytics a partir dos dados reais
+      const totalAppointments = formattedAppointments.length
+      const completedAppointments = formattedAppointments.filter(a => a.status === 'completed').length
+      const completionRate = totalAppointments > 0 ? Math.round((completedAppointments / totalAppointments) * 100) : 0
+      
+      const ratings = formattedAppointments.filter(a => a.rating).map(a => a.rating!)
+      const averageRating = ratings.length > 0 
+        ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
+        : 0
+
+      const totalRevenue = formattedAppointments
+        .filter(a => a.revenue)
+        .reduce((sum, a) => sum + (a.revenue || 0), 0)
+
+      // Agrupar por especialidade
+      const specialtyCounts: { [key: string]: number } = {}
+      formattedAppointments.forEach(apt => {
+        specialtyCounts[apt.specialty] = (specialtyCounts[apt.specialty] || 0) + 1
+      })
+      const appointmentsBySpecialty = Object.entries(specialtyCounts).map(([specialty, count]) => ({
+        specialty,
+        count
+      }))
+
+      // Calcular ocupação por horário (simplificado)
+      const hourCounts: { [key: string]: number } = {}
+      formattedAppointments.forEach(apt => {
+        const hour = apt.time.split(':')[0]
+        const hourKey = `${hour}:00-${parseInt(hour) + 1}:00`
+        hourCounts[hourKey] = (hourCounts[hourKey] || 0) + 1
+      })
+      const maxHourCount = Math.max(...Object.values(hourCounts), 1)
+      const occupancyByHour = Object.entries(hourCounts).map(([hour, count]) => ({
+        hour,
+        percentage: Math.round((count / maxHourCount) * 100)
+      }))
+
+      setAnalytics({
+        totalAppointments,
+        completionRate,
+        averageRating,
+        totalRevenue,
+        appointmentsBySpecialty,
+        occupancyByHour
+      })
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {
@@ -279,7 +287,18 @@ const EduardoScheduling: React.FC<EduardoSchedulingProps> = ({ className = '' })
 
           {/* Lista de Consultas */}
           <div className="space-y-2">
-            {filteredAppointments.map((appointment) => (
+            {loading ? (
+              <div className="text-center py-8 text-slate-400">
+                <Clock className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                <p>Carregando agendamentos...</p>
+              </div>
+            ) : filteredAppointments.length === 0 ? (
+              <div className="text-center py-8 text-slate-400">
+                <Calendar className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                <p>Nenhum agendamento encontrado</p>
+              </div>
+            ) : (
+              filteredAppointments.map((appointment) => (
               <div key={appointment.id} className="bg-slate-800 border border-slate-700 rounded-lg p-4 hover:border-slate-600 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -313,7 +332,8 @@ const EduardoScheduling: React.FC<EduardoSchedulingProps> = ({ className = '' })
                   </div>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
       )}

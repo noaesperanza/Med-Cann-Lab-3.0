@@ -50,6 +50,7 @@ interface Patient {
 
 const ProfessionalDashboard: React.FC = () => {
   const { user } = useAuth()
+  const { getEffectiveUserType, isAdminViewingAs } = useUserView()
   const [patientSearch, setPatientSearch] = useState('')
   const [clinicalNotes, setClinicalNotes] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null)
@@ -57,15 +58,29 @@ const ProfessionalDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [activeSection, setActiveSection] = useState<'dashboard' | 'kpis' | 'newsletter' | 'prescriptions' | 'clinical-reports'>('dashboard')
 
+  // Verificar se é admin
+  const effectiveType = getEffectiveUserType(user?.type)
+  const userIsAdmin = isAdmin(user)
+
   // Buscar pacientes do banco de dados
   useEffect(() => {
     loadPatients()
-  }, [])
+  }, [user?.id, effectiveType])
 
   const loadPatients = async () => {
     try {
       setLoading(true)
       
+      // Se for admin, usar função com permissões administrativas
+      if (userIsAdmin) {
+        console.log('✅ Admin carregando pacientes com permissões administrativas')
+        const allPatients = await getAllPatients(user!.id, effectiveType)
+        setPatients(allPatients)
+        setLoading(false)
+        return
+      }
+      
+      // Busca normal para profissionais
       const { data: assessments, error } = await supabase
         .from('clinical_assessments')
         .select(`

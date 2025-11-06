@@ -28,6 +28,8 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 
 interface ClinicalKPI {
   id: string
@@ -70,6 +72,7 @@ interface KPIClinicosPersonalizadosProps {
 }
 
 const KPIClinicosPersonalizados: React.FC<KPIClinicosPersonalizadosProps> = ({ className = '' }) => {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'dashboard' | 'criador' | 'pacientes' | 'configuracoes'>('dashboard')
   const [selectedCategory, setSelectedCategory] = useState<'neurologico' | 'comportamental' | 'cognitivo' | 'social' | 'fisico' | 'all'>('all')
   const [patients, setPatients] = useState<PatientProfile[]>([])
@@ -79,172 +82,109 @@ const KPIClinicosPersonalizados: React.FC<KPIClinicosPersonalizadosProps> = ({ c
   const [newKPI, setNewKPI] = useState<Partial<ClinicalKPI>>({})
   const [loading, setLoading] = useState(true)
 
-  // Dados mockados específicos para TEA e neurologia
-  const mockPatients: PatientProfile[] = [
-    {
-      id: '1',
-      name: 'Lucas Silva Santos',
-      age: 8,
-      diagnosis: 'Transtorno do Espectro Autista - Nível 2',
-      autismSpectrum: true,
-      neurologicalProfile: ['Epilepsia', 'Déficit de Atenção', 'Sensibilidade Sensorial'],
-      consentDataSharing: true,
-      consentResearch: true,
-      customKPIs: []
-    },
-    {
-      id: '2',
-      name: 'Maria Clara Oliveira',
-      age: 12,
-      diagnosis: 'TEA - Nível 1 + Epilepsia Refratária',
-      autismSpectrum: true,
-      neurologicalProfile: ['Epilepsia Refratária', 'Ansiedade', 'Dificuldades Sociais'],
-      consentDataSharing: true,
-      consentResearch: false,
-      customKPIs: []
-    },
-    {
-      id: '3',
-      name: 'João Pedro Mendes',
-      age: 6,
-      diagnosis: 'TEA - Nível 3 + Síndrome de Dravet',
-      autismSpectrum: true,
-      neurologicalProfile: ['Síndrome de Dravet', 'Regressão Cognitiva', 'Comportamentos Repetitivos'],
-      consentDataSharing: true,
-      consentResearch: true,
-      customKPIs: []
-    }
-  ]
-
-  const mockGlobalKPIs: ClinicalKPI[] = [
-    {
-      id: '1',
-      name: 'Frequência de Crises Epilépticas',
-      description: 'Número de crises epilépticas por semana',
-      category: 'neurologico',
-      type: 'frequency',
-      target: 0,
-      current: 2,
-      unit: 'crises/semana',
-      frequency: 'weekly',
-      patientSpecific: false,
-      noaGenerated: true,
-      lastUpdated: '2024-01-20T15:30:00Z',
-      trend: 'down',
-      trendValue: -15,
-      thresholds: {
-        critical: 5,
-        warning: 3,
-        good: 1,
-        excellent: 0
-      }
-    },
-    {
-      id: '2',
-      name: 'Tempo de Atenção Sustentada',
-      description: 'Duração média de atenção focada em atividades',
-      category: 'cognitivo',
-      type: 'duration',
-      target: 15,
-      current: 12,
-      unit: 'minutos',
-      frequency: 'daily',
-      patientSpecific: false,
-      noaGenerated: true,
-      lastUpdated: '2024-01-20T15:30:00Z',
-      trend: 'up',
-      trendValue: 8,
-      thresholds: {
-        critical: 5,
-        warning: 8,
-        good: 12,
-        excellent: 20
-      }
-    },
-    {
-      id: '3',
-      name: 'Interações Sociais Positivas',
-      description: 'Número de interações sociais bem-sucedidas por dia',
-      category: 'social',
-      type: 'count',
-      target: 10,
-      current: 7,
-      unit: 'interações/dia',
-      frequency: 'daily',
-      patientSpecific: false,
-      noaGenerated: true,
-      lastUpdated: '2024-01-20T15:30:00Z',
-      trend: 'up',
-      trendValue: 12,
-      thresholds: {
-        critical: 2,
-        warning: 4,
-        good: 7,
-        excellent: 15
-      }
-    },
-    {
-      id: '4',
-      name: 'Nível de Ansiedade',
-      description: 'Escala de ansiedade baseada em comportamentos observados',
-      category: 'comportamental',
-      type: 'score',
-      target: 3,
-      current: 4,
-      unit: 'escala 1-10',
-      frequency: 'daily',
-      patientSpecific: false,
-      noaGenerated: true,
-      lastUpdated: '2024-01-20T15:30:00Z',
-      trend: 'down',
-      trendValue: -5,
-      thresholds: {
-        critical: 8,
-        warning: 6,
-        good: 4,
-        excellent: 2
-      }
-    },
-    {
-      id: '5',
-      name: 'Qualidade do Sono',
-      description: 'Percentual de noites com sono reparador',
-      category: 'fisico',
-      type: 'percentage',
-      target: 80,
-      current: 75,
-      unit: '%',
-      frequency: 'weekly',
-      patientSpecific: false,
-      noaGenerated: true,
-      lastUpdated: '2024-01-20T15:30:00Z',
-      trend: 'up',
-      trendValue: 3,
-      thresholds: {
-        critical: 40,
-        warning: 60,
-        good: 75,
-        excellent: 90
-      }
-    }
-  ]
-
   useEffect(() => {
-    loadData()
-  }, [])
+    if (user) {
+      loadData()
+    }
+  }, [user])
 
   const loadData = async () => {
+    if (!user) return
+    
     setLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setPatients(mockPatients)
-      setGlobalKPIs(mockGlobalKPIs)
+      // Buscar perfis de pacientes
+      const { data: patientProfilesData, error: profilesError } = await supabase
+        .from('patient_profiles')
+        .select(`
+          *,
+          patient:patient_id (
+            id,
+            name,
+            email
+          )
+        `)
+
+      if (profilesError) {
+        console.error('Erro ao carregar perfis de pacientes:', profilesError)
+        throw profilesError
+      }
+
+      // Buscar informações dos pacientes
+      const patientIds = [...new Set((patientProfilesData || []).map((p: any) => p.patient_id))]
+      let patientsMap = new Map()
+      if (patientIds.length > 0) {
+        const { data: patientsData } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .in('id', patientIds)
+
+        patientsMap = new Map((patientsData || []).map((p: any) => [p.id, p]))
+      }
+
+      // Transformar perfis de pacientes
+      const formattedPatients: PatientProfile[] = (patientProfilesData || []).map((profile: any) => {
+        const patient = patientsMap.get(profile.patient_id)
+        return {
+          id: profile.patient_id,
+          name: patient?.name || 'Paciente',
+          age: profile.age || 0,
+          diagnosis: profile.diagnosis || '',
+          autismSpectrum: profile.autism_spectrum || false,
+          neurologicalProfile: profile.neurological_profile || [],
+          consentDataSharing: profile.consent_data_sharing || false,
+          consentResearch: profile.consent_research || false,
+          customKPIs: [] // TODO: Buscar KPIs personalizados do paciente
+        }
+      })
+
+      // Buscar KPIs globais
+      const { data: kpisData, error: kpisError } = await supabase
+        .from('clinical_kpis')
+        .select('*')
+        .eq('patient_specific', false)
+        .order('last_updated', { ascending: false })
+
+      if (kpisError) {
+        console.error('Erro ao carregar KPIs:', kpisError)
+        throw kpisError
+      }
+
+      // Transformar KPIs
+      const formattedKPIs: ClinicalKPI[] = (kpisData || []).map((kpi: any) => ({
+        id: kpi.id,
+        name: kpi.name,
+        description: kpi.description || '',
+        category: kpi.category as 'neurologico' | 'comportamental' | 'cognitivo' | 'social' | 'fisico',
+        type: kpi.kpi_type as 'percentage' | 'count' | 'score' | 'frequency' | 'duration',
+        target: kpi.target_value || 0,
+        current: kpi.current_value || 0,
+        unit: kpi.unit || '',
+        frequency: kpi.frequency as 'daily' | 'weekly' | 'monthly' | 'quarterly',
+        patientSpecific: kpi.patient_specific || false,
+        patientId: kpi.patient_id,
+        noaGenerated: kpi.noa_generated || false,
+        lastUpdated: kpi.last_updated || kpi.created_at,
+        trend: kpi.trend as 'up' | 'down' | 'stable',
+        trendValue: kpi.trend_value || 0,
+        thresholds: kpi.thresholds || {
+          critical: 0,
+          warning: 0,
+          good: 0,
+          excellent: 0
+        }
+      }))
+
+      setPatients(formattedPatients)
+      setGlobalKPIs(formattedKPIs)
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {
       setLoading(false)
     }
   }
+
+  // Dados mockados removidos - agora usando Supabase
 
   const getCategoryColor = (category: string) => {
     switch (category) {

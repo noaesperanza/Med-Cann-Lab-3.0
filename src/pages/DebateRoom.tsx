@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import { 
   Send, 
   Mic, 
@@ -70,88 +71,159 @@ const DebateRoom: React.FC = () => {
   const [isModerator, setIsModerator] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Simular dados do debate
+  // Carregar dados do debate do Supabase
   useEffect(() => {
-    const debateData = {
-      id: debateId,
-      title: 'CBD vs THC: Qual é mais eficaz para dor crônica?',
-      author: 'Dr. João Silva',
-      authorAvatar: 'JS',
-      category: 'Cannabis Medicinal',
-      description: 'Discussão sobre a eficácia comparativa entre CBD e THC no tratamento da dor crônica, baseada em evidências clínicas recentes.',
-      tags: ['CBD', 'THC', 'Dor Crônica', 'Cannabis'],
-      isPasswordProtected: false,
-      password: '',
-      isActive: true,
-      createdAt: '2024-01-15T10:00:00Z',
-      maxParticipants: 50,
-      currentParticipants: 24,
-      views: 156,
-      votes: { up: 15, down: 3 },
-      isPinned: true,
-      isHot: true
-    }
-    setDebate(debateData)
-    setIsPasswordProtected(debateData.isPasswordProtected)
-    setIsOnline(debateData.isActive)
-
-    // Simular participantes
-    const participantsData = [
-      { id: 1, name: 'Dr. João Silva', avatar: 'JS', specialty: 'Psiquiatria', crm: '12345-SP', isOnline: true, isModerator: true, role: 'Criador' },
-      { id: 2, name: 'Dra. Maria Santos', avatar: 'MS', specialty: 'Neurologia', crm: '67890-RJ', isOnline: true, isModerator: false, role: 'Participante' },
-      { id: 3, name: 'Dr. Pedro Costa', avatar: 'PC', specialty: 'Pesquisa', crm: '11111-MG', isOnline: true, isModerator: false, role: 'Participante' },
-      { id: 4, name: 'Dra. Ana Oliveira', avatar: 'AO', specialty: 'Cardiologia', crm: '22222-SP', isOnline: false, isModerator: false, role: 'Participante' },
-      { id: 5, name: 'Dr. Carlos Lima', avatar: 'CL', specialty: 'Oncologia', crm: '33333-RJ', isOnline: true, isModerator: false, role: 'Participante' }
-    ]
-    setParticipants(participantsData)
-
-    // Simular mensagens do debate
-    const messagesData = [
-      {
-        id: 1,
-        user: 'Dr. João Silva',
-        userAvatar: 'JS',
-        message: 'Bem-vindos ao debate! Vamos discutir a eficácia comparativa entre CBD e THC para dor crônica.',
-        timestamp: '10:00',
-        type: 'text',
-        reactions: { heart: 8, thumbs: 5, reply: 3 },
-        isPinned: true,
-        isModerator: true,
-        crm: '12345-SP',
-        specialty: 'Psiquiatria'
-      },
-      {
-        id: 2,
-        user: 'Dra. Maria Santos',
-        userAvatar: 'MS',
-        message: 'Baseado na minha experiência clínica, o CBD tem mostrado resultados mais consistentes para dor neuropática.',
-        timestamp: '10:05',
-        type: 'text',
-        reactions: { heart: 12, thumbs: 8, reply: 2 },
-        isPinned: false,
-        isModerator: false,
-        crm: '67890-RJ',
-        specialty: 'Neurologia'
-      },
-      {
-        id: 3,
-        user: 'Dr. Pedro Costa',
-        userAvatar: 'PC',
-        message: 'Concordo com a Dra. Maria. Estudos recentes mostram que CBD tem menos efeitos colaterais.',
-        timestamp: '10:08',
-        type: 'text',
-        reactions: { heart: 6, thumbs: 4, reply: 1 },
-        isPinned: false,
-        isModerator: false,
-        crm: '11111-MG',
-        specialty: 'Pesquisa'
-      }
-    ]
-    setMessages(messagesData)
-
-    // Verificar se usuário é moderador
-    setIsModerator(user?.email === 'passosmir4@gmail.com')
+    loadDebateData()
   }, [debateId, user])
+
+  const loadDebateData = async () => {
+    if (!debateId) return
+
+    try {
+      // Buscar post do fórum (debate)
+      const { data: forumPost, error: postError } = await supabase
+        .from('forum_posts')
+        .select('*')
+        .eq('id', debateId)
+        .single()
+
+      if (postError) {
+        console.error('Erro ao buscar debate:', postError)
+        return
+      }
+
+      if (forumPost) {
+        // Buscar dados do autor
+        const { data: authorData } = await supabase
+          .from('users')
+          .select('name, email')
+          .eq('id', forumPost.author_id)
+          .single()
+
+        const debateData = {
+          id: forumPost.id,
+          title: forumPost.title,
+          author: authorData?.name || 'Autor',
+          authorAvatar: authorData?.name?.split(' ').map((n: string) => n[0]).join('') || 'A',
+          category: forumPost.category || 'Geral',
+          description: forumPost.content,
+          tags: forumPost.tags || [],
+          isPasswordProtected: forumPost.is_password_protected || false,
+          password: forumPost.password || '',
+          isActive: forumPost.is_active,
+          createdAt: forumPost.created_at,
+          maxParticipants: forumPost.max_participants || 50,
+          currentParticipants: forumPost.current_participants || 0,
+          views: forumPost.views || 0,
+          votes: { up: forumPost.votes_up || 0, down: forumPost.votes_down || 0 },
+          isPinned: forumPost.is_pinned || false,
+          isHot: forumPost.is_hot || false
+        }
+
+        setDebate(debateData)
+        setIsPasswordProtected(debateData.isPasswordProtected)
+        setIsOnline(debateData.isActive)
+
+        // Verificar se usuário é moderador (autor do post)
+        setIsModerator(user?.id === forumPost.author_id)
+
+        // Carregar mensagens do chat relacionadas a este debate
+        await loadMessages(debateId)
+
+        // Carregar participantes
+        await loadParticipants(debateId, forumPost.author_id)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar debate:', error)
+    }
+  }
+
+  const loadMessages = async (chatId: string) => {
+    try {
+      const { data: chatMessages, error: messagesError } = await supabase
+        .from('chat_messages')
+        .select(`
+          *,
+          sender:users!chat_messages_sender_id_fkey(id, name, email, type)
+        `)
+        .eq('chat_id', chatId)
+        .order('created_at', { ascending: true })
+
+      if (messagesError) {
+        console.error('Erro ao buscar mensagens:', messagesError)
+        return
+      }
+
+      if (chatMessages) {
+        const formattedMessages = chatMessages.map((msg: any) => {
+          const sender = msg.sender || {}
+          return {
+            id: msg.id,
+            user: sender.name || 'Usuário',
+            userAvatar: sender.name?.split(' ').map((n: string) => n[0]).join('') || 'U',
+            message: msg.message,
+            timestamp: new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            type: msg.message_type || 'text',
+            reactions: { heart: 0, thumbs: 0, reply: 0 }, // Reações podem ser adicionadas depois
+            isPinned: false,
+            isModerator: false, // Será atualizado quando debate for carregado
+            crm: '',
+            specialty: sender.type === 'professional' ? 'Médico' : 'Paciente'
+          }
+        })
+
+        setMessages(formattedMessages)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar mensagens:', error)
+    }
+  }
+
+  const loadParticipants = async (chatId: string, authorId?: string) => {
+    try {
+      // Buscar participantes através das mensagens enviadas
+      const { data: messages, error: messagesError } = await supabase
+        .from('chat_messages')
+        .select('sender_id')
+        .eq('chat_id', chatId)
+
+      if (messagesError) {
+        console.error('Erro ao buscar participantes:', messagesError)
+        return
+      }
+
+      const uniqueSenderIds = [...new Set(messages?.map((m: any) => m.sender_id) || [])]
+
+      // Adicionar autor se não estiver na lista
+      if (authorId && !uniqueSenderIds.includes(authorId)) {
+        uniqueSenderIds.push(authorId)
+      }
+
+      if (uniqueSenderIds.length > 0) {
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('id, name, email, type')
+          .in('id', uniqueSenderIds)
+
+        if (!usersError && usersData) {
+          const participantsList = usersData.map((u: any) => ({
+            id: u.id,
+            name: u.name || 'Usuário',
+            avatar: u.name?.split(' ').map((n: string) => n[0]).join('') || 'U',
+            specialty: u.type === 'professional' ? 'Médico' : 'Paciente',
+            crm: '',
+            isOnline: true, // Pode ser melhorado com sistema de presença
+            isModerator: u.id === authorId,
+            role: u.id === authorId ? 'Criador' : 'Participante'
+          }))
+
+          setParticipants(participantsList)
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar participantes:', error)
+    }
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -161,23 +233,65 @@ const DebateRoom: React.FC = () => {
     scrollToBottom()
   }, [messages])
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      const newMessage = {
-        id: messages.length + 1,
-        user: user?.name || 'Usuário',
-        userAvatar: user?.name?.split(' ').map(n => n[0]).join('') || 'U',
-        message: message.trim(),
-        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        type: 'text',
-        reactions: { heart: 0, thumbs: 0, reply: 0 },
-        isPinned: false,
-        isModerator: isModerator,
-        crm: user?.crm || '',
-        specialty: user?.type === 'professional' ? 'Médico' : 'Paciente'
+  const handleSendMessage = async () => {
+    if (!message.trim() || !debateId || !user) return
+
+    try {
+      // Salvar mensagem no Supabase
+      const { data: newMessage, error: messageError } = await supabase
+        .from('chat_messages')
+        .insert({
+          chat_id: debateId,
+          sender_id: user.id,
+          message: message.trim(),
+          message_type: 'text'
+        })
+        .select(`
+          *,
+          sender:users!chat_messages_sender_id_fkey(id, name, email, type)
+        `)
+        .single()
+
+      if (messageError) {
+        console.error('Erro ao enviar mensagem:', messageError)
+        alert('Erro ao enviar mensagem. Tente novamente.')
+        return
       }
-      setMessages([...messages, newMessage])
-      setMessage('')
+
+      if (newMessage) {
+        const sender = newMessage.sender || {}
+        const formattedMessage = {
+          id: newMessage.id,
+          user: sender.name || 'Usuário',
+          userAvatar: sender.name?.split(' ').map((n: string) => n[0]).join('') || 'U',
+          message: newMessage.message,
+          timestamp: new Date(newMessage.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          type: newMessage.message_type || 'text',
+          reactions: { heart: 0, thumbs: 0, reply: 0 },
+          isPinned: false,
+          isModerator: sender.id === debate?.author_id,
+          crm: '',
+          specialty: sender.type === 'professional' ? 'Médico' : 'Paciente'
+        }
+
+        setMessages([...messages, formattedMessage])
+        setMessage('')
+
+        // Atualizar contador de participantes
+        if (debate) {
+          const { error: updateError } = await supabase
+            .from('forum_posts')
+            .update({ current_participants: participants.length + 1 })
+            .eq('id', debateId)
+
+          if (updateError) {
+            console.error('Erro ao atualizar participantes:', updateError)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error)
+      alert('Erro ao enviar mensagem. Tente novamente.')
     }
   }
 

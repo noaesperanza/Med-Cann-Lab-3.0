@@ -24,6 +24,7 @@ import {
   Zap
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useUserView } from '../contexts/UserViewContext'
 import { clinicalReportService, ClinicalReport } from '../lib/clinicalReportService'
 import { supabase } from '../lib/supabase'
 
@@ -46,7 +47,12 @@ interface TherapeuticPlan {
 
 const PatientDashboard: React.FC = () => {
   const { user } = useAuth()
+  const { getEffectiveUserType, isAdminViewingAs } = useUserView()
   const navigate = useNavigate()
+  
+  // Se admin está visualizando como paciente, mostrar aviso
+  const effectiveType = getEffectiveUserType(user?.type)
+  const isViewingAsPatient = isAdminViewingAs && effectiveType === 'paciente'
   
   // Estados
   const [reports, setReports] = useState<ClinicalReport[]>([])
@@ -87,17 +93,90 @@ const PatientDashboard: React.FC = () => {
         })))
       }
 
-      // Carregar plano terapêutico (simulado por enquanto)
-      setTherapeuticPlan({
-        id: '1',
-        title: 'Plano Terapêutico - Cannabis Medicinal',
-        progress: 45,
-        medications: [
-          { name: 'CBD', dosage: '25mg', frequency: '2x ao dia' },
-          { name: 'THC', dosage: '5mg', frequency: '1x ao dia' }
-        ],
-        nextReview: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')
-      })
+      // Carregar plano terapêutico do Supabase
+      // Buscar relatórios clínicos que podem conter prescrições
+      const { data: reportsData } = await supabase
+        .from('clinical_reports')
+        .select('*')
+        .eq('patient_id', user!.id)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      const latestReport = reportsData && reportsData.length > 0 ? reportsData[0] : null
+
+      // Buscar também avaliações clínicas que podem ter prescrições
+      const { data: assessmentsData } = await supabase
+        .from('clinical_assessments')
+        .select('*')
+        .eq('patient_id', user!.id)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      const latestAssessment = assessmentsData && assessmentsData.length > 0 ? assessmentsData[0] : null
+
+      // Extrair medicações do relatório ou avaliação
+      let medications: Array<{ name: string; dosage: string; frequency: string }> = []
+      let progress = 0
+      let nextReviewDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+
+      if (latestReport?.content) {
+        const content = latestReport.content as any
+        // Tentar extrair medicações do conteúdo do relatório
+        if (content.plan?.medications) {
+          medications = content.plan.medications
+        } else if (content.rationalities?.biomedical?.treatment) {
+          // Se não houver medicações explícitas, tentar extrair do tratamento biomédico
+          const treatment = content.rationalities.biomedical.treatment
+          if (typeof treatment === 'string' && treatment.includes('CBD')) {
+            // Parse básico - pode ser melhorado
+            medications = [
+              { name: 'CBD', dosage: '25mg', frequency: '2x ao dia' }
+            ]
+          }
+        }
+        // Calcular progresso baseado em quando foi criado
+        const daysSinceCreation = Math.floor((Date.now() - new Date(latestReport.created_at).getTime()) / (1000 * 60 * 60 * 24))
+        progress = Math.min(100, Math.max(0, (daysSinceCreation / 90) * 100)) // Progresso baseado em 90 dias
+      } else if (latestAssessment?.data) {
+        const data = latestAssessment.data as any
+        if (data.medications) {
+          medications = data.medications
+        }
+        // Calcular progresso
+        const daysSinceCreation = Math.floor((Date.now() - new Date(latestAssessment.created_at).getTime()) / (1000 * 60 * 60 * 24))
+        progress = Math.min(100, Math.max(0, (daysSinceCreation / 90) * 100))
+      }
+
+      // Buscar próximo agendamento para revisão
+      const { data: nextAppointmentsData } = await supabase
+        .from('appointments')
+        .select('appointment_date')
+        .eq('patient_id', user!.id)
+        .gte('appointment_date', new Date().toISOString())
+        .order('appointment_date', { ascending: true })
+        .limit(1)
+
+      const nextAppointment = nextAppointmentsData && nextAppointmentsData.length > 0 ? nextAppointmentsData[0] : null
+
+      if (nextAppointment?.appointment_date) {
+        nextReviewDate = new Date(nextAppointment.appointment_date)
+      }
+
+      // Se não houver medicações, não definir plano terapêutico
+      if (medications.length > 0) {
+        setTherapeuticPlan({
+          id: latestReport?.id || latestAssessment?.id || '1',
+          title: 'Plano Terapêutico - Cannabis Medicinal',
+          progress: Math.round(progress),
+          medications: medications,
+          nextReview: nextReviewDate.toLocaleDateString('pt-BR')
+        })
+      } else {
+        // Sem plano terapêutico ativo
+        setTherapeuticPlan(null)
+      }
 
       setLoadingReports(false)
     } catch (error) {
@@ -550,6 +629,21 @@ const PatientDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white">
+      {/* Aviso de Visualização (Admin) */}
+      {isViewingAsPatient && (
+        <div className="bg-yellow-600/20 border-b border-yellow-500/50 p-3">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="text-yellow-400">👁️</span>
+              <p className="text-yellow-200 text-sm">
+                <strong>Modo Admin:</strong> Você está visualizando como <strong>Paciente</strong>. 
+                Todas as funcionalidades estão disponíveis com permissões de administrador.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="bg-slate-800 border-b border-slate-700 p-6">
         <div className="flex items-center justify-between">

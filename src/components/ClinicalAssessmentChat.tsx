@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User, Loader2, Trash2, Heart, Brain, Zap, Stethoscope, X } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { NoaResidentAI } from '../lib/noaResidentAI'
 
 interface AssessmentMessage {
   id: string
@@ -15,6 +17,7 @@ interface ClinicalAssessmentChatProps {
 }
 
 const ClinicalAssessmentChat: React.FC<ClinicalAssessmentChatProps> = ({ onClose }) => {
+  const { user } = useAuth()
   const [messages, setMessages] = useState<AssessmentMessage[]>([
     {
       id: '1',
@@ -30,6 +33,14 @@ const ClinicalAssessmentChat: React.FC<ClinicalAssessmentChatProps> = ({ onClose
   const [currentStep, setCurrentStep] = useState(1)
   const [totalSteps] = useState(8)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const noaAI = useRef<NoaResidentAI | null>(null)
+
+  // Inicializar NoaResidentAI
+  useEffect(() => {
+    if (!noaAI.current) {
+      noaAI.current = new NoaResidentAI()
+    }
+  }, [])
 
   const steps = [
     { id: 1, title: 'Apresentação e Rapport', question: 'Por favor, apresente-se e diga em que posso ajudar hoje.' },
@@ -52,7 +63,7 @@ const ClinicalAssessmentChat: React.FC<ClinicalAssessmentChatProps> = ({ onClose
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!inputMessage.trim() || isAnalyzing) return
+    if (!inputMessage.trim() || isAnalyzing || !user?.id || !noaAI.current) return
 
     const message = inputMessage.trim()
     setInputMessage('')
@@ -70,40 +81,79 @@ const ClinicalAssessmentChat: React.FC<ClinicalAssessmentChatProps> = ({ onClose
 
     setMessages(prev => [...prev, userMessage])
 
-    // Simular processamento
-    setTimeout(() => {
+    try {
+      // REASONING: Usar NoaResidentAI para processar com reasoning pausado
+      const aiResponse = await noaAI.current.processMessage(
+        message,
+        user.id,
+        user.email
+      )
+
+      if (aiResponse && aiResponse.content) {
+        // Adicionar resposta da IA
+        const aiMessage: AssessmentMessage = {
+          id: (Date.now() + 1).toString(),
+          isUser: false,
+          text: aiResponse.content,
+          timestamp: new Date(),
+          step: currentStep,
+          stepTitle: steps[currentStep - 1]?.title
+        }
+
+        setMessages(prev => [...prev, aiMessage])
+
+        // Verificar se a avaliação foi concluída (baseado na resposta da IA)
+        if (aiResponse.content.toLowerCase().includes('avaliação concluída') || 
+            aiResponse.content.toLowerCase().includes('relatório gerado')) {
+          // Avaliação concluída
+          setCurrentStep(totalSteps)
+        } else if (currentStep < totalSteps) {
+          // Avançar para próxima etapa se necessário
+          // A IA decide quando avançar baseado no reasoning
+          const shouldAdvance = !aiResponse.content.toLowerCase().includes('continue') &&
+                                !aiResponse.content.toLowerCase().includes('descreva mais')
+          
+          if (shouldAdvance && currentStep < totalSteps) {
+            setCurrentStep(prev => prev + 1)
+          }
+        }
+      } else {
+        // Fallback se IA não responder
+        if (currentStep < totalSteps) {
+          const nextStep = currentStep + 1
+          setCurrentStep(nextStep)
+          const nextStepData = steps[nextStep - 1]
+          const aiMessage: AssessmentMessage = {
+            id: (Date.now() + 1).toString(),
+            isUser: false,
+            text: `✅ ${steps[currentStep - 1]?.title} registrado.\n\n**${nextStepData.title} (${nextStep}/${totalSteps})**\n\n${nextStepData.question}`,
+            timestamp: new Date(),
+            step: nextStep,
+            stepTitle: nextStepData.title
+          }
+          setMessages(prev => [...prev, aiMessage])
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao processar com reasoning:', error)
+      // Fallback para lógica simples
       if (currentStep < totalSteps) {
-        // Avançar para próxima etapa
         const nextStep = currentStep + 1
         setCurrentStep(nextStep)
-        
         const nextStepData = steps[nextStep - 1]
         const aiMessage: AssessmentMessage = {
           id: (Date.now() + 1).toString(),
           isUser: false,
-          text: `✅ ${steps[currentStep - 1]?.title} registrado com sucesso!\n\n---\n\n**${nextStepData.title} (${nextStep}/${totalSteps})**\n\n${nextStepData.question}\n\nContinue com sua resposta...`,
+          text: `✅ ${steps[currentStep - 1]?.title} registrado.\n\n**${nextStepData.title} (${nextStep}/${totalSteps})**\n\n${nextStepData.question}`,
           timestamp: new Date(),
           step: nextStep,
           stepTitle: nextStepData.title
         }
-        
-        setMessages(prev => [...prev, aiMessage])
-      } else {
-        // Finalizar avaliação
-        const aiMessage: AssessmentMessage = {
-          id: (Date.now() + 1).toString(),
-          isUser: false,
-          text: `✅ **Avaliação Clínica Concluída!**\n\nObrigada por compartilhar suas informações. Com base na metodologia IMRE Triaxial, coletamos dados importantes sobre:\n\n• Apresentação e rapport\n• Queixa principal\n• História da doença atual\n• Medicamentos e alergias\n• História familiar\n• Hábitos de vida\n• Fechamento consensual\n\n**Próximos passos:**\n- Análise dos dados coletados\n- Elaboração do relatório clínico\n- Recomendações personalizadas\n\nGostaria de fazer mais alguma pergunta ou iniciar uma nova avaliação?`,
-          timestamp: new Date(),
-          step: totalSteps,
-          stepTitle: 'Avaliação Concluída'
-        }
-        
         setMessages(prev => [...prev, aiMessage])
       }
-      
+    } finally {
       setIsAnalyzing(false)
-    }, 1500)
+    }
   }
 
   const progress = (currentStep / totalSteps) * 100

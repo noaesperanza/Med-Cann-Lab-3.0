@@ -22,6 +22,8 @@ import {
   PieChart,
   LineChart
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 
 interface EpilepsyEvent {
   id: string
@@ -61,6 +63,7 @@ interface NeurologiaPediatricaProps {
 }
 
 const NeurologiaPediatrica: React.FC<NeurologiaPediatricaProps> = ({ className = '' }) => {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'pacientes' | 'eventos' | 'monitoramento' | 'analytics'>('pacientes')
   const [patients, setPatients] = useState<PatientNeurologicalProfile[]>([])
   const [events, setEvents] = useState<EpilepsyEvent[]>([])
@@ -69,98 +72,102 @@ const NeurologiaPediatrica: React.FC<NeurologiaPediatricaProps> = ({ className =
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState('all')
 
-  // Dados mockados específicos para neurologia pediátrica
-  const mockPatients: PatientNeurologicalProfile[] = [
-    {
-      id: '1',
-      name: 'Maria Silva Santos',
-      age: 8,
-      diagnosis: 'Epilepsia Refratária',
-      epilepsyType: 'Epilepsia Mioclônica Juvenil',
-      medications: ['CBD 20mg', 'Clobazam 10mg', 'Valproato 500mg'],
-      seizureFrequency: 3,
-      lastSeizure: '2024-01-18',
-      tezStatus: 'em_tratamento',
-      wearableConnected: true,
-      monitoringDevices: ['Apple Watch', 'Empatica E4', 'NeuroPace']
-    },
-    {
-      id: '2',
-      name: 'João Pedro Oliveira',
-      age: 12,
-      diagnosis: 'Síndrome de Dravet',
-      epilepsyType: 'Epilepsia Generalizada',
-      medications: ['CBD 30mg', 'THC 5mg', 'Fenitoína 200mg'],
-      seizureFrequency: 1,
-      lastSeizure: '2024-01-15',
-      tezStatus: 'respondedor',
-      wearableConnected: true,
-      monitoringDevices: ['Fitbit Sense', 'Empatica E4']
-    },
-    {
-      id: '3',
-      name: 'Ana Clara Mendes',
-      age: 6,
-      diagnosis: 'Epilepsia Refratária',
-      epilepsyType: 'Espasmos Infantis',
-      medications: ['CBD 15mg', 'Vigabatrina 1000mg'],
-      seizureFrequency: 5,
-      lastSeizure: '2024-01-20',
-      tezStatus: 'candidato',
-      wearableConnected: false,
-      monitoringDevices: []
-    }
-  ]
-
-  const mockEvents: EpilepsyEvent[] = [
-    {
-      id: '1',
-      patientId: '1',
-      patientName: 'Maria Silva Santos',
-      timestamp: '2024-01-20T14:30:00Z',
-      type: 'convulsao',
-      duration: 45,
-      severity: 'moderada',
-      triggers: ['estresse', 'privação de sono'],
-      medications: ['CBD 20mg', 'Clobazam 10mg'],
-      notes: 'Crise ocorreu durante atividade física na escola',
-      wearableData: {
-        heartRate: 180,
-        oxygenSaturation: 95,
-        movement: 8.5,
-        temperature: 37.2
-      }
-    },
-    {
-      id: '2',
-      patientId: '2',
-      patientName: 'João Pedro Oliveira',
-      timestamp: '2024-01-19T09:15:00Z',
-      type: 'ausencia',
-      duration: 15,
-      severity: 'leve',
-      triggers: ['hiperventilação'],
-      medications: ['CBD 30mg', 'THC 5mg'],
-      notes: 'Episódio breve durante aula de matemática',
-      wearableData: {
-        heartRate: 120,
-        oxygenSaturation: 98,
-        movement: 2.1,
-        temperature: 36.8
-      }
-    }
-  ]
-
   useEffect(() => {
-    loadData()
-  }, [])
+    if (user) {
+      loadData()
+    }
+  }, [user])
 
   const loadData = async () => {
+    if (!user) return
+    
     setLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setPatients(mockPatients)
-      setEvents(mockEvents)
+      // Buscar eventos de epilepsia do Supabase
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('epilepsy_events')
+        .select('*')
+        .order('timestamp', { ascending: false })
+
+      if (eventsError) {
+        console.error('Erro ao carregar eventos:', eventsError)
+        throw eventsError
+      }
+
+      // Buscar pacientes únicos dos eventos
+      const patientIds = [...new Set((eventsData || []).map((e: any) => e.patient_id))]
+      
+      // Buscar informações dos pacientes
+      let patientsMap = new Map()
+      if (patientIds.length > 0) {
+        const { data: patientsData } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .in('id', patientIds)
+
+        patientsMap = new Map((patientsData || []).map((p: any) => [p.id, p]))
+      }
+
+      // Buscar dispositivos wearables para verificar conexão
+      const { data: devicesData } = await supabase
+        .from('wearable_devices')
+        .select('patient_id, device_type, brand, model')
+
+      // Agrupar dispositivos por paciente
+      const devicesPorPaciente: { [key: string]: string[] } = {}
+      devicesData?.forEach((device: any) => {
+        if (!devicesPorPaciente[device.patient_id]) {
+          devicesPorPaciente[device.patient_id] = []
+        }
+        devicesPorPaciente[device.patient_id].push(`${device.brand} ${device.model}`)
+      })
+
+      // Transformar eventos para o formato esperado
+      const formattedEvents: EpilepsyEvent[] = (eventsData || []).map((event: any) => {
+        const patient = patientsMap.get(event.patient_id)
+        return {
+          id: event.id,
+          patientId: event.patient_id,
+          patientName: patient?.name || 'Paciente',
+          timestamp: event.timestamp,
+          type: event.event_type as 'convulsao' | 'ausencia' | 'mioclonica' | 'tonico-clonica' | 'focal',
+          duration: event.duration || 0,
+          severity: event.severity as 'leve' | 'moderada' | 'severa',
+          triggers: event.triggers || [],
+          medications: event.medications || [],
+          notes: event.notes || '',
+          wearableData: event.wearable_data || undefined
+        }
+      })
+
+      // Criar perfis de pacientes a partir dos eventos
+      const patientsMapFromEvents: { [key: string]: PatientNeurologicalProfile } = {}
+      
+      formattedEvents.forEach(event => {
+        if (!patientsMapFromEvents[event.patientId]) {
+          const patient = patientsMap.get(event.patientId)
+          const lastEvent = formattedEvents
+            .filter(e => e.patientId === event.patientId)
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+          
+          patientsMapFromEvents[event.patientId] = {
+            id: event.patientId,
+            name: event.patientName,
+            age: 0, // TODO: Adicionar campo age no users
+            diagnosis: 'Epilepsia', // TODO: Adicionar campo diagnosis
+            epilepsyType: lastEvent?.type || 'Não especificado',
+            medications: lastEvent?.medications || [],
+            seizureFrequency: formattedEvents.filter(e => e.patientId === event.patientId).length,
+            lastSeizure: lastEvent?.timestamp.split('T')[0] || '',
+            tezStatus: 'em_tratamento' as 'candidato' | 'em_tratamento' | 'respondedor' | 'nao_respondedor',
+            wearableConnected: devicesPorPaciente[event.patientId]?.length > 0 || false,
+            monitoringDevices: devicesPorPaciente[event.patientId] || []
+          }
+        }
+      })
+
+      setPatients(Object.values(patientsMapFromEvents))
+      setEvents(formattedEvents)
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {

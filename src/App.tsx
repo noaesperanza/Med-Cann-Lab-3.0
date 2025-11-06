@@ -5,6 +5,7 @@ import { ToastProvider } from './contexts/ToastContext'
 import { NoaProvider } from './contexts/NoaContext'
 import { NoaPlatformProvider } from './contexts/NoaPlatformContext'
 import { RealtimeProvider } from './contexts/RealtimeContext'
+import { UserViewProvider } from './contexts/UserViewContext'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import SmartDashboardRedirect from './components/SmartDashboardRedirect'
@@ -77,10 +78,11 @@ function App() {
   return (
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
-            <ToastProvider>
-              <NoaProvider>
-                <NoaPlatformProvider>
-                  <RealtimeProvider>
+            <UserViewProvider>
+              <ToastProvider>
+                <NoaProvider>
+                  <NoaPlatformProvider>
+                    <RealtimeProvider>
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/termos-lgpd" element={<TermosLGPD />} />
@@ -106,12 +108,13 @@ function App() {
                 
                 {/* Rotas Individualizadas por Eixo e Tipo */}
                 {/* EIXO CLÍNICA */}
-                <Route path="clinica/profissional/dashboard" element={<ProtectedRoute requiredRole="professional"><RicardoValencaDashboard /></ProtectedRoute>} />
+                <Route path="clinica/profissional/dashboard" element={<ProtectedRoute requiredRole="profissional"><RicardoValencaDashboard /></ProtectedRoute>} />
                 <Route path="clinica/profissional/dashboard-eduardo" element={<EduardoFaveretDashboard />} />
                 <Route path="clinica/profissional/pacientes" element={<PatientsManagement />} />
                 <Route path="clinica/profissional/agendamentos" element={<ProfessionalScheduling />} />
                 <Route path="clinica/profissional/relatorios" element={<Reports />} />
                 <Route path="clinica/profissional/chat-pacientes" element={<ProfessionalChat />} />
+                <Route path="clinica/profissional/chat-profissionais" element={<ProfessionalChat />} />
                 
                 <Route path="clinica/paciente/dashboard" element={<PatientDashboard />} />
                 <Route path="clinica/paciente/avaliacao-clinica" element={<ClinicalAssessment />} />
@@ -125,6 +128,7 @@ function App() {
                 <Route path="ensino/profissional/dashboard" element={<EnsinoDashboard />} />
                 <Route path="ensino/profissional/preparacao-aulas" element={<LessonPreparation />} />
                 <Route path="ensino/profissional/arte-entrevista-clinica" element={<ArteEntrevistaClinica />} />
+                <Route path="ensino/profissional/pos-graduacao-cannabis" element={<CursoEduardoFaveret />} />
                 <Route path="ensino/profissional/gestao-alunos" element={<GestaoAlunos />} />
                 
                 <Route path="ensino/aluno/dashboard" element={<AlunoDashboard />} />
@@ -177,7 +181,7 @@ function App() {
                 <Route path="reports" element={<Reports />} />
                 <Route path="debate/:debateId" element={<DebateRoom />} />
                 <Route path="patient-chat/:patientId" element={
-                  <ProtectedRoute requiredRole="professional">
+                  <ProtectedRoute requiredRole="profissional">
                     <PatientDoctorChat />
                   </ProtectedRoute>
                 } />
@@ -188,27 +192,27 @@ function App() {
                 <Route path="patients" element={<PatientsManagement />} />
                 <Route path="new-patient" element={<NewPatientForm />} />
                 <Route path="professional-scheduling" element={
-                  <ProtectedRoute requiredRole="professional">
+                  <ProtectedRoute requiredRole="profissional">
                     <ProfessionalScheduling />
                   </ProtectedRoute>
                 } />
                 <Route path="patient-appointments" element={
-                  <ProtectedRoute requiredRole="patient">
+                  <ProtectedRoute requiredRole="paciente">
                     <PatientAppointments />
                   </ProtectedRoute>
                 } />
                 <Route path="patient-noa-chat" element={
-                  <ProtectedRoute requiredRole="patient">
+                  <ProtectedRoute requiredRole="paciente">
                     <PatientNOAChat />
                   </ProtectedRoute>
                 } />
                 <Route path="clinical-assessment" element={
-                  <ProtectedRoute requiredRole="patient">
+                  <ProtectedRoute requiredRole="paciente">
                     <ClinicalAssessment />
                   </ProtectedRoute>
                 } />
                 <Route path="professional-chat" element={
-                  <ProtectedRoute requiredRole="professional">
+                  <ProtectedRoute requiredRole="profissional">
                     <ProfessionalChat />
                   </ProtectedRoute>
                 } />
@@ -280,10 +284,11 @@ function App() {
               
               <Route path="*" element={<NotFound />} />
             </Routes>
-                  </RealtimeProvider>
-                </NoaPlatformProvider>
-              </NoaProvider>
-            </ToastProvider>
+                    </RealtimeProvider>
+                  </NoaPlatformProvider>
+                </NoaProvider>
+              </ToastProvider>
+            </UserViewProvider>
           </AuthProvider>
         </BrowserRouter>
   )

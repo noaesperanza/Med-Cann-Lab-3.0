@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import { 
   Plus, 
   Search, 
@@ -49,15 +50,139 @@ const ForumCasosClinicos: React.FC = () => {
   const [selectedSpecialty, setSelectedSpecialty] = useState('all')
   const [sortBy, setSortBy] = useState('recent')
   const [showFilters, setShowFilters] = useState(false)
+  const [casePosts, setCasePosts] = useState<CasePost[]>([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    totalCases: 0,
+    totalInteractions: 0,
+    resolvedCases: 0,
+    activeParticipants: 0
+  })
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
+
+  // Carregar dados do fórum do Supabase
+  useEffect(() => {
+    loadForumData()
+  }, [])
+
+  const loadForumData = async () => {
+    try {
+      setLoading(true)
+
+      // Buscar posts do fórum
+      const { data: postsData, error: postsError } = await supabase
+        .from('forum_posts')
+        .select(`
+          *,
+          author:author_id (
+            id,
+            name,
+            type
+          )
+        `)
+        .order('created_at', { ascending: false })
+
+      if (postsError) {
+        console.error('Erro ao buscar posts do fórum:', postsError)
+        setCasePosts([])
+        setLoading(false)
+        return
+      }
+
+      // Buscar comentários para contar interações
+      const { data: commentsData } = await supabase
+        .from('forum_comments')
+        .select('post_id, author_id')
+
+      // Buscar likes
+      const { data: likesData } = await supabase
+        .from('forum_likes')
+        .select('post_id')
+
+      // Buscar views
+      const { data: viewsData } = await supabase
+        .from('forum_views')
+        .select('post_id, user_id')
+
+      // Converter posts para CasePost
+      const posts: CasePost[] = (postsData || []).map((post: any) => {
+        const author = post.author || { id: post.author_id, name: 'Autor', type: 'professional' }
+        const comments = commentsData?.filter(c => c.post_id === post.id) || []
+        const likes = likesData?.filter(l => l.post_id === post.id) || []
+        const views = viewsData?.filter(v => v.post_id === post.id) || []
+
+        // Extrair tags e categoria do conteúdo ou metadata
+        const tags = post.tags || []
+        const category = post.category || 'cannabis'
+        const complexity = post.complexity || 'medium'
+        const specialty = post.specialty || 'clinica-medica'
+        const status = post.status || 'open'
+
+        return {
+          id: post.id,
+          title: post.title,
+          content: post.content || '',
+          author: {
+            id: author.id,
+            name: author.name || 'Autor',
+            type: author.type || 'professional'
+          },
+          category: category,
+          complexity: complexity as 'low' | 'medium' | 'high',
+          specialty: specialty,
+          tags: tags,
+          createdAt: new Date(post.created_at),
+          updatedAt: new Date(post.updated_at || post.created_at),
+          views: views.length,
+          likes: likes.length,
+          comments: comments.length,
+          isBookmarked: false, // Buscar do Supabase se houver tabela de bookmarks
+          isPinned: post.is_pinned || false,
+          status: status as 'open' | 'closed' | 'resolved'
+        }
+      })
+
+      setCasePosts(posts)
+
+      // Calcular estatísticas
+      const totalCases = posts.length
+      const totalInteractions = (commentsData?.length || 0) + (likesData?.length || 0)
+      const resolvedCases = posts.filter(p => p.status === 'resolved').length
+      const uniqueParticipants = new Set([
+        ...(postsData || []).map((p: any) => p.author_id),
+        ...(commentsData || []).map((c: any) => c.author_id)
+      ]).size
+
+      setStats({
+        totalCases,
+        totalInteractions,
+        resolvedCases,
+        activeParticipants: uniqueParticipants
+      })
+
+      // Calcular contagens por categoria
+      const counts: Record<string, number> = {}
+      posts.forEach(post => {
+        counts[post.category] = (counts[post.category] || 0) + 1
+      })
+      setCategoryCounts(counts)
+
+      setLoading(false)
+    } catch (error) {
+      console.error('Erro ao carregar dados do fórum:', error)
+      setCasePosts([])
+      setLoading(false)
+    }
+  }
 
   const categories = [
-    { id: 'all', name: 'Todas as Categorias', count: 1247 },
-    { id: 'cannabis', name: 'Cannabis Medicinal', count: 456 },
-    { id: 'nefrologia', name: 'Nefrologia', count: 234 },
-    { id: 'dor-cronica', name: 'Dor Crônica', count: 189 },
-    { id: 'ansiedade', name: 'Ansiedade', count: 156 },
-    { id: 'epilepsia', name: 'Epilepsia', count: 123 },
-    { id: 'cancer', name: 'Oncologia', count: 89 }
+    { id: 'all', name: 'Todas as Categorias', count: stats.totalCases },
+    { id: 'cannabis', name: 'Cannabis Medicinal', count: categoryCounts['cannabis'] || 0 },
+    { id: 'nefrologia', name: 'Nefrologia', count: categoryCounts['nefrologia'] || 0 },
+    { id: 'dor-cronica', name: 'Dor Crônica', count: categoryCounts['dor-cronica'] || 0 },
+    { id: 'ansiedade', name: 'Ansiedade', count: categoryCounts['ansiedade'] || 0 },
+    { id: 'epilepsia', name: 'Epilepsia', count: categoryCounts['epilepsia'] || 0 },
+    { id: 'cancer', name: 'Oncologia', count: categoryCounts['cancer'] || 0 }
   ]
 
   const complexities = [
@@ -77,96 +202,7 @@ const ForumCasosClinicos: React.FC = () => {
     { id: 'anestesiologia', name: 'Anestesiologia' }
   ]
 
-  const casePosts: CasePost[] = [
-    {
-      id: '1',
-      title: 'Paciente com DRC estágio 4 e dor neuropática - Protocolo CBD',
-      content: 'Paciente de 65 anos, DRC estágio 4, com dor neuropática severa refratária aos opioides convencionais. Iniciou CBD 25mg/dia há 3 meses com melhora significativa da dor. Gostaria de compartilhar o protocolo e discutir otimizações...',
-      author: {
-        id: '1',
-        name: 'Dr. Maria Santos',
-        type: 'professional'
-      },
-      category: 'cannabis',
-      complexity: 'high',
-      specialty: 'nefrologia',
-      tags: ['DRC', 'CBD', 'Dor Neuropática', 'Protocolo'],
-      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      views: 234,
-      likes: 18,
-      comments: 7,
-      isBookmarked: false,
-      isPinned: true,
-      status: 'open'
-    },
-    {
-      id: '2',
-      title: 'Caso de ansiedade generalizada - THC vs CBD',
-      content: 'Jovem de 28 anos com ansiedade generalizada, tentou CBD puro sem sucesso. Considerando THC em baixas doses. Alguém tem experiência com protocolos de THC para ansiedade?',
-      author: {
-        id: '2',
-        name: 'Dr. Carlos Oliveira',
-        type: 'professional'
-      },
-      category: 'ansiedade',
-      complexity: 'medium',
-      specialty: 'psiquiatria',
-      tags: ['Ansiedade', 'THC', 'CBD', 'Psiquiatria'],
-      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      views: 156,
-      likes: 12,
-      comments: 5,
-      isBookmarked: true,
-      isPinned: false,
-      status: 'open'
-    },
-    {
-      id: '3',
-      title: 'Epilepsia refratária em criança - Protocolo Charlotte\'s Web',
-      content: 'Criança de 8 anos com epilepsia refratária, múltiplas crises diárias. Iniciou protocolo Charlotte\'s Web com redução de 80% das crises. Compartilhando evolução e protocolo detalhado...',
-      author: {
-        id: '3',
-        name: 'Dra. Ana Costa',
-        type: 'professional'
-      },
-      category: 'epilepsia',
-      complexity: 'high',
-      specialty: 'neurologia',
-      tags: ['Epilepsia', 'Charlotte\'s Web', 'Pediatria', 'Neurologia'],
-      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-      views: 189,
-      likes: 25,
-      comments: 9,
-      isBookmarked: false,
-      isPinned: false,
-      status: 'open'
-    },
-    {
-      id: '4',
-      title: 'Dor crônica pós-cirúrgica - Experiência com óleo sublingual',
-      content: 'Paciente pós-cirurgia de coluna com dor crônica. Óleo sublingual de CBD/THC 1:1 mostrou excelente resposta. Protocolo e dosagem que funcionaram...',
-      author: {
-        id: '4',
-        name: 'Dr. Pedro Lima',
-        type: 'professional'
-      },
-      category: 'dor-cronica',
-      complexity: 'medium',
-      specialty: 'anestesiologia',
-      tags: ['Dor Crônica', 'Óleo Sublingual', 'CBD/THC', 'Pós-Cirúrgico'],
-      createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 8 * 60 * 60 * 1000),
-      views: 98,
-      likes: 8,
-      comments: 3,
-      isBookmarked: false,
-      isPinned: false,
-      status: 'resolved'
-    }
-  ]
+  // casePosts agora vem do estado, carregado do Supabase
 
   const filteredPosts = casePosts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -407,8 +443,14 @@ const ForumCasosClinicos: React.FC = () => {
         </div>
 
         {/* Posts */}
-        <div className="space-y-6">
-          {filteredPosts.map((post) => (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-slate-400">Carregando casos clínicos...</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {filteredPosts.map((post) => (
             <div key={post.id} className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
@@ -503,10 +545,11 @@ const ForumCasosClinicos: React.FC = () => {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
 
         {/* Empty State */}
-        {filteredPosts.length === 0 && (
+        {!loading && filteredPosts.length === 0 && (
           <div className="text-center py-12">
             <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-900 dark:text-white dark:text-slate-900 dark:text-white mb-2">
@@ -522,22 +565,22 @@ const ForumCasosClinicos: React.FC = () => {
         <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="card p-6 text-center">
             <MessageCircle className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-slate-900 dark:text-white dark:text-slate-900 dark:text-white">1,247</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white dark:text-slate-900 dark:text-white">{stats.totalCases.toLocaleString()}</div>
             <div className="text-sm text-gray-600 dark:text-gray-300">Casos Discutidos</div>
           </div>
           <div className="card p-6 text-center">
             <div className="w-8 h-8 text-green-600 mx-auto mb-2 text-2xl">👍</div>
-            <div className="text-2xl font-bold text-slate-900 dark:text-white dark:text-slate-900 dark:text-white">8,456</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white dark:text-slate-900 dark:text-white">{stats.totalInteractions.toLocaleString()}</div>
             <div className="text-sm text-gray-600 dark:text-gray-300">Interações</div>
           </div>
           <div className="card p-6 text-center">
             <Award className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-slate-900 dark:text-white dark:text-slate-900 dark:text-white">234</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white dark:text-slate-900 dark:text-white">{stats.resolvedCases.toLocaleString()}</div>
             <div className="text-sm text-gray-600 dark:text-gray-300">Casos Resolvidos</div>
           </div>
           <div className="card p-6 text-center">
             <div className="w-8 h-8 text-orange-600 mx-auto mb-2 text-2xl">👥</div>
-            <div className="text-2xl font-bold text-slate-900 dark:text-white dark:text-slate-900 dark:text-white">456</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white dark:text-slate-900 dark:text-white">{stats.activeParticipants.toLocaleString()}</div>
             <div className="text-sm text-gray-600 dark:text-gray-300">Participantes Ativos</div>
           </div>
         </div>

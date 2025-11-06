@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
 import LoginDebugPanel from '../components/LoginDebugPanel'
+import { normalizeUserType, getDefaultRouteByType } from '../lib/userTypes'
 import { 
   Stethoscope, 
   User, 
@@ -25,7 +26,7 @@ const Landing: React.FC = () => {
   const navigate = useNavigate()
   const { register, login, isLoading: authLoading, user } = useAuth()
   const { success, error } = useToast()
-  const [activeProfile, setActiveProfile] = useState<'professional' | 'patient' | 'student' | null>(null)
+  const [activeProfile, setActiveProfile] = useState<'profissional' | 'paciente' | 'aluno' | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isLoginMode, setIsLoginMode] = useState(false)
@@ -61,31 +62,26 @@ const Landing: React.FC = () => {
     if (user && !authLoading) {
       console.log('🔄 Usuário logado detectado, redirecionando...', user.type)
       
-      // Redirecionar baseado no tipo de usuário usando rotas organizadas por eixo
-      switch (user.type) {
-        case 'admin':
-          navigate('/app/clinica/profissional/dashboard')
-          break
-        case 'professional':
-          // Redirecionamento especial para Dr. Eduardo Faveret - usando a mesma estrutura organizada
-          if (user.email === 'eduardoscfaveret@gmail.com' || user.name === 'Dr. Eduardo Faveret') {
-            console.log('🎯 Redirecionando Dr. Eduardo Faveret para dashboard organizado')
-            navigate('/app/clinica/profissional/dashboard-eduardo')
-          } else {
-            navigate('/app/clinica/profissional/dashboard')
-          }
-          break
-        case 'patient':
-          navigate('/app/clinica/paciente/dashboard')
-          break
-        case 'student':
-        case 'aluno': // Compatibilidade com dados antigos
-          navigate('/app/ensino/aluno/dashboard')
-          break
-        default:
-          console.warn('⚠️ Tipo de usuário não reconhecido:', user.type)
-          navigate('/app/clinica/profissional/dashboard')
+      const userType = normalizeUserType(user.type)
+      
+      // Redirecionamento especial para Dr. Eduardo Faveret
+      if (user.email === 'eduardoscfaveret@gmail.com' || user.name === 'Dr. Eduardo Faveret') {
+        console.log('🎯 Redirecionando Dr. Eduardo Faveret para dashboard organizado')
+        navigate('/app/clinica/profissional/dashboard-eduardo')
+        return
       }
+      
+      // Redirecionamento especial para Dr. Ricardo Valença (Admin) - APENAS emails específicos
+      if (user.email === 'rrvalenca@gmail.com' || user.email === 'rrvlenca@gmail.com' || user.email === 'profrvalenca@gmail.com' || user.email === 'iaianoaesperanza@gmail.com') {
+        console.log('🎯 Redirecionando Dr. Ricardo Valença para dashboard administrativo')
+        navigate('/app/ricardo-valenca-dashboard')
+        return
+      }
+      
+      // Usar rotas padrão por tipo
+      const defaultRoute = getDefaultRouteByType(userType)
+      console.log('🎯 Redirecionando para:', defaultRoute, '(tipo:', userType, ')')
+      navigate(defaultRoute)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading])
@@ -97,7 +93,7 @@ const Landing: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    userType: 'professional' as 'patient' | 'professional' | 'admin' | 'student'
+    userType: 'profissional' as 'paciente' | 'profissional' | 'admin' | 'aluno' | 'patient' | 'professional' | 'student' // Aceita ambos para compatibilidade
   })
   const [loginData, setLoginData] = useState({
     email: '',
@@ -122,26 +118,22 @@ const Landing: React.FC = () => {
 
     setIsLoading(true)
     try {
-      console.log('📝 Iniciando registro:', registerData)
-      await register(registerData.email, registerData.password, registerData.userType, registerData.name)
+      // Garantir que o tipo selecionado está sendo usado
+      const userTypeToRegister = registerData.userType || localStorage.getItem('selectedUserType') || 'paciente'
+      console.log('📝 Iniciando registro:', { ...registerData, userType: userTypeToRegister })
+      await register(registerData.email, registerData.password, userTypeToRegister, registerData.name)
       success('Conta criada com sucesso!')
       setRegisterData({
         name: '',
         email: '',
         password: '',
         confirmPassword: '',
-        userType: 'professional'
+        userType: 'profissional'
       })
       // Redirecionar baseado no tipo de usuário usando rotas organizadas por eixo
-      if (registerData.userType === 'admin') {
-        navigate('/app/clinica/profissional/dashboard')
-      } else if (registerData.userType === 'patient') {
-        navigate('/app/clinica/paciente/dashboard')
-      } else if (registerData.userType === 'student' || registerData.userType === 'aluno') {
-        navigate('/app/ensino/aluno/dashboard')
-      } else {
-        navigate('/app/clinica/profissional/dashboard')
-      }
+      const userType = normalizeUserType(registerData.userType)
+      const defaultRoute = getDefaultRouteByType(userType)
+      navigate(defaultRoute)
     } catch (err: any) {
       console.error('❌ Erro no handleRegister:', err)
       const errorMessage = err?.message || 'Erro ao criar conta. Tente novamente.'
@@ -194,7 +186,7 @@ const Landing: React.FC = () => {
 
   const profiles = [
     {
-      id: 'professional',
+      id: 'profissional',
       title: 'Profissional da Saúde',
       subtitle: 'CRM, CRO, Enfermeiros',
       icon: <Stethoscope className="w-8 h-8" />,
@@ -207,7 +199,7 @@ const Landing: React.FC = () => {
       ]
     },
     {
-      id: 'patient',
+      id: 'paciente',
       title: 'Paciente',
       subtitle: 'Cuidado Personalizado',
       icon: <User className="w-8 h-8" />,
@@ -220,7 +212,7 @@ const Landing: React.FC = () => {
       ]
     },
     {
-      id: 'student',
+      id: 'aluno',
       title: 'Aluno',
       subtitle: 'Formação Médica',
       icon: <GraduationCap className="w-8 h-8" />,

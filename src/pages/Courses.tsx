@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   BookOpen, 
@@ -11,13 +11,41 @@ import {
   Plus,
   FileText,
   Video,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Loader2
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+
+interface Course {
+  id: string
+  title: string
+  description: string
+  category: string
+  duration: string
+  students: number
+  rating: number
+  price: string
+  originalPrice: string | null
+  level: string
+  image?: string
+  instructor: string
+  lessons: number
+  completed: boolean
+  progress: number
+  isLive: boolean
+  nextClass: string | null
+  badges: string[]
+  href?: string
+}
 
 const Courses: React.FC = () => {
+  const { user } = useAuth()
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadType, setUploadType] = useState<'ebook' | 'youtube'>('ebook')
+  const [courses, setCourses] = useState<Course[]>([])
+  const [loading, setLoading] = useState(true)
 
   const categories = [
     { id: 'all', name: 'Todos os Cursos' },
@@ -28,109 +56,158 @@ const Courses: React.FC = () => {
     { id: 'community-health', name: 'Saúde Comunitária' }
   ]
 
-  const courses = [
-    {
-      id: 1,
-      title: 'Arte da Entrevista Clínica',
-      description: 'Curso completo de 8 horas sobre metodologia AEC e técnicas de entrevista clínica humanizada',
-      category: 'interview',
-      duration: '8h',
-      students: 1247,
-      rating: 4.9,
-      price: 'R$ 299',
-      originalPrice: 'R$ 399',
-      level: 'Intermediário',
-      image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI1MCIgdmlld0JveD0iMCAwIDQwMCAyNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBmaWxsPSIjOEI1Q0Y2Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTMwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDgiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+QjzwvdGV4dD4KPC9zdmc+',
-      instructor: 'Dr. João Silva',
-      lessons: 12,
-      completed: false,
-      progress: 0,
-      isLive: false,
-      nextClass: null,
-      badges: ['AEC', 'Entrevista', 'Humanização']
-    },
-    {
-      id: 2,
-      title: 'Pós-Graduação Cannabis Medicinal',
-      description: 'Especialização completa de 12 meses com 520 horas em cannabis medicinal e terapêutica',
-      category: 'cannabis',
-      duration: '520h',
-      students: 856,
-      rating: 4.8,
-      price: 'R$ 2.999',
-      originalPrice: 'R$ 3.999',
-      level: 'Avançado',
-      image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI1MCIgdmlld0JveD0iMCAwIDQwMCAyNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBmaWxsPSIjOEI1Q0Y2Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTMwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDgiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+QjzwvdGV4dD4KPC9zdmc+',
-      instructor: 'Dra. Maria Santos',
-      lessons: 48,
-      completed: false,
-      progress: 0,
-      isLive: true,
-      nextClass: '2025-01-15T14:00:00Z',
-      badges: ['Cannabis', 'Pós-Graduação', 'Certificação']
-    },
-    {
-      id: 3,
-      title: 'Sistema IMRE Triaxial',
-      description: 'Avaliação clínica completa com 28 blocos especializados em nefrologia e medicina interna',
-      category: 'clinical',
-      duration: '16h',
-      students: 634,
-      rating: 4.7,
-      price: 'R$ 199',
-      originalPrice: 'R$ 299',
-      level: 'Básico',
-      image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI1MCIgdmlld0JveD0iMCAwIDQwMCAyNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBmaWxsPSIjOEI1Q0Y2Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTMwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDgiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+QjzwvdGV4dD4KPC9zdmc+',
-      instructor: 'Dr. Carlos Oliveira',
-      lessons: 8,
-      completed: true,
-      progress: 100,
-      isLive: false,
-      nextClass: null,
-      badges: ['IMRE', 'Nefrologia', 'Avaliação']
-    },
-    {
-      id: 4,
-      title: 'Metodologia AEC Avançada',
-      description: 'Técnicas avançadas de escuta clínica e comunicação terapêutica',
-      category: 'clinical',
-      duration: '12h',
-      students: 423,
-      rating: 4.6,
-      price: 'R$ 249',
-      originalPrice: 'R$ 349',
-      level: 'Avançado',
-      image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI1MCIgdmlld0JveD0iMCAwIDQwMCAyNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBmaWxsPSIjOEI1Q0Y2Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTMwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDgiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+QjzwvdGV4dD4KPC9zdmc+',
-      instructor: 'Dra. Ana Costa',
-      lessons: 15,
-      completed: false,
-      progress: 45,
-      isLive: true,
-      nextClass: '2025-01-12T10:00:00Z',
-      badges: ['AEC', 'Comunicação', 'Terapêutica']
-    },
-    {
-      id: 5,
-      title: 'Jardins de Cura - Formação para ACS',
-      description: 'Programa de Formação para Agentes Comunitários de Saúde em Prevenção e Cuidado de Dengue',
-      category: 'community-health',
-      duration: '40h',
-      students: 0,
-      rating: 0,
-      price: 'Gratuito',
-      originalPrice: null,
-      level: 'Básico a Intermediário',
-      image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI1MCIgdmlld0JveD0iMCAwIDQwMCAyNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBmaWxsPSIjOEI1Q0Y2Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTMwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDgiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+QjzwvdGV4dD4KPC9zdmc+',
-      instructor: 'Projeto Jardins de Cura',
-      lessons: 33,
-      completed: false,
-      progress: 0,
-      isLive: false,
-      nextClass: null,
-      badges: ['ACS', 'Saúde Comunitária', 'Dengue'],
-      href: '/curso-jardins-de-cura'
+  // Carregar cursos do Supabase
+  useEffect(() => {
+    loadCourses()
+  }, [user])
+
+  const loadCourses = async () => {
+    try {
+      setLoading(true)
+
+      // Buscar cursos publicados
+      const { data: coursesData, error: coursesError } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+
+      if (coursesError) {
+        console.error('Erro ao buscar cursos:', coursesError)
+        setCourses([])
+        setLoading(false)
+        return
+      }
+
+      if (!coursesData || coursesData.length === 0) {
+        setCourses([])
+        setLoading(false)
+        return
+      }
+
+      // Para cada curso, buscar dados adicionais
+      const coursesWithStats = await Promise.all(
+        coursesData.map(async (course) => {
+          // Contar alunos inscritos
+          const { count: studentsCount } = await supabase
+            .from('course_enrollments')
+            .select('*', { count: 'exact', head: true })
+            .eq('course_id', course.id)
+
+          // Contar módulos/aulas
+          const { count: lessonsCount } = await supabase
+            .from('course_modules')
+            .select('*', { count: 'exact', head: true })
+            .eq('course_id', course.id)
+
+          // Buscar avaliações (ratings) - se a tabela existir
+          let avgRating = 0
+          try {
+            const { data: ratingsData } = await supabase
+              .from('course_ratings')
+              .select('rating')
+              .eq('course_id', course.id)
+
+            if (ratingsData && ratingsData.length > 0) {
+              avgRating = ratingsData.reduce((sum, r) => sum + (r.rating || 0), 0) / ratingsData.length
+            }
+          } catch (error) {
+            // Tabela course_ratings pode não existir ainda
+            console.log('Tabela course_ratings não encontrada, usando rating padrão')
+          }
+
+          // Buscar progresso do usuário atual (se logado)
+          let userProgress = 0
+          let userCompleted = false
+          if (user) {
+            const { data: enrollmentData } = await supabase
+              .from('course_enrollments')
+              .select('progress, completed')
+              .eq('course_id', course.id)
+              .eq('user_id', user.id)
+              .single()
+
+            if (enrollmentData) {
+              userProgress = enrollmentData.progress || 0
+              userCompleted = enrollmentData.completed || false
+            }
+          }
+
+          // Determinar categoria baseado no título/descrição
+          const titleLower = course.title?.toLowerCase() || ''
+          const descLower = course.description?.toLowerCase() || ''
+          let category = 'all'
+          if (titleLower.includes('aec') || titleLower.includes('entrevista') || descLower.includes('entrevista')) {
+            category = 'interview'
+          } else if (titleLower.includes('cannabis') || descLower.includes('cannabis')) {
+            category = 'cannabis'
+          } else if (titleLower.includes('imre') || descLower.includes('imre') || descLower.includes('nefrologia')) {
+            category = 'clinical'
+          } else if (titleLower.includes('acs') || titleLower.includes('jardins') || descLower.includes('comunitária')) {
+            category = 'community-health'
+          } else if (titleLower.includes('certificação') || titleLower.includes('pós-graduação')) {
+            category = 'certification'
+          }
+
+          // Determinar badges baseado no título/descrição
+          const badges: string[] = []
+          if (titleLower.includes('aec')) badges.push('AEC')
+          if (titleLower.includes('entrevista')) badges.push('Entrevista')
+          if (titleLower.includes('cannabis')) badges.push('Cannabis')
+          if (titleLower.includes('pós-graduação')) badges.push('Pós-Graduação')
+          if (titleLower.includes('imre')) badges.push('IMRE')
+          if (titleLower.includes('nefrologia')) badges.push('Nefrologia')
+          if (titleLower.includes('acs')) badges.push('ACS')
+          if (titleLower.includes('comunitária')) badges.push('Saúde Comunitária')
+          if (titleLower.includes('dengue')) badges.push('Dengue')
+          if (titleLower.includes('humanização')) badges.push('Humanização')
+          if (titleLower.includes('comunicação')) badges.push('Comunicação')
+          if (titleLower.includes('terapêutica')) badges.push('Terapêutica')
+          if (titleLower.includes('certificação')) badges.push('Certificação')
+          if (titleLower.includes('avaliação')) badges.push('Avaliação')
+
+          // Formatar preço
+          const price = course.price ? `R$ ${parseFloat(course.price).toFixed(2).replace('.', ',')}` : 'Gratuito'
+          const originalPrice = course.original_price ? `R$ ${parseFloat(course.original_price).toFixed(2).replace('.', ',')}` : null
+
+          // Verificar se há próxima aula (is_live)
+          const isLive = course.is_live || false
+          const nextClass = course.next_class_date || null
+
+          // Determinar nível
+          const level = course.level || 'Intermediário'
+
+          return {
+            id: course.id,
+            title: course.title || 'Curso sem título',
+            description: course.description || '',
+            category,
+            duration: course.duration || '0h',
+            students: studentsCount || 0,
+            rating: Math.round(avgRating * 10) / 10, // Arredondar para 1 casa decimal
+            price,
+            originalPrice,
+            level,
+            instructor: course.instructor || 'Instrutor',
+            lessons: lessonsCount || 0,
+            completed: userCompleted,
+            progress: userProgress,
+            isLive,
+            nextClass,
+            badges: badges.length > 0 ? badges : ['Curso'],
+            href: course.slug ? `/course/${course.slug}` : `/course/${course.id}`
+          } as Course
+        })
+      )
+
+      setCourses(coursesWithStats)
+    } catch (error) {
+      console.error('Erro ao carregar cursos:', error)
+      setCourses([])
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
 
   const filteredCourses = selectedCategory === 'all' 
     ? courses 
@@ -145,6 +222,17 @@ const Courses: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen overflow-x-hidden w-full flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-primary-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-300">Carregando cursos...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -245,10 +333,12 @@ const Courses: React.FC = () => {
                     <Users className="w-4 h-4 mr-2" />
                     {course.students.toLocaleString()} alunos
                   </div>
-                  <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                    <Star className="w-4 h-4 mr-2 text-yellow-500" />
-                    {course.rating} ({course.lessons} aulas)
-                  </div>
+                  {course.rating > 0 && (
+                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                      <Star className="w-4 h-4 mr-2 text-yellow-500" />
+                      {course.rating.toFixed(1)} ({course.lessons} aulas)
+                    </div>
+                  )}
                   <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                     <Award className="w-4 h-4 mr-2" />
                     {course.level}

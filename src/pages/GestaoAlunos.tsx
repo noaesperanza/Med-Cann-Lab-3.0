@@ -46,106 +46,102 @@ const GestaoAlunos: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Mock data - será substituído por dados reais do Supabase
-  const mockStudents: Student[] = [
-    {
-      id: '1',
-      name: 'Ana Costa',
-      email: 'ana.costa@example.com',
-      phone: '(21) 99999-9999',
-      course: 'cannabis-medicinal',
-      courseName: 'Pós-Graduação Cannabis Medicinal',
-      progress: 75,
-      completedModules: 6,
-      totalModules: 8,
-      lastAccess: '2025-01-15',
-      status: 'active',
-      enrolledAt: '2024-03-01'
-    },
-    {
-      id: '2',
-      name: 'Carlos Lima',
-      email: 'carlos.lima@example.com',
-      phone: '(11) 98888-8888',
-      course: 'arte-entrevista',
-      courseName: 'Arte da Entrevista Clínica',
-      progress: 90,
-      completedModules: 4,
-      totalModules: 5,
-      lastAccess: '2025-01-14',
-      status: 'active',
-      enrolledAt: '2024-02-15'
-    },
-    {
-      id: '3',
-      name: 'Maria Santos',
-      email: 'maria.santos@example.com',
-      phone: '(11) 97777-7777',
-      course: 'cannabis-medicinal',
-      courseName: 'Pós-Graduação Cannabis Medicinal',
-      progress: 45,
-      completedModules: 3,
-      totalModules: 8,
-      lastAccess: '2025-01-10',
-      status: 'active',
-      enrolledAt: '2024-05-10'
-    },
-    {
-      id: '4',
-      name: 'João Silva',
-      email: 'joao.silva@example.com',
-      phone: '(21) 96666-6666',
-      course: 'arte-entrevista',
-      courseName: 'Arte da Entrevista Clínica',
-      progress: 100,
-      completedModules: 5,
-      totalModules: 5,
-      lastAccess: '2025-01-12',
-      status: 'completed',
-      enrolledAt: '2023-12-01'
-    },
-    {
-      id: '5',
-      name: 'Fernanda Oliveira',
-      email: 'fernanda.oliveira@example.com',
-      phone: '(11) 95555-5555',
-      course: 'cannabis-medicinal',
-      courseName: 'Pós-Graduação Cannabis Medicinal',
-      progress: 25,
-      completedModules: 2,
-      totalModules: 8,
-      lastAccess: '2024-12-20',
-      status: 'inactive',
-      enrolledAt: '2024-08-01'
-    },
-    {
-      id: '6',
-      name: 'Roberto Alves',
-      email: 'roberto.alves@example.com',
-      phone: '(21) 94444-4444',
-      course: 'arte-entrevista',
-      courseName: 'Arte da Entrevista Clínica',
-      progress: 60,
-      completedModules: 3,
-      totalModules: 5,
-      lastAccess: '2025-01-13',
-      status: 'active',
-      enrolledAt: '2024-04-15'
-    }
-  ]
-
   useEffect(() => {
     loadStudents()
-  }, [])
+  }, [user])
 
   const loadStudents = async () => {
     try {
       setLoading(true)
-      // TODO: Carregar alunos reais do Supabase
-      // Por enquanto usando dados mockados
-      setStudents(mockStudents)
+
+      // Buscar alunos (usuários do tipo 'aluno' ou 'student') da tabela users
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, name, email, phone, type, created_at')
+        .eq('type', 'aluno')
+        .order('created_at', { ascending: false })
+
+      if (usersError) {
+        console.error('Erro ao buscar alunos:', usersError)
+        // Se não houver alunos, deixar lista vazia
+        setStudents([])
+        return
+      }
+
+      if (!usersData || usersData.length === 0) {
+        // Não há alunos reais na plataforma (apenas pacientes fictícios)
+        setStudents([])
+        return
+      }
+
+      // Buscar inscrições em cursos para cada aluno
+      const userIds = usersData.map(u => u.id)
+      const { data: enrollments, error: enrollmentsError } = await supabase
+        .from('course_enrollments')
+        .select('*, course:courses(*)')
+        .in('user_id', userIds)
+
+      // Buscar módulos dos cursos para calcular progresso
+      const courseIds = enrollments?.map((e: any) => e.course_id) || []
+      const { data: modules } = await supabase
+        .from('course_modules')
+        .select('course_id')
+        .in('course_id', courseIds)
+
+      // Agrupar módulos por curso
+      const modulesByCourse = new Map<string, number>()
+      modules?.forEach((m: any) => {
+        const count = modulesByCourse.get(m.course_id) || 0
+        modulesByCourse.set(m.course_id, count + 1)
+      })
+
+      // Converter para formato Student
+      const studentsList: Student[] = usersData.map((user: any) => {
+        // Encontrar inscrição do aluno
+        const enrollment = enrollments?.find((e: any) => e.user_id === user.id)
+        const course = enrollment?.course
+
+        // Determinar curso baseado no título
+        let courseType: 'arte-entrevista' | 'cannabis-medicinal' = 'cannabis-medicinal'
+        let courseName = 'Pós-Graduação Cannabis Medicinal'
+        
+        if (course?.title?.toLowerCase().includes('arte') || course?.title?.toLowerCase().includes('entrevista')) {
+          courseType = 'arte-entrevista'
+          courseName = 'Arte da Entrevista Clínica'
+        }
+
+        const totalModules = modulesByCourse.get(course?.id) || 0
+        const completedModules = enrollment ? Math.floor((enrollment.progress || 0) / 100 * totalModules) : 0
+        const progress = enrollment?.progress || 0
+
+        // Determinar status
+        let status: 'active' | 'inactive' | 'completed' = 'active'
+        if (enrollment?.status === 'completed') {
+          status = 'completed'
+        } else if (enrollment?.status === 'dropped' || progress === 0) {
+          status = 'inactive'
+        }
+
+        return {
+          id: user.id,
+          name: user.name || 'Aluno',
+          email: user.email || '',
+          phone: user.phone || undefined,
+          course: courseType,
+          courseName: courseName,
+          progress: Math.round(progress),
+          completedModules: completedModules,
+          totalModules: totalModules,
+          lastAccess: enrollment?.updated_at || user.created_at || new Date().toISOString(),
+          status: status,
+          enrolledAt: enrollment?.enrolled_at || user.created_at || new Date().toISOString()
+        }
+      })
+
+      setStudents(studentsList)
     } catch (error) {
       console.error('Erro ao carregar alunos:', error)
+      setStudents([])
     } finally {
       setLoading(false)
     }

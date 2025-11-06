@@ -21,6 +21,7 @@ import {
   GraduationCap,
   Microscope
 } from 'lucide-react'
+import { normalizeUserType, UserType } from '../lib/userTypes'
 
 // Use BanknoteIcon as an alias for financial operations
 const BanknoteIcon = (props: any) => (
@@ -32,7 +33,7 @@ const BanknoteIcon = (props: any) => (
 )
 
 interface SidebarProps {
-  userType?: 'patient' | 'professional' | 'student' | 'admin' | 'unconfirmed'
+  userType?: UserType | 'patient' | 'professional' | 'student' | 'admin' | 'unconfirmed' // Aceita ambos para compatibilidade
   isMobile?: boolean
   isOpen?: boolean
   onClose?: () => void
@@ -40,7 +41,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-  userType = 'patient', 
+  userType = 'paciente', 
   isMobile = false, 
   isOpen = false, 
   onClose,
@@ -60,6 +61,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   const setMobileOpen = isMobile ? onClose : setIsMobileOpen
 
   const getNavigationItems = () => {
+    // Normalizar tipo de usuário (aceita tanto português quanto inglês)
+    const normalizedType = userType ? normalizeUserType(userType) : 'paciente'
+    
     const adminItems = [
       // OUTROS
       { 
@@ -121,14 +125,17 @@ const Sidebar: React.FC<SidebarProps> = ({
     ]
 
     let specificItems = []
-    switch (userType) {
-      case 'patient':
+    switch (normalizedType) {
+      case 'paciente':
+      case 'patient': // Compatibilidade
         specificItems = patientItems
         break
-      case 'professional':
+      case 'profissional':
+      case 'professional': // Compatibilidade
         specificItems = professionalItems
         break
-      case 'student':
+      case 'aluno':
+      case 'student': // Compatibilidade
         specificItems = studentItems
         break
       case 'admin':
@@ -211,7 +218,11 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-4 space-y-2">
-        {(userType === 'professional' || userType === 'admin') ? (
+        {(() => {
+          // Normalizar tipo de usuário para verificar se deve mostrar eixos
+          const normalizedType = userType ? normalizeUserType(userType) : 'paciente'
+          return normalizedType === 'profissional' || normalizedType === 'admin'
+        })() ? (
           <>
             {/* Seletor de Eixos - No Topo */}
             <div className={`mb-6 pb-4 border-b border-slate-700 ${isCollapsed ? 'px-2' : ''}`}>
@@ -370,7 +381,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 
 
       {/* System Stats */}
-      {!isCollapsed && userType === 'admin' && (
+      {!isCollapsed && (() => {
+        const normalizedType = userType ? normalizeUserType(userType) : 'paciente'
+        return normalizedType === 'admin'
+      })() && (
         <div className="p-4 border-t border-slate-700">
           <h3 className="text-base font-semibold text-slate-400 mb-4">Status do Sistema</h3>
           <div className="space-y-3">
@@ -385,7 +399,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* User Profile - Only for non-professional users */}
-      {userType !== 'professional' && userType !== 'admin' && (
+      {(() => {
+        // Normalizar tipo de usuário
+        const normalizedType = userType ? normalizeUserType(userType) : 'paciente'
+        return normalizedType !== 'profissional' && normalizedType !== 'admin'
+      })() && (
         <div className="p-6 border-t border-slate-700">
           <Link
             to="/app/profile"

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import { 
   Calendar,
   Clock,
@@ -59,98 +60,98 @@ const ProfessionalScheduling: React.FC = () => {
     priority: 'normal'
   })
 
-  // Mock dados de pacientes
-  const patients = [
-    { id: 1, name: 'Maria Silva', email: 'maria.silva@email.com', phone: '(11) 99999-9999' },
-    { id: 2, name: 'João Santos', email: 'joao.santos@email.com', phone: '(11) 88888-8888' },
-    { id: 3, name: 'Ana Costa', email: 'ana.costa@email.com', phone: '(11) 77777-7777' },
-    { id: 4, name: 'Carlos Lima', email: 'carlos.lima@email.com', phone: '(11) 66666-6666' }
-  ]
+  const [patients, setPatients] = useState<any[]>([])
+  const [appointments, setAppointments] = useState<any[]>([])
+  const [analyticsData, setAnalyticsData] = useState<any>(null)
 
-  // Mock dados de agendamentos
-  const [appointments, setAppointments] = useState([
-    {
-      id: 1,
-      patientId: 1,
-      patientName: 'Maria Silva',
-      date: '2024-02-15',
-      time: '14:00',
-      type: 'presencial',
-      specialty: 'Cardiologia',
-      service: 'Consulta de retorno',
-      room: 'Sala 201',
-      status: 'agendado',
-      duration: 60,
-      priority: 'normal',
-      notes: 'Trazer exames de sangue',
-      rating: 5,
-      patientComment: 'Excelente atendimento!',
-      createdAt: '2024-01-15'
-    },
-    {
-      id: 2,
-      patientId: 2,
-      patientName: 'João Santos',
-      date: '2024-02-16',
-      time: '10:00',
-      type: 'online',
-      specialty: 'Endocrinologia',
-      service: 'Consulta online',
-      room: 'Plataforma digital',
-      status: 'agendado',
-      duration: 45,
-      priority: 'high',
-      notes: 'Consulta por videochamada',
-      rating: 4,
-      patientComment: 'Muito bom, esclareceu minhas dúvidas.',
-      createdAt: '2024-01-16'
-    },
-    {
-      id: 3,
-      patientId: 3,
-      patientName: 'Ana Costa',
-      date: '2024-02-17',
-      time: '09:00',
-      type: 'presencial',
-      specialty: 'Clínica Geral',
-      service: 'Primeira consulta',
-      room: 'Sala 101',
-      status: 'agendado',
-      duration: 90,
-      priority: 'normal',
-      notes: 'Avaliação completa',
-      rating: null,
-      patientComment: null,
-      createdAt: '2024-01-17'
+  // Carregar dados do Supabase
+  useEffect(() => {
+    if (user) {
+      loadData()
     }
-  ])
+  }, [user])
 
-  // Mock dados de analytics
-  const analyticsData = {
-    totalAppointments: 156,
-    completedAppointments: 142,
-    cancelledAppointments: 8,
-    averageRating: 4.7,
-    totalRevenue: 12500,
-    monthlyStats: [
-      { month: 'Jan', appointments: 45, revenue: 3500, rating: 4.6 },
-      { month: 'Fev', appointments: 52, revenue: 4200, rating: 4.8 },
-      { month: 'Mar', appointments: 48, revenue: 3800, rating: 4.7 },
-      { month: 'Abr', appointments: 41, revenue: 3200, rating: 4.5 }
-    ],
-    specialtyStats: [
-      { specialty: 'Cardiologia', appointments: 45, revenue: 4500 },
-      { specialty: 'Endocrinologia', appointments: 38, revenue: 3800 },
-      { specialty: 'Clínica Geral', appointments: 35, revenue: 2800 },
-      { specialty: 'Neurologia', appointments: 28, revenue: 3500 }
-    ],
-    timeSlotStats: [
-      { time: '08:00-09:00', appointments: 12, utilization: 80 },
-      { time: '09:00-10:00', appointments: 18, utilization: 90 },
-      { time: '10:00-11:00', appointments: 15, utilization: 75 },
-      { time: '14:00-15:00', appointments: 20, utilization: 100 },
-      { time: '15:00-16:00', appointments: 16, utilization: 80 }
-    ]
+  const loadData = async () => {
+    if (!user) return
+
+    try {
+      // Buscar agendamentos do profissional
+      const { data: appointmentsData, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('professional_id', user.id)
+        .order('appointment_date', { ascending: true })
+
+      if (appointmentsError) {
+        console.error('Erro ao carregar agendamentos:', appointmentsError)
+        return
+      }
+
+      // Buscar pacientes únicos
+      const patientIds = [...new Set((appointmentsData || []).map((apt: any) => apt.patient_id))]
+      const { data: patientsData } = await supabase
+        .from('users')
+        .select('id, name, email, phone')
+        .in('id', patientIds)
+
+      // Transformar agendamentos
+      const formattedAppointments = (appointmentsData || []).map((apt: any) => {
+        const appointmentDate = new Date(apt.appointment_date)
+        const patient = patientsData?.find((p: any) => p.id === apt.patient_id)
+        return {
+          id: apt.id,
+          patientId: apt.patient_id,
+          patientName: patient?.name || 'Paciente',
+          date: appointmentDate.toISOString().split('T')[0],
+          time: appointmentDate.toTimeString().slice(0, 5),
+          type: apt.is_remote ? 'online' : 'presencial',
+          specialty: apt.type || 'Cannabis Medicinal',
+          service: apt.title || 'Consulta',
+          room: apt.location || (apt.is_remote ? 'Plataforma digital' : 'Sala'),
+          status: apt.status,
+          duration: apt.duration || 60,
+          priority: 'normal',
+          notes: apt.description || apt.notes,
+          rating: apt.rating,
+          patientComment: apt.comment,
+          createdAt: new Date(apt.created_at).toISOString().split('T')[0]
+        }
+      })
+
+      setAppointments(formattedAppointments)
+      setPatients(patientsData || [])
+
+      // Calcular analytics
+      const totalAppointments = formattedAppointments.length
+      const completedAppointments = formattedAppointments.filter(a => a.status === 'completed').length
+      const cancelledAppointments = formattedAppointments.filter(a => a.status === 'cancelled').length
+      const ratings = formattedAppointments.filter(a => a.rating).map(a => a.rating)
+      const averageRating = ratings.length > 0 
+        ? ratings.reduce((a, b) => a + b, 0) / ratings.length
+        : 0
+
+      // Buscar transações para calcular receita
+      const { data: transactions } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('user_id', user.id)
+        .eq('status', 'completed')
+
+      const totalRevenue = transactions?.reduce((sum, t) => sum + parseFloat(t.amount), 0) || 0
+
+      setAnalyticsData({
+        totalAppointments,
+        completedAppointments,
+        cancelledAppointments,
+        averageRating: Math.round(averageRating * 10) / 10,
+        totalRevenue,
+        monthlyStats: [], // TODO: Calcular estatísticas mensais
+        specialtyStats: [], // TODO: Calcular estatísticas por especialidade
+        timeSlotStats: [] // TODO: Calcular estatísticas por horário
+      })
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error)
+    }
   }
 
   // Horários disponíveis
@@ -257,41 +258,77 @@ const ProfessionalScheduling: React.FC = () => {
   }
 
   // Função para salvar agendamento
-  const handleSaveAppointment = () => {
-    const newAppointment = {
-      id: appointments.length + 1,
-      patientId: parseInt(appointmentData.patientId),
-      patientName: appointmentData.patientName,
-      date: appointmentData.date,
-      time: appointmentData.time,
-      type: appointmentData.type,
-      specialty: appointmentData.specialty,
-      service: appointmentData.service,
-      room: appointmentData.room,
-      status: 'agendado',
-      duration: appointmentData.duration,
-      priority: appointmentData.priority,
-      notes: appointmentData.notes,
-      rating: null,
-      patientComment: null,
-      createdAt: new Date().toISOString().split('T')[0]
+  const handleSaveAppointment = async () => {
+    if (!appointmentData.patientId || !appointmentData.date || !appointmentData.time || !user) {
+      alert('Preencha todos os campos obrigatórios.')
+      return
     }
 
-    setAppointments([...appointments, newAppointment])
-    setShowAppointmentModal(false)
-    setAppointmentData({
-      patientId: '',
-      patientName: '',
-      date: '',
-      time: '',
-      type: 'presencial',
-      specialty: '',
-      service: '',
-      room: '',
-      notes: '',
-      duration: 60,
-      priority: 'normal'
-    })
+    try {
+      // 1. Verificar disponibilidade do horário
+      const appointmentDateTime = new Date(`${appointmentData.date}T${appointmentData.time}`)
+      
+      // Verificar conflitos
+      const { data: conflicting } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('professional_id', user.id)
+        .eq('appointment_date', appointmentDateTime.toISOString())
+        .in('status', ['scheduled', 'confirmed'])
+        .maybeSingle()
+      
+      if (conflicting) {
+        alert('Este horário já está ocupado. Por favor, escolha outro horário.')
+        return
+      }
+      
+      // 2. Salvar no Supabase
+      const { data, error } = await supabase
+        .from('appointments')
+        .insert({
+          patient_id: appointmentData.patientId,
+          professional_id: user.id,
+          appointment_date: appointmentDateTime.toISOString(),
+          appointment_time: appointmentData.time,
+          appointment_type: appointmentData.service || 'Consulta',
+          specialty: appointmentData.specialty || 'Cannabis Medicinal',
+          status: 'scheduled',
+          type: appointmentData.type === 'online' ? 'consultation' : 'in-person',
+          is_remote: appointmentData.type === 'online',
+          duration: appointmentData.duration || 60,
+          description: appointmentData.notes || '',
+          location: appointmentData.room || (appointmentData.type === 'online' ? 'Plataforma digital' : 'Consultório'),
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+      
+      if (error) throw error
+      
+      // 3. Recarregar dados
+      await loadData()
+      
+      // 4. Fechar modal e limpar formulário
+      setShowAppointmentModal(false)
+      setAppointmentData({
+        patientId: '',
+        patientName: '',
+        date: '',
+        time: '',
+        type: 'presencial',
+        specialty: '',
+        service: '',
+        room: '',
+        notes: '',
+        duration: 60,
+        priority: 'normal'
+      })
+      
+      alert('Agendamento criado com sucesso!')
+    } catch (error: any) {
+      console.error('Erro ao criar agendamento:', error)
+      alert(`Erro ao criar agendamento: ${error.message || 'Tente novamente.'}`)
+    }
   }
 
   // Função para renderizar calendário

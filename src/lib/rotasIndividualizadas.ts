@@ -1,6 +1,8 @@
 // Sistema de Rotas Individualizadas - MedCannLab 3.0
 // Estrutura: /eixo/tipo/usuario/acao
 
+import { UserType, normalizeUserType, getDefaultRouteByType } from './userTypes'
+
 export interface RouteConfig {
   path: string
   component: React.ComponentType
@@ -249,18 +251,9 @@ export const getUserRoutes = (eixo: string, tipo: string): UserRoute | null => {
 }
 
 export const getDefaultRoute = (userType: string): string => {
-  switch (userType) {
-    case 'admin':
-      return '/app/clinica/profissional/dashboard'
-    case 'professional':
-      return '/app/clinica/profissional/dashboard'
-    case 'patient':
-      return '/app/clinica/paciente/dashboard'
-    case 'aluno':
-      return '/app/ensino/aluno/dashboard'
-    default:
-      return '/app/clinica/profissional/dashboard'
-  }
+  // Normalizar tipo de usuário (aceita tanto português quanto inglês)
+  const normalizedType = normalizeUserType(userType)
+  return getDefaultRouteByType(normalizedType)
 }
 
 export const getBreadcrumbs = (path: string): Array<{label: string, path: string}> => {

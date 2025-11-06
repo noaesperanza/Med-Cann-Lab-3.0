@@ -100,32 +100,54 @@ const MedicalRecord: React.FC<MedicalRecordProps> = ({ patientId, className = ''
   const loadPatients = async () => {
     try {
       setLoading(true)
-      // Mock data - substituir por query real do Supabase
-      const mockPatients: Patient[] = [
-        {
-          id: '1',
-          name: 'Maria Santos',
-          cpf: '123.456.789-00',
-          age: 35,
-          phone: '(11) 99999-9999',
-          email: 'maria@email.com',
-          lastVisit: '2024-01-15',
-          status: 'active'
-        },
-        {
-          id: '2',
-          name: 'João Silva',
-          cpf: '987.654.321-00',
-          age: 42,
-          phone: '(11) 88888-8888',
-          email: 'joao@email.com',
-          lastVisit: '2024-01-10',
-          status: 'active'
-        }
-      ]
-      setPatients(mockPatients)
+      
+      // Buscar pacientes da tabela users
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, name, email, phone, type, created_at')
+        .eq('type', 'patient')
+        .order('created_at', { ascending: false })
+
+      if (usersError) {
+        console.error('Erro ao buscar pacientes:', usersError)
+        setPatients([])
+        return
+      }
+
+      // Buscar última visita de cada paciente através de clinical_assessments
+      const patientIds = usersData?.map(u => u.id) || []
+      const { data: assessments, error: assessmentsError } = await supabase
+        .from('clinical_assessments')
+        .select('patient_id, created_at')
+        .in('patient_id', patientIds)
+        .order('created_at', { ascending: false })
+
+      // Mapear última visita por paciente
+      const lastVisitMap = new Map<string, string>()
+      if (!assessmentsError && assessments) {
+        assessments.forEach(a => {
+          if (!lastVisitMap.has(a.patient_id)) {
+            lastVisitMap.set(a.patient_id, a.created_at)
+          }
+        })
+      }
+
+      // Converter para formato Patient
+      const patientsList: Patient[] = (usersData || []).map(u => ({
+        id: u.id,
+        name: u.name || 'Paciente',
+        cpf: '', // CPF não está na tabela users, pode ser adicionado depois
+        age: 0, // Age pode ser calculado ou adicionado depois
+        phone: u.phone || '',
+        email: u.email || '',
+        lastVisit: lastVisitMap.get(u.id) || u.created_at || '',
+        status: 'active' as const
+      }))
+
+      setPatients(patientsList)
     } catch (error) {
       console.error('Erro ao carregar pacientes:', error)
+      setPatients([])
     } finally {
       setLoading(false)
     }
@@ -133,57 +155,94 @@ const MedicalRecord: React.FC<MedicalRecordProps> = ({ patientId, className = ''
 
   const loadClinicalReports = async (patientId: string) => {
     try {
-      // Mock data - substituir por query real do Supabase
-      const mockReports: ClinicalReport[] = [
-        {
-          id: '1',
-          patientId,
-          patientName: selectedPatient?.name || 'Paciente',
-          date: '2024-01-15',
-          type: 'initial_assessment',
-          status: 'shared',
-          sharedWith: ['eduardoscfaveret@gmail.com'],
-          nftToken: 'NFT-123456',
-          blockchainHash: '0x1234567890abcdef',
-          content: {
-            chiefComplaint: 'Dor de cabeça frequente e dificuldade de concentração',
-            history: 'Paciente relata episódios de cefaleia há 3 meses, associados a estresse no trabalho',
-            physicalExam: 'PA: 120/80, FC: 72 bpm, sem alterações neurológicas',
-            assessment: 'Cefaleia tensional secundária ao estresse',
-            plan: 'Acompanhamento neurológico, técnicas de relaxamento, avaliação de ansiedade',
-            rationalities: {
-              biomedical: {
-                diagnosis: 'Cefaleia tensional',
-                treatment: 'Analgésicos, relaxantes musculares',
-                monitoring: 'Escala de dor, frequência dos episódios'
-              },
-              traditionalChinese: {
-                pattern: 'Deficiência de Qi do Fígado',
-                treatment: 'Acupuntura, fitoterapia chinesa',
-                points: 'GB20, LI4, LV3'
-              },
-              ayurvedic: {
-                dosha: 'Vata-Pitta desequilibrado',
-                treatment: 'Dieta pacificadora, meditação',
-                herbs: 'Ashwagandha, Brahmi'
-              },
-              homeopathic: {
-                remedy: 'Natrum muriaticum',
-                potency: '30CH',
-                indication: 'Cefaleia por estresse emocional'
-              },
-              integrative: {
-                approach: 'Abordagem multidisciplinar',
-                team: 'Neurologista, psicólogo, acupunturista',
-                timeline: '3 meses de acompanhamento'
+      // Buscar relatórios clínicos do Supabase
+      const { data: reports, error: reportsError } = await supabase
+        .from('clinical_reports')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false })
+
+      if (reportsError) {
+        console.error('Erro ao buscar relatórios:', reportsError)
+        setClinicalReports([])
+        return
+      }
+
+      // Buscar também avaliações clínicas que podem ter relatórios
+      const { data: assessments, error: assessmentsError } = await supabase
+        .from('clinical_assessments')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false })
+
+      const reportsList: ClinicalReport[] = []
+
+      // Converter clinical_reports para ClinicalReport
+      if (reports) {
+        reports.forEach(r => {
+          const content = r.content || {}
+          reportsList.push({
+            id: r.id,
+            patientId: r.patient_id,
+            patientName: selectedPatient?.name || 'Paciente',
+            date: r.created_at || new Date().toISOString(),
+            type: (r.report_type as 'initial_assessment' | 'follow_up' | 'emergency') || 'initial_assessment',
+            status: (r.status as 'draft' | 'completed' | 'shared' | 'validated') || 'draft',
+            sharedWith: r.shared_with || [],
+            nftToken: r.nft_token,
+            blockchainHash: r.blockchain_hash,
+            content: {
+              chiefComplaint: content.chiefComplaint || '',
+              history: content.history || '',
+              physicalExam: content.physicalExam || '',
+              assessment: content.assessment || '',
+              plan: content.plan || '',
+              rationalities: content.rationalities || {
+                biomedical: {},
+                traditionalChinese: {},
+                ayurvedic: {},
+                homeopathic: {},
+                integrative: {}
               }
             }
-          }
-        }
-      ]
-      setClinicalReports(mockReports)
+          })
+        })
+      }
+
+      // Converter clinical_assessments com status completed para relatórios
+      if (!assessmentsError && assessments) {
+        assessments.filter(a => a.status === 'completed').forEach(a => {
+          const data = a.data || {}
+          reportsList.push({
+            id: a.id,
+            patientId: a.patient_id,
+            patientName: selectedPatient?.name || 'Paciente',
+            date: a.completed_at || a.created_at || new Date().toISOString(),
+            type: a.assessment_type === 'initial' ? 'initial_assessment' : 'follow_up',
+            status: 'completed',
+            sharedWith: [],
+            content: {
+              chiefComplaint: data.chiefComplaint || data.complaintList?.join(', ') || '',
+              history: data.history || '',
+              physicalExam: data.physicalExam || '',
+              assessment: data.assessment || '',
+              plan: data.plan || '',
+              rationalities: data.rationalities || {
+                biomedical: {},
+                traditionalChinese: {},
+                ayurvedic: {},
+                homeopathic: {},
+                integrative: {}
+              }
+            }
+          })
+        })
+      }
+
+      setClinicalReports(reportsList)
     } catch (error) {
       console.error('Erro ao carregar relatórios:', error)
+      setClinicalReports([])
     }
   }
 

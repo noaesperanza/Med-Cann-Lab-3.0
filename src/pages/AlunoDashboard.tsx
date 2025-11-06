@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   ArrowLeft, 
@@ -36,6 +36,7 @@ import {
 import { useNoaPlatform } from '../contexts/NoaPlatformContext'
 import NoaConversationalInterface from '../components/NoaConversationalInterface'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import SlidePlayer from '../components/SlidePlayer'
 
 const AlunoDashboard: React.FC = () => {
@@ -45,77 +46,92 @@ const AlunoDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'redes-sociais' | 'noticias' | 'simulacoes' | 'teste' | 'ferramentas'>('dashboard')
   const [isSlidePlayerOpen, setIsSlidePlayerOpen] = useState(false)
   const [selectedSlideId, setSelectedSlideId] = useState<string | undefined>(undefined)
+  const [mainCourse, setMainCourse] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Curso principal: Arte da Entrevista Clínica
-  const mainCourse = {
-    id: 1,
-    title: 'A Arte da Entrevista Clínica',
-    subtitle: 'Curso Online - Plataforma Nôa Esperança',
-    description: 'Aprenda a metodologia Arte da Entrevista Clínica (AEC) aplicada à prática clínica moderna. Desenvolva habilidades de comunicação, planejamento, coleta de informações e tomada de decisão clínica.',
-    progress: 0,
-    status: 'Em Andamento',
-    instructor: 'Equipe Nôa Esperança',
-    duration: '40 horas',
-    nextClass: null,
-    color: 'from-green-500 to-teal-500',
-    logo: '🎯',
-    modules: [
-      {
-        id: 'introducao',
-        title: 'Introdução à Arte da Entrevista Clínica',
-        description: 'Fundamentos e conceitos básicos da metodologia AEC',
-        progress: 0,
-        status: 'Disponível',
-        duration: '2 horas',
-        lessons: [
-          'Conheça a Plataforma Nôa Esperança para a Arte da Entrevista Clínica',
-          'O método A Arte da Entrevista Clínica',
-          'Introdução à arte da entrevista clínica',
-          'Aspectos de comunicação em saúde'
-        ]
-      },
-      {
-        id: 'labpec',
-        title: 'LabPEC - Laboratório de Performance em Entrevista Clínica',
-        description: 'Módulos práticos de performance em entrevista clínica',
-        progress: 0,
-        status: 'Disponível',
-        duration: '12 horas',
-        lessons: [
-          'LabPEC - Planejamento de consultas',
-          'LabPEC - Aberturas exponenciais',
-          'LabPEC - Desenvolvimento indiciário',
-          'LabPEC - Fechamento consensual',
-          'LabPEC - Abordagem centrada no paciente',
-          'Como participar do LabPEC (Laboratório de Performance em Entrevista Clínica)'
-        ]
-      },
-      {
-        id: 'coleta-avaliacao',
-        title: 'Coleta de Informações e Avaliação',
-        description: 'Técnicas de coleta de informações e tomada de decisão clínica',
-        progress: 0,
-        status: 'Disponível',
-        duration: '8 horas',
-        lessons: [
-          'Coleta de informações',
-          'Avaliação e tomada de decisão',
-          'Encerramento da entrevista clínica'
-        ]
-      },
-      {
-        id: 'aulas-presenciais',
-        title: 'Aulas Presenciais e Online',
-        description: 'Acesso às aulas presenciais e sessões no Zoom',
-        progress: 0,
-        status: 'Disponível',
-        duration: '18 horas',
-        lessons: [
-          'As aulas presenciais',
-          'Como acessar as aulas do ZOOM A Arte da Entrevista Clínica?'
-        ]
+  // Carregar cursos do Supabase
+  useEffect(() => {
+    if (user) {
+      loadCourses()
+    }
+  }, [user])
+
+  const loadCourses = async () => {
+    if (!user) return
+
+    try {
+      // Buscar cursos em que o aluno está inscrito
+      const { data: enrollments, error: enrollmentsError } = await supabase
+        .from('course_enrollments')
+        .select(`
+          *,
+          course:courses(*)
+        `)
+        .eq('user_id', user.id)
+
+      if (enrollmentsError) {
+        console.error('Erro ao carregar cursos:', enrollmentsError)
+        return
       }
-    ]
+
+      // Buscar módulos dos cursos
+      if (enrollments && enrollments.length > 0) {
+        const courseIds = enrollments.map((e: any) => e.course_id)
+        const { data: modules } = await supabase
+          .from('course_modules')
+          .select('*')
+          .in('course_id', courseIds)
+          .order('order_index', { ascending: true })
+
+        // Transformar para o formato esperado
+        const firstEnrollment = enrollments[0]
+        const course = firstEnrollment.course
+        const courseModules = (modules || []).filter((m: any) => m.course_id === course.id)
+
+        setMainCourse({
+          id: course.id,
+          title: course.title,
+          subtitle: 'Curso Online - Plataforma Nôa Esperança',
+          description: course.description || '',
+          progress: firstEnrollment.progress || 0,
+          status: firstEnrollment.status === 'completed' ? 'Concluído' : 'Em Andamento',
+          instructor: 'Equipe Nôa Esperança',
+          duration: `${course.duration || 0} horas`,
+          nextClass: null,
+          color: 'from-green-500 to-teal-500',
+          logo: '🎯',
+          modules: courseModules.map((m: any) => ({
+            id: m.id,
+            title: m.title,
+            description: m.description || '',
+            progress: 0, // TODO: Calcular progresso por módulo
+            status: 'Disponível',
+            duration: `${m.duration || 0} minutos`,
+            lessons: [] // TODO: Adicionar lições
+          }))
+        })
+      } else {
+        // Se não houver cursos, usar curso padrão (hardcoded como fallback)
+        setMainCourse({
+          id: 'default',
+          title: 'A Arte da Entrevista Clínica',
+          subtitle: 'Curso Online - Plataforma Nôa Esperança',
+          description: 'Aprenda a metodologia Arte da Entrevista Clínica (AEC) aplicada à prática clínica moderna.',
+          progress: 0,
+          status: 'Em Andamento',
+          instructor: 'Equipe Nôa Esperança',
+          duration: '40 horas',
+          nextClass: null,
+          color: 'from-green-500 to-teal-500',
+          logo: '🎯',
+          modules: []
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao carregar cursos:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -134,6 +150,28 @@ const AlunoDashboard: React.FC = () => {
     return 'bg-yellow-500'
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <Clock className="w-12 h-12 mx-auto mb-4 animate-spin text-green-500" />
+          <p className="text-slate-400">Carregando cursos...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!mainCourse) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <BookOpen className="w-12 h-12 mx-auto mb-4 text-slate-600" />
+          <p className="text-slate-400">Nenhum curso encontrado</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       {/* Header */}
@@ -146,7 +184,7 @@ const AlunoDashboard: React.FC = () => {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-white">Dashboard do Aluno</h1>
-              <p className="text-slate-400">Área de Ensino - A Arte da Entrevista Clínica</p>
+              <p className="text-slate-400">Área de Ensino - {mainCourse.title}</p>
             </div>
           </div>
           
@@ -416,7 +454,7 @@ const AlunoDashboard: React.FC = () => {
                   {/* Módulos do Curso */}
                   <div className="space-y-4 w-full overflow-x-hidden">
                     <h4 className="text-lg font-semibold text-white mb-4 break-words">Módulos do Curso</h4>
-                    {mainCourse.modules.map((module, moduleIndex) => (
+                    {mainCourse.modules.map((module: any, moduleIndex: number) => (
                       <div key={module.id} className="bg-slate-700 rounded-lg p-4 md:p-5 hover:bg-slate-650 transition-colors border border-slate-600 overflow-hidden w-full max-w-full">
                         <div className="flex items-start justify-between mb-4 gap-2 flex-wrap">
                           <div className="flex-1 min-w-0">
@@ -438,7 +476,7 @@ const AlunoDashboard: React.FC = () => {
                               <div className="ml-0 md:ml-11 space-y-2 w-full overflow-x-hidden">
                                 <p className="text-xs text-slate-500 font-medium mb-2 break-words">Aulas deste módulo:</p>
                                 <div className="grid grid-cols-1 gap-2 w-full overflow-x-hidden">
-                                  {module.lessons.map((lesson, lessonIndex) => (
+                                  {module.lessons && module.lessons.map((lesson: any, lessonIndex: number) => (
                                     <div key={lessonIndex} className="flex items-center space-x-2 text-sm text-slate-300 bg-slate-800 rounded-lg p-2 hover:bg-slate-750 transition-colors overflow-hidden w-full max-w-full">
                                       <div className="w-1.5 h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
                                       <span className="flex-1 break-words min-w-0">{lesson}</span>

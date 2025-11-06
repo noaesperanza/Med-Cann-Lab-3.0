@@ -522,25 +522,50 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
   ): Promise<AIResponse> {
     const lowerMessage = message.toLowerCase()
 
-    // Coletar informações da investigação
+    // REASONING: Analisar resposta antes de fazer próxima pergunta
     if (!assessment.investigation.mainComplaint) {
-      // Primeira resposta: motivo principal
+      // Primeira resposta: motivo principal - ANALISAR ANTES DE CONTINUAR
       assessment.investigation.mainComplaint = message
       
-      return this.createResponse(
-        'Entendi. Agora vou aprofundar a **investigação** sobre o motivo da sua consulta.\n\n' +
-        'Por favor, responda as seguintes questões para construir um quadro clínico detalhado:\n\n' +
-        '**1. Sintomas:**\n' +
-        '- Quando começaram esses sintomas?\n' +
-        '- Com que frequência ocorrem?\n' +
-        '- Onde você sente o desconforto? (localização específica)\n' +
-        '- Como descreveria a intensidade e o tipo? (latejante, pressão, pontada, etc.)\n' +
-        '- Há algo que melhora ou piora esses sintomas?\n' +
-        '- Está associado a outros sintomas? (náuseas, visão turva, sensibilidade à luz, etc.)\n\n' +
-        'Por favor, descreva cada um desses aspectos detalhadamente.',
-        0.9,
-        'assessment'
-      )
+      // Usar reasoning para analisar a resposta e gerar próxima pergunta adaptada
+      const analysisPrompt = `Você é Nôa Esperança, IA Residente especializada em avaliações clínicas usando a metodologia Arte da Entrevista Clínica (AEC) e protocolo IMRE.
+
+O paciente acabou de responder sobre o motivo principal da consulta:
+"${message}"
+
+ANÁLISE NECESSÁRIA (REASONING):
+1. Identifique os principais pontos mencionados
+2. Identifique informações faltantes ou que precisam ser aprofundadas
+3. Gere UMA pergunta específica e adaptada baseada na resposta, seguindo o protocolo IMRE
+4. A pergunta deve ser empática, clara e focada em aprofundar o entendimento
+
+IMPORTANTE:
+- NÃO faça múltiplas perguntas de uma vez
+- Faça UMA pergunta por vez, pausadamente
+- Adapte a pergunta baseada no que o paciente disse
+- Use linguagem empática e acolhedora
+- Siga a metodologia AEC (escuta ativa, rapport, validação)
+
+Gere apenas a próxima pergunta, sem explicações adicionais.`
+      
+      try {
+        // Usar Assistant API para gerar pergunta adaptada
+        const nextQuestion = await this.generateReasoningQuestion(analysisPrompt, message, assessment)
+        
+        return this.createResponse(
+          `Entendi. Obrigada por compartilhar.\n\n${nextQuestion}`,
+          0.95,
+          'assessment'
+        )
+      } catch (error) {
+        // Fallback se reasoning falhar
+        return this.createResponse(
+          'Entendi. Agora preciso aprofundar a investigação.\n\n' +
+          '**Quando começaram esses sintomas?** Por favor, descreva quando você notou pela primeira vez o que está sentindo.',
+          0.9,
+          'assessment'
+        )
+      }
     }
 
     if (!assessment.investigation.symptoms || assessment.investigation.symptoms.length === 0) {
@@ -560,56 +585,120 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     }
 
     if (!assessment.investigation.medicalHistory) {
-      // Terceira resposta: história médica
+      // Terceira resposta: história médica - REASONING
       assessment.investigation.medicalHistory = message
       
-      return this.createResponse(
-        'Obrigado. Agora preciso saber sobre sua **história familiar**:\n\n' +
-        '**3. História Familiar:**\n' +
-        '- Há histórico de doenças crônicas na família? (diabetes, hipertensão, doenças renais, etc.)\n' +
-        '- Há alguma condição hereditária conhecida?\n\n' +
-        'Compartilhe informações sobre sua história familiar.',
-        0.9,
-        'assessment'
-      )
+      const analysisPrompt = `Você é Nôa Esperança, IA Residente especializada em avaliações clínicas usando a metodologia Arte da Entrevista Clínica (AEC) e protocolo IMRE.
+
+CONTEXTO DA AVALIAÇÃO:
+- Motivo principal: "${assessment.investigation.mainComplaint}"
+- Sintomas: "${assessment.investigation.symptoms?.[0] || ''}"
+- História médica: "${message}"
+
+ANÁLISE NECESSÁRIA (REASONING):
+1. Analise a história médica fornecida
+2. Identifique pontos importantes
+3. Gere UMA pergunta específica sobre história familiar, adaptada ao contexto
+
+IMPORTANTE:
+- Faça UMA pergunta por vez, pausadamente
+- Adapte baseado no contexto clínico já coletado
+- Use linguagem empática
+
+Gere apenas a próxima pergunta sobre história familiar.`
+      
+      try {
+        const nextQuestion = await this.generateReasoningQuestion(analysisPrompt, message, assessment)
+        return this.createResponse(
+          `Obrigada por compartilhar sua história médica.\n\n${nextQuestion}`,
+          0.95,
+          'assessment'
+        )
+      } catch (error) {
+        return this.createResponse(
+          'Obrigada por compartilhar sua história médica.\n\n' +
+          '**Há histórico de doenças crônicas na sua família?** (diabetes, hipertensão, doenças renais, etc.) Por favor, compartilhe informações sobre sua história familiar.',
+          0.9,
+          'assessment'
+        )
+      }
     }
 
     if (!assessment.investigation.familyHistory) {
-      // Quarta resposta: história familiar
+      // Quarta resposta: história familiar - REASONING
       assessment.investigation.familyHistory = message
       
-      return this.createResponse(
-        'Excelente. Agora sobre **medicações e hábitos de vida**:\n\n' +
-        '**4. Medicações Atuais:**\n' +
-        '- Você usa algum medicamento atualmente? Quais?\n' +
-        '- Já tentou tratamento com cannabis medicinal?\n' +
-        '- Tem alergias ou reações adversas a medicamentos?\n\n' +
-        '**5. Hábitos de Vida:**\n' +
-        '- Como é sua alimentação? (regular, vegetariana, etc.)\n' +
-        '- Pratica exercícios físicos? Com que frequência?\n' +
-        '- Fuma ou consome álcool? Com que frequência?\n' +
-        '- Como descreveria seu nível de estresse?\n\n' +
-        'Por favor, descreva suas medicações e hábitos de vida.',
-        0.9,
-        'assessment'
-      )
+      const analysisPrompt = `Você é Nôa Esperança, IA Residente especializada em avaliações clínicas usando a metodologia Arte da Entrevista Clínica (AEC) e protocolo IMRE.
+
+CONTEXTO DA AVALIAÇÃO:
+- Motivo principal: "${assessment.investigation.mainComplaint}"
+- História médica: "${assessment.investigation.medicalHistory}"
+- História familiar: "${message}"
+
+ANÁLISE NECESSÁRIA (REASONING):
+1. Analise a história familiar
+2. Gere UMA pergunta específica sobre medicações atuais, adaptada ao contexto
+
+IMPORTANTE:
+- Faça UMA pergunta por vez, pausadamente
+- Foque em medicações primeiro, depois hábitos de vida
+- Use linguagem empática
+
+Gere apenas a próxima pergunta sobre medicações atuais.`
+      
+      try {
+        const nextQuestion = await this.generateReasoningQuestion(analysisPrompt, message, assessment)
+        return this.createResponse(
+          `Obrigada por compartilhar sua história familiar.\n\n${nextQuestion}`,
+          0.95,
+          'assessment'
+        )
+      } catch (error) {
+        return this.createResponse(
+          'Obrigada por compartilhar sua história familiar.\n\n' +
+          '**Você usa algum medicamento atualmente?** Quais? E já tentou tratamento com cannabis medicinal?',
+          0.9,
+          'assessment'
+        )
+      }
     }
 
     if (!assessment.investigation.medications) {
-      // Quinta resposta: medicações
+      // Quinta resposta: medicações - REASONING
       assessment.investigation.medications = message
       
-      return this.createResponse(
-        'Entendido. Agora sobre seus **hábitos de vida**:\n\n' +
-        '**5. Hábitos de Vida:**\n' +
-        '- Como é sua alimentação? (regular, vegetariana, etc.)\n' +
-        '- Pratica exercícios físicos? Com que frequência?\n' +
-        '- Fuma ou consome álcool? Com que frequência?\n' +
-        '- Como descreveria seu nível de estresse?\n\n' +
-        'Por favor, descreva seus hábitos de vida.',
-        0.9,
-        'assessment'
-      )
+      const analysisPrompt = `Você é Nôa Esperança, IA Residente especializada em avaliações clínicas usando a metodologia Arte da Entrevista Clínica (AEC) e protocolo IMRE.
+
+CONTEXTO DA AVALIAÇÃO:
+- Motivo principal: "${assessment.investigation.mainComplaint}"
+- Medicações: "${message}"
+
+ANÁLISE NECESSÁRIA (REASONING):
+1. Analise as medicações mencionadas
+2. Gere UMA pergunta específica sobre hábitos de vida, adaptada ao contexto
+
+IMPORTANTE:
+- Faça UMA pergunta por vez, pausadamente
+- Foque em um aspecto dos hábitos de vida por vez (alimentação, exercícios, etc.)
+- Use linguagem empática
+
+Gere apenas a próxima pergunta sobre hábitos de vida.`
+      
+      try {
+        const nextQuestion = await this.generateReasoningQuestion(analysisPrompt, message, assessment)
+        return this.createResponse(
+          `Obrigada pelas informações sobre suas medicações.\n\n${nextQuestion}`,
+          0.95,
+          'assessment'
+        )
+      } catch (error) {
+        return this.createResponse(
+          'Obrigada pelas informações sobre suas medicações.\n\n' +
+          '**Como é sua alimentação?** (regular, vegetariana, etc.) E pratica exercícios físicos?',
+          0.9,
+          'assessment'
+        )
+      }
     }
 
     if (!assessment.investigation.lifestyle) {
@@ -1413,6 +1502,36 @@ Sempre seja empática, profissional e focada na saúde do paciente.`,
     }
 
     return null
+  }
+
+  /**
+   * Gerar pergunta usando reasoning (análise pausada)
+   * Analisa a resposta anterior e gera próxima pergunta adaptada
+   */
+  private async generateReasoningQuestion(
+    analysisPrompt: string,
+    userResponse: string,
+    assessment: IMREAssessmentState
+  ): Promise<string> {
+    try {
+      // Usar Assistant API para gerar pergunta com reasoning
+      const assistantResult = await this.assistantIntegration.sendMessage(
+        analysisPrompt,
+        assessment.userId,
+        'assessment'
+      )
+      
+      if (assistantResult?.content) {
+        return assistantResult.content
+      }
+      
+      // Fallback: retornar pergunta genérica
+      return 'Por favor, continue descrevendo...'
+    } catch (error) {
+      console.error('Erro ao gerar pergunta com reasoning:', error)
+      // Fallback: retornar pergunta genérica
+      return 'Por favor, continue descrevendo...'
+    }
   }
 
   private async getAssistantResponse(

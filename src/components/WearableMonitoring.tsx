@@ -19,6 +19,8 @@ import {
   Share,
   RefreshCw
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 
 interface WearableDevice {
   id: string
@@ -58,85 +60,17 @@ interface WearableMonitoringProps {
 }
 
 const WearableMonitoring: React.FC<WearableMonitoringProps> = ({ className = '' }) => {
+  const { user } = useAuth()
   const [devices, setDevices] = useState<WearableDevice[]>([])
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const [realTimeData, setRealTimeData] = useState<RealTimeData | null>(null)
   const [loading, setLoading] = useState(true)
   const [isMonitoring, setIsMonitoring] = useState(false)
 
-  // Dados mockados para dispositivos wearables
-  const mockDevices: WearableDevice[] = [
-    {
-      id: '1',
-      patientId: '1',
-      patientName: 'Maria Silva Santos',
-      deviceType: 'smartwatch',
-      brand: 'Apple',
-      model: 'Apple Watch Series 9',
-      batteryLevel: 85,
-      connectionStatus: 'connected',
-      lastSync: '2024-01-20T15:30:00Z',
-      dataTypes: ['heart_rate', 'movement', 'temperature', 'sleep'],
-      alerts: [
-        {
-          id: '1',
-          type: 'seizure_detected',
-          severity: 'high',
-          timestamp: '2024-01-20T14:30:00Z',
-          message: 'Possível evento epiléptico detectado',
-          acknowledged: false
-        }
-      ]
-    },
-    {
-      id: '2',
-      patientId: '2',
-      patientName: 'João Pedro Oliveira',
-      deviceType: 'fitness_tracker',
-      brand: 'Fitbit',
-      model: 'Fitbit Sense 2',
-      batteryLevel: 45,
-      connectionStatus: 'low_battery',
-      lastSync: '2024-01-20T15:25:00Z',
-      dataTypes: ['heart_rate', 'oxygen_saturation', 'movement', 'stress'],
-      alerts: [
-        {
-          id: '2',
-          type: 'low_battery',
-          severity: 'medium',
-          timestamp: '2024-01-20T15:25:00Z',
-          message: 'Bateria baixa - 45%',
-          acknowledged: true
-        }
-      ]
-    },
-    {
-      id: '3',
-      patientId: '3',
-      patientName: 'Ana Clara Mendes',
-      deviceType: 'medical_device',
-      brand: 'Empatica',
-      model: 'E4 Wristband',
-      batteryLevel: 92,
-      connectionStatus: 'connected',
-      lastSync: '2024-01-20T15:35:00Z',
-      dataTypes: ['heart_rate', 'temperature', 'movement', 'eda'],
-      alerts: []
-    }
-  ]
-
-  const mockRealTimeData: RealTimeData = {
-    heartRate: 78,
-    oxygenSaturation: 98,
-    movement: 2.3,
-    temperature: 36.8,
-    stressLevel: 25,
-    sleepQuality: 85,
-    seizureRisk: 15
-  }
-
   useEffect(() => {
-    loadDevices()
+    if (user) {
+      loadDevices()
+    }
     if (isMonitoring) {
       startRealTimeMonitoring()
     }
@@ -145,13 +79,74 @@ const WearableMonitoring: React.FC<WearableMonitoringProps> = ({ className = '' 
         stopRealTimeMonitoring()
       }
     }
-  }, [isMonitoring])
+  }, [user, isMonitoring])
 
   const loadDevices = async () => {
+    if (!user) return
+    
     setLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setDevices(mockDevices)
+      // Buscar dispositivos wearables do Supabase
+      const { data: devicesData, error: devicesError } = await supabase
+        .from('wearable_devices')
+        .select('*')
+        .order('last_sync', { ascending: false })
+
+      if (devicesError) {
+        console.error('Erro ao carregar dispositivos:', devicesError)
+        throw devicesError
+      }
+
+      // Buscar informações dos pacientes
+      const patientIds = [...new Set((devicesData || []).map((d: any) => d.patient_id))]
+      let patientsMap = new Map()
+      if (patientIds.length > 0) {
+        const { data: patientsData } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .in('id', patientIds)
+
+        patientsMap = new Map((patientsData || []).map((p: any) => [p.id, p]))
+      }
+
+      // Buscar dados mais recentes de cada dispositivo
+      const devicesWithData = await Promise.all(
+        (devicesData || []).map(async (device: any) => {
+          const { data: latestData } = await supabase
+            .from('wearable_data')
+            .select('*')
+            .eq('device_id', device.id)
+            .order('timestamp', { ascending: false })
+            .limit(1)
+            .single()
+
+          return { device, latestData }
+        })
+      )
+
+      // Transformar dispositivos para o formato esperado
+      const formattedDevices: WearableDevice[] = devicesWithData.map(({ device, latestData }) => {
+        const patient = patientsMap.get(device.patient_id)
+        const connectionStatus = device.connection_status === 'connected' 
+          ? (device.battery_level < 20 ? 'low_battery' : 'connected')
+          : device.connection_status as 'connected' | 'disconnected' | 'low_battery' | 'error'
+
+        return {
+          id: device.id,
+          patientId: device.patient_id,
+          patientName: patient?.name || 'Paciente',
+          deviceType: device.device_type,
+          brand: device.brand || '',
+          model: device.model || '',
+          batteryLevel: device.battery_level || 100,
+          connectionStatus,
+          lastSync: device.last_sync || device.created_at,
+          dataTypes: device.data_types || [],
+          alerts: [] // TODO: Implementar sistema de alertas
+        }
+      })
+
+      setDevices(formattedDevices)
     } catch (error) {
       console.error('Erro ao carregar dispositivos:', error)
     } finally {
@@ -159,25 +154,67 @@ const WearableMonitoring: React.FC<WearableMonitoringProps> = ({ className = '' 
     }
   }
 
-  const startRealTimeMonitoring = () => {
-    // Simular dados em tempo real
-    const interval = setInterval(() => {
-      setRealTimeData(prev => ({
-        heartRate: prev ? prev.heartRate + (Math.random() - 0.5) * 10 : 78,
-        oxygenSaturation: prev ? Math.max(95, Math.min(100, prev.oxygenSaturation + (Math.random() - 0.5) * 2)) : 98,
-        movement: prev ? Math.max(0, prev.movement + (Math.random() - 0.5) * 0.5) : 2.3,
-        temperature: prev ? Math.max(36, Math.min(38, prev.temperature + (Math.random() - 0.5) * 0.2)) : 36.8,
-        stressLevel: prev ? Math.max(0, Math.min(100, prev.stressLevel + (Math.random() - 0.5) * 5)) : 25,
-        sleepQuality: prev ? Math.max(0, Math.min(100, prev.sleepQuality + (Math.random() - 0.5) * 3)) : 85,
-        seizureRisk: prev ? Math.max(0, Math.min(100, prev.seizureRisk + (Math.random() - 0.5) * 2)) : 15
-      }))
-    }, 2000)
+  const [monitoringInterval, setMonitoringInterval] = useState<NodeJS.Timeout | null>(null)
 
-    return () => clearInterval(interval)
+  const startRealTimeMonitoring = async () => {
+    if (!selectedDevice) return
+
+    // Buscar dados mais recentes do dispositivo
+    const fetchLatestData = async () => {
+      try {
+        const { data: latestData } = await supabase
+          .from('wearable_data')
+          .select('*')
+          .eq('device_id', selectedDevice)
+          .order('timestamp', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (latestData) {
+          // Agrupar dados por tipo
+          const dataMap: { [key: string]: number } = {}
+          const { data: recentData } = await supabase
+            .from('wearable_data')
+            .select('*')
+            .eq('device_id', selectedDevice)
+            .gte('timestamp', new Date(Date.now() - 5 * 60 * 1000).toISOString()) // Últimos 5 minutos
+
+          recentData?.forEach((d: any) => {
+            if (d.data_type === 'heart_rate') dataMap.heartRate = d.value
+            if (d.data_type === 'oxygen_saturation') dataMap.oxygenSaturation = d.value
+            if (d.data_type === 'movement') dataMap.movement = d.value
+            if (d.data_type === 'temperature') dataMap.temperature = d.value
+          })
+
+          setRealTimeData({
+            heartRate: dataMap.heartRate || 78,
+            oxygenSaturation: dataMap.oxygenSaturation || 98,
+            movement: dataMap.movement || 2.3,
+            temperature: dataMap.temperature || 36.8,
+            stressLevel: 25, // TODO: Calcular a partir de dados reais
+            sleepQuality: 85, // TODO: Calcular a partir de dados reais
+            seizureRisk: 15 // TODO: Calcular a partir de dados reais
+          })
+        }
+      } catch (error) {
+        console.error('Erro ao buscar dados em tempo real:', error)
+      }
+    }
+
+    // Buscar dados imediatamente
+    await fetchLatestData()
+
+    // Configurar intervalo para atualizar a cada 5 segundos
+    const interval = setInterval(fetchLatestData, 5000)
+    setMonitoringInterval(interval)
   }
 
   const stopRealTimeMonitoring = () => {
-    // Parar monitoramento
+    if (monitoringInterval) {
+      clearInterval(monitoringInterval)
+      setMonitoringInterval(null)
+    }
+    setRealTimeData(null)
   }
 
   const getConnectionStatusColor = (status: string) => {

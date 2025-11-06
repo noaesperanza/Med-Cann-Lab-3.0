@@ -21,6 +21,8 @@ import {
   Image,
   Link
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 
 interface Curso {
   id: string
@@ -56,6 +58,7 @@ interface GestaoCursosProps {
 }
 
 const GestaoCursos: React.FC<GestaoCursosProps> = ({ className = '' }) => {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'cursos' | 'modulos' | 'analytics'>('cursos')
   const [cursos, setCursos] = useState<Curso[]>([])
   const [modulos, setModulos] = useState<Modulo[]>([])
@@ -63,104 +66,86 @@ const GestaoCursos: React.FC<GestaoCursosProps> = ({ className = '' }) => {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
 
-  // Dados mockados para cursos de Cannabis Medicinal
-  const mockCursos: Curso[] = [
-    {
-      id: '1',
-      titulo: 'Fundamentos da Cannabis Medicinal',
-      descricao: 'Curso introdutório sobre os princípios básicos da cannabis medicinal',
-      duracao: 40,
-      modulos: 8,
-      alunos: 45,
-      avaliacao: 4.8,
-      status: 'ativo',
-      thumbnail: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjOEI1Q0Y2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5GQ008L3RleHQ+PC9zdmc+',
-      categoria: 'Cannabis Medicinal',
-      nivel: 'iniciante',
-      preco: 299,
-      dataCriacao: '2024-01-15',
-      ultimaAtualizacao: '2024-01-20'
-    },
-    {
-      id: '2',
-      titulo: 'Protocolo IMRE na Prática Clínica',
-      descricao: 'Aplicação prática do protocolo IMRE em consultas de cannabis medicinal',
-      duracao: 60,
-      modulos: 12,
-      alunos: 32,
-      avaliacao: 4.9,
-      status: 'ativo',
-      thumbnail: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRkY2QjAwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JTVJFPC90ZXh0Pjwvc3ZnPg==',
-      categoria: 'Protocolos Clínicos',
-      nivel: 'intermediario',
-      preco: 499,
-      dataCriacao: '2024-01-10',
-      ultimaAtualizacao: '2024-01-18'
-    },
-    {
-      id: '3',
-      titulo: 'Gestão de Pacientes com Cannabis',
-      descricao: 'Estratégias avançadas para acompanhamento e gestão de pacientes',
-      duracao: 80,
-      modulos: 15,
-      alunos: 28,
-      avaliacao: 4.7,
-      status: 'rascunho',
-      thumbnail: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRkY0NDQ0Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5HUEM8L3RleHQ+PC9zdmc+',
-      categoria: 'Gestão Clínica',
-      nivel: 'avancado',
-      preco: 699,
-      dataCriacao: '2024-01-05',
-      ultimaAtualizacao: '2024-01-12'
-    }
-  ]
-
-  const mockModulos: Modulo[] = [
-    {
-      id: '1',
-      cursoId: '1',
-      titulo: 'Introdução à Cannabis Medicinal',
-      descricao: 'Conceitos básicos e histórico da cannabis medicinal',
-      ordem: 1,
-      duracao: 5,
-      tipo: 'video',
-      conteudo: 'video_intro_cannabis.mp4',
-      recursos: ['slides.pdf', 'bibliografia.pdf']
-    },
-    {
-      id: '2',
-      cursoId: '1',
-      titulo: 'Farmacologia dos Canabinoides',
-      descricao: 'Estudo dos principais canabinoides e seus efeitos',
-      ordem: 2,
-      duracao: 7,
-      tipo: 'video',
-      conteudo: 'video_farmacologia.mp4',
-      recursos: ['tabela_canabinoides.pdf', 'exercicios.pdf']
-    },
-    {
-      id: '3',
-      cursoId: '2',
-      titulo: 'Protocolo IMRE - Investigação',
-      descricao: 'Primeira fase do protocolo: investigação clínica',
-      ordem: 1,
-      duracao: 8,
-      tipo: 'video',
-      conteudo: 'video_investigacao.mp4',
-      recursos: ['formulario_investigacao.pdf', 'checklist.pdf']
-    }
-  ]
-
   useEffect(() => {
-    loadData()
-  }, [])
+    if (user) {
+      loadData()
+    }
+  }, [user])
 
   const loadData = async () => {
+    if (!user) return
+    
     setLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setCursos(mockCursos)
-      setModulos(mockModulos)
+      // Buscar cursos do Supabase
+      const { data: coursesData, error: coursesError } = await supabase
+        .from('courses')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (coursesError) {
+        console.error('Erro ao carregar cursos:', coursesError)
+        throw coursesError
+      }
+
+      // Buscar módulos do Supabase
+      const { data: modulesData, error: modulesError } = await supabase
+        .from('course_modules')
+        .select('*')
+        .order('order_index', { ascending: true })
+
+      if (modulesError) {
+        console.error('Erro ao carregar módulos:', modulesError)
+        throw modulesError
+      }
+
+      // Buscar inscrições para calcular número de alunos por curso
+      const { data: enrollmentsData } = await supabase
+        .from('course_enrollments')
+        .select('course_id')
+
+      // Contar alunos por curso
+      const alunosPorCurso: { [key: string]: number } = {}
+      enrollmentsData?.forEach((enrollment: any) => {
+        alunosPorCurso[enrollment.course_id] = (alunosPorCurso[enrollment.course_id] || 0) + 1
+      })
+
+      // Transformar cursos do Supabase para o formato esperado
+      const formattedCursos: Curso[] = (coursesData || []).map((course: any) => {
+        const modulosDoCurso = (modulesData || []).filter((m: any) => m.course_id === course.id)
+        return {
+          id: course.id,
+          titulo: course.title,
+          descricao: course.description || '',
+          duracao: course.duration || 0,
+          modulos: modulosDoCurso.length,
+          alunos: alunosPorCurso[course.id] || 0,
+          avaliacao: 0, // TODO: Calcular a partir de avaliações reais
+          status: course.is_published ? 'ativo' : 'rascunho' as 'ativo' | 'rascunho' | 'arquivado',
+          thumbnail: '', // TODO: Adicionar campo thumbnail no Supabase
+          categoria: course.category || '',
+          nivel: course.difficulty || 'iniciante' as 'iniciante' | 'intermediario' | 'avancado',
+          preco: 0, // TODO: Adicionar campo preco no Supabase
+          dataCriacao: new Date(course.created_at).toISOString().split('T')[0],
+          ultimaAtualizacao: course.updated_at ? new Date(course.updated_at).toISOString().split('T')[0] : new Date(course.created_at).toISOString().split('T')[0]
+        }
+      })
+
+      // Transformar módulos do Supabase para o formato esperado
+      const formattedModulos: Modulo[] = (modulesData || []).map((module: any) => ({
+        id: module.id,
+        cursoId: module.course_id,
+        titulo: module.title,
+        descricao: module.description || '',
+        ordem: module.order_index,
+        duracao: module.duration || 0,
+        tipo: (module.content_type || 'video') as 'video' | 'texto' | 'quiz' | 'atividade',
+        conteudo: module.content_url || module.content || '',
+        recursos: [] // TODO: Adicionar campo recursos no Supabase
+      }))
+
+      setCursos(formattedCursos)
+      setModulos(formattedModulos)
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {

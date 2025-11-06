@@ -1,5 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import { 
   ArrowLeft, 
   MapPin, 
@@ -32,9 +34,272 @@ import {
   AlertCircle
 } from 'lucide-react'
 
+interface ImplementationPhase {
+  id: string
+  title: string
+  status: string
+  duration: string
+  progress: number
+  description: string
+}
+
+// Componente para status do sistema financeiro
+const SistemaFinanceiroStatus: React.FC = () => {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([])
+  const [totalRevenue, setTotalRevenue] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadFinancialData()
+  }, [])
+
+  const loadFinancialData = async () => {
+    try {
+      // Buscar métodos de pagamento configurados (se houver tabela específica)
+      // Por enquanto, vamos usar métodos padrão
+      setPaymentMethods([
+        'Cartões de crédito e débito',
+        'Pix instantâneo',
+        'Boleto bancário',
+        'Escute-se Points',
+        'Parcelamento em até 12x'
+      ])
+
+      // Buscar receita total (se houver transações)
+      if (user) {
+        const { data: transactionsData } = await supabase
+          .from('transactions')
+          .select('amount, type')
+          .eq('status', 'completed')
+
+        if (transactionsData) {
+          const revenue = transactionsData
+            .filter(t => t.type === 'consultation' || t.type === 'course')
+            .reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0)
+          setTotalRevenue(revenue)
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados financeiros:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="text-slate-300 text-sm mb-4">
+        Carregando informações financeiras...
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4 mb-4">
+      <div>
+        <h5 className="text-sm font-semibold text-green-300 mb-2">Pagamentos Integrados</h5>
+        <p className="text-xs text-slate-300 mb-3">Sistema completo de pagamentos com múltiplas opções</p>
+        <ul className="space-y-2 text-xs text-slate-400">
+          {paymentMethods.map((method, index) => (
+            <li key={index} className="flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4 text-green-400" />
+              <span>{method}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <h5 className="text-sm font-semibold text-green-300 mb-2">Gestão Financeira</h5>
+        <p className="text-xs text-slate-300 mb-3">Controle completo das finanças da plataforma</p>
+        {totalRevenue > 0 && (
+          <p className="text-xs text-green-400 mb-2">
+            Receita total: R$ {totalRevenue.toFixed(2).replace('.', ',')}
+          </p>
+        )}
+        <ul className="space-y-2 text-xs text-slate-400">
+          <li className="flex items-center space-x-2">
+            <CheckCircle className="w-4 h-4 text-green-400" />
+            <span>Dashboard financeiro em tempo real</span>
+          </li>
+          <li className="flex items-center space-x-2">
+            <CheckCircle className="w-4 h-4 text-green-400" />
+            <span>Relatórios de receita</span>
+          </li>
+          <li className="flex items-center space-x-2">
+            <CheckCircle className="w-4 h-4 text-green-400" />
+            <span>Controle de assinaturas</span>
+          </li>
+          <li className="flex items-center space-x-2">
+            <CheckCircle className="w-4 h-4 text-green-400" />
+            <span>Gestão de reembolsos</span>
+          </li>
+          <li className="flex items-center space-x-2">
+            <CheckCircle className="w-4 h-4 text-green-400" />
+            <span>Análise de métricas financeiras</span>
+          </li>
+        </ul>
+        <button
+          onClick={() => navigate('/app/professional-financial')}
+          className="mt-3 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
+        >
+          Acessar Dashboard Financeiro
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Componente para status de agendamento
+const AgendamentoStatus: React.FC = () => {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [appointmentsCount, setAppointmentsCount] = useState(0)
+  const [availableDoctors, setAvailableDoctors] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadAppointmentData()
+  }, [])
+
+  const loadAppointmentData = async () => {
+    try {
+      // Buscar profissionais disponíveis (Dr. Ricardo Valença)
+      const { data: doctorsData } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .or('email.eq.rrvalenca@gmail.com,email.eq.consultoriodosvalenca@gmail.com')
+        .eq('type', 'professional')
+
+      if (doctorsData && doctorsData.length > 0) {
+        setAvailableDoctors(doctorsData.map(d => d.name || d.email))
+        
+        // Contar agendamentos futuros
+        const { count } = await supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .in('doctor_id', doctorsData.map(d => d.id))
+          .gte('appointment_date', new Date().toISOString())
+
+        setAppointmentsCount(count || 0)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados de agendamento:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="text-slate-300 text-sm mb-4">
+        Carregando informações de agendamento...
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <p className="text-slate-300 text-sm mb-4">
+        {availableDoctors.length > 0 
+          ? `Ativo com agenda${availableDoctors.length > 1 ? 's' : ''} disponível${availableDoctors.length > 1 ? 'eis' : ''}: ${availableDoctors.join(', ')}`
+          : 'Sistema de agendamento ativo'
+        }
+        {appointmentsCount > 0 && (
+          <span className="block mt-2 text-xs text-slate-400">
+            {appointmentsCount} agendamento{appointmentsCount > 1 ? 's' : ''} futuro{appointmentsCount > 1 ? 's' : ''}
+          </span>
+        )}
+      </p>
+      <button 
+        onClick={() => navigate('/app/clinica/paciente/agendamentos')}
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+      >
+        Agendar Consulta
+      </button>
+    </>
+  )
+}
+
 const CidadeAmigaDosRins: React.FC = () => {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [activePillar, setActivePillar] = useState<string>('introducao')
+  const [loading, setLoading] = useState(true)
+  const [implementationPhases, setImplementationPhases] = useState<ImplementationPhase[]>([])
+  const [stats, setStats] = useState({
+    cities: 0,
+    professionals: 0,
+    patients: 0,
+    riskFactors: 0
+  })
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+
+      // Buscar dados de implementação (se houver tabela específica)
+      // Por enquanto, como não há dados reais, vamos usar valores zerados
+      // mas deixar a estrutura pronta para quando houver dados
+
+      // Fases de implementação - valores zerados já que não há dados reais
+      const phases: ImplementationPhase[] = [
+        {
+          id: 'validacao',
+          title: 'Validação Clínica',
+          status: 'Em andamento',
+          duration: '12 meses',
+          progress: 0, // Zerado porque não há dados reais
+          description: 'Desenvolvimento e validação da IA para análise preditiva'
+        },
+        {
+          id: 'piloto',
+          title: 'Piloto Regional',
+          status: 'Iniciando',
+          duration: '6 meses',
+          progress: 0,
+          description: 'Implementação em cidades piloto selecionadas'
+        },
+        {
+          id: 'expansao',
+          title: 'Expansão',
+          status: 'Planejado',
+          duration: '18 meses',
+          progress: 0,
+          description: 'Escalabilidade regional e publicações científicas'
+        },
+        {
+          id: 'nacional',
+          title: 'Nacional',
+          status: 'Futuro',
+          duration: '24 meses',
+          progress: 0,
+          description: 'Modelo replicável para todo o Brasil'
+        }
+      ]
+
+      setImplementationPhases(phases)
+
+      // Estatísticas - valores zerados já que não há dados reais
+      setStats({
+        cities: 0,
+        professionals: 0,
+        patients: 0,
+        riskFactors: 0
+      })
+
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const pillars = [
     { id: 'introducao', label: 'Introdução', icon: Sparkles },
@@ -87,19 +352,19 @@ const CidadeAmigaDosRins: React.FC = () => {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             <div className="bg-slate-800/50 rounded-lg p-6 border border-blue-500/20 text-center">
-              <div className="text-4xl font-bold text-blue-400 mb-2">15+</div>
+              <div className="text-4xl font-bold text-blue-400 mb-2">{stats.cities}</div>
               <div className="text-sm text-blue-200">Cidades Participantes</div>
             </div>
             <div className="bg-slate-800/50 rounded-lg p-6 border border-blue-500/20 text-center">
-              <div className="text-4xl font-bold text-cyan-400 mb-2">200+</div>
+              <div className="text-4xl font-bold text-cyan-400 mb-2">{stats.professionals}</div>
               <div className="text-sm text-blue-200">Profissionais Treinados</div>
             </div>
             <div className="bg-slate-800/50 rounded-lg p-6 border border-blue-500/20 text-center">
-              <div className="text-4xl font-bold text-green-400 mb-2">5.000+</div>
+              <div className="text-4xl font-bold text-green-400 mb-2">{stats.patients}</div>
               <div className="text-sm text-blue-200">Pacientes Avaliados</div>
             </div>
             <div className="bg-slate-800/50 rounded-lg p-6 border border-blue-500/20 text-center">
-              <div className="text-4xl font-bold text-purple-400 mb-2">95%</div>
+              <div className="text-4xl font-bold text-purple-400 mb-2">{stats.riskFactors}%</div>
               <div className="text-sm text-blue-200">Fatores de Risco Identificados</div>
             </div>
           </div>
@@ -148,67 +413,60 @@ const CidadeAmigaDosRins: React.FC = () => {
           {/* Cronograma de Implementação */}
           <div className="mt-8">
             <h4 className="text-xl font-semibold text-white mb-6">Cronograma de Implementação</h4>
-            <div className="space-y-4">
-              {/* Validação Clínica */}
-              <div className="bg-slate-700/50 rounded-lg p-6 border border-slate-600">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h5 className="text-lg font-semibold text-white">Validação Clínica</h5>
-                    <p className="text-sm text-blue-300">Em andamento • 12 meses</p>
-                  </div>
-                  <span className="px-3 py-1 bg-blue-600 text-white rounded-full text-xs font-semibold">75%</span>
-                </div>
-                <div className="w-full bg-slate-600 rounded-full h-2 mb-2">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '75%' }}></div>
-                </div>
-                <p className="text-sm text-blue-200">Desenvolvimento e validação da IA para análise preditiva</p>
+            {loading ? (
+              <div className="text-center py-8 text-blue-200">Carregando cronograma...</div>
+            ) : implementationPhases.length === 0 ? (
+              <div className="text-center py-8 text-blue-200">
+                <p>Nenhum dado de implementação disponível no momento.</p>
+                <p className="text-sm text-blue-300 mt-2">Os dados serão atualizados conforme o projeto avança.</p>
               </div>
+            ) : (
+              <div className="space-y-4">
+                {implementationPhases.map((phase) => {
+                  const getStatusColor = (status: string) => {
+                    if (status.includes('andamento')) return 'text-blue-300'
+                    if (status.includes('Iniciando')) return 'text-yellow-300'
+                    if (status.includes('Planejado')) return 'text-purple-300'
+                    return 'text-slate-400'
+                  }
 
-              {/* Piloto Regional */}
-              <div className="bg-slate-700/50 rounded-lg p-6 border border-slate-600">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h5 className="text-lg font-semibold text-white">Piloto Regional</h5>
-                    <p className="text-sm text-yellow-300">Iniciando • 6 meses</p>
-                  </div>
-                  <span className="px-3 py-1 bg-yellow-600 text-white rounded-full text-xs font-semibold">30%</span>
-                </div>
-                <div className="w-full bg-slate-600 rounded-full h-2 mb-2">
-                  <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '30%' }}></div>
-                </div>
-                <p className="text-sm text-blue-200">Implementação em cidades piloto selecionadas</p>
-              </div>
+                  const getProgressColor = (progress: number) => {
+                    if (progress >= 50) return 'bg-blue-500'
+                    if (progress >= 25) return 'bg-yellow-500'
+                    if (progress > 0) return 'bg-purple-500'
+                    return 'bg-slate-500'
+                  }
 
-              {/* Expansão */}
-              <div className="bg-slate-700/50 rounded-lg p-6 border border-slate-600">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h5 className="text-lg font-semibold text-white">Expansão</h5>
-                    <p className="text-sm text-purple-300">Planejado • 18 meses</p>
-                  </div>
-                  <span className="px-3 py-1 bg-purple-600 text-white rounded-full text-xs font-semibold">10%</span>
-                </div>
-                <div className="w-full bg-slate-600 rounded-full h-2 mb-2">
-                  <div className="bg-purple-500 h-2 rounded-full" style={{ width: '10%' }}></div>
-                </div>
-                <p className="text-sm text-blue-200">Escalabilidade regional e publicações científicas</p>
-              </div>
+                  const getBadgeColor = (progress: number) => {
+                    if (progress >= 50) return 'bg-blue-600'
+                    if (progress >= 25) return 'bg-yellow-600'
+                    if (progress > 0) return 'bg-purple-600'
+                    return 'bg-slate-600'
+                  }
 
-              {/* Nacional */}
-              <div className="bg-slate-700/50 rounded-lg p-6 border border-slate-600">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h5 className="text-lg font-semibold text-white">Nacional</h5>
-                    <p className="text-sm text-slate-400">Futuro • 24 meses</p>
-                  </div>
-                  <span className="px-3 py-1 bg-slate-600 text-white rounded-full text-xs font-semibold">0%</span>
-                </div>
-                <div className="w-full bg-slate-600 rounded-full h-2 mb-2">
-                  <div className="bg-slate-500 h-2 rounded-full" style={{ width: '0%' }}></div>
-                </div>
-                <p className="text-sm text-blue-200">Modelo replicável para todo o Brasil</p>
+                  return (
+                    <div key={phase.id} className="bg-slate-700/50 rounded-lg p-6 border border-slate-600">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h5 className="text-lg font-semibold text-white">{phase.title}</h5>
+                          <p className={`text-sm ${getStatusColor(phase.status)}`}>{phase.status} • {phase.duration}</p>
+                        </div>
+                        <span className={`px-3 py-1 ${getBadgeColor(phase.progress)} text-white rounded-full text-xs font-semibold`}>
+                          {phase.progress}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-600 rounded-full h-2 mb-2">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(phase.progress)}`}
+                          style={{ width: `${phase.progress}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-sm text-blue-200">{phase.description}</p>
+                    </div>
+                  )
+                })}
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -232,61 +490,7 @@ const CidadeAmigaDosRins: React.FC = () => {
                 <span className="px-3 py-1 bg-green-600 text-white rounded-full text-xs font-semibold">Ativo</span>
               </div>
               
-              <div className="space-y-4 mb-4">
-                <div>
-                  <h5 className="text-sm font-semibold text-green-300 mb-2">Pagamentos Integrados</h5>
-                  <p className="text-xs text-slate-300 mb-3">Sistema completo de pagamentos com múltiplas opções</p>
-                  <ul className="space-y-2 text-xs text-slate-400">
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span>Cartões de crédito e débito</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span>Pix instantâneo</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span>Boleto bancário</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span>Escute-se Points</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span>Parcelamento em até 12x</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h5 className="text-sm font-semibold text-green-300 mb-2">Gestão Financeira</h5>
-                  <p className="text-xs text-slate-300 mb-3">Controle completo das finanças da plataforma</p>
-                  <ul className="space-y-2 text-xs text-slate-400">
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span>Dashboard financeiro em tempo real</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span>Relatórios de receita</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span>Controle de assinaturas</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span>Gestão de reembolsos</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span>Análise de métricas financeiras</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
+              <SistemaFinanceiroStatus />
             </div>
 
             {/* Sistema Agendamento */}
@@ -295,12 +499,7 @@ const CidadeAmigaDosRins: React.FC = () => {
                 <h4 className="text-lg font-semibold text-white">Sistema Agendamento</h4>
                 <span className="px-3 py-1 bg-blue-600 text-white rounded-full text-xs font-semibold">Ativo</span>
               </div>
-              <p className="text-slate-300 text-sm mb-4">
-                Ativo com agenda do Dr. Ricardo Valença disponível
-              </p>
-              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
-                Agendar Consulta
-              </button>
+              <AgendamentoStatus />
             </div>
           </div>
 

@@ -13,58 +13,156 @@ import {
   ChevronDown,
   MessageSquare
 } from 'lucide-react'
-import { PROFESSIONALS_ARRAY } from '../constants/professionals'
+import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
+
+interface Message {
+  id: string
+  user: string
+  avatar: string
+  message: string
+  timestamp: string
+  isDoctor: boolean
+}
 
 const PatientChat: React.FC = () => {
+  const { user } = useAuth()
   const [message, setMessage] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [isVideoCall, setIsVideoCall] = useState(false)
-  const [selectedProfessional, setSelectedProfessional] = useState('ricardo-valenca')
+  const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null)
+  const [professionals, setProfessionals] = useState<any[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [showProfessionalSelect, setShowProfessionalSelect] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const currentProfessional = PROFESSIONALS_ARRAY.find(p => p.id === selectedProfessional) || PROFESSIONALS_ARRAY[0]
-
-  const getMessagesForProfessional = (professionalId: string) => {
-    const professional = PROFESSIONALS_ARRAY.find(p => p.id === professionalId)
-    return [
-      {
-        id: 1,
-        user: professional?.name || 'Profissional',
-        avatar: professional?.avatar || 'P',
-        message: 'Olá! Como você está se sentindo hoje?',
-        timestamp: '10:30',
-        isDoctor: true,
-        reactions: { heart: 0, thumbs: 0 }
-      },
-      {
-        id: 2,
-        user: 'Você',
-        avatar: 'V',
-        message: 'Olá! Estou me sentindo melhor, mas ainda tenho algumas dores.',
-        timestamp: '10:32',
-        isDoctor: false,
-        reactions: { heart: 0, thumbs: 0 }
-      },
-      {
-        id: 3,
-        user: professional?.name || 'Profissional',
-        avatar: professional?.avatar || 'P',
-        message: 'Entendo. Vamos agendar uma consulta para avaliar melhor. Que tal amanhã às 14h?',
-        timestamp: '10:35',
-        isDoctor: true,
-        reactions: { heart: 0, thumbs: 0 }
+  // Carregar profissionais do banco
+  useEffect(() => {
+    const loadProfessionals = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name, email, type, specialty')
+          .in('type', ['profissional', 'professional'])
+        
+        if (!error && data) {
+          setProfessionals(data)
+          if (data.length > 0 && !selectedProfessional) {
+            setSelectedProfessional(data[0].id)
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar profissionais:', error)
       }
-    ]
+    }
+    
+    loadProfessionals()
+  }, [])
+
+  // Carregar mensagens quando profissional é selecionado
+  useEffect(() => {
+    if (selectedProfessional && user?.id) {
+      loadMessages()
+      
+      // Configurar Realtime
+      let channel: any = null
+      generateChatIdUUID(user.id, selectedProfessional).then(chatId => {
+        channel = supabase
+          .channel(`chat_${user.id}_${selectedProfessional}`)
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'chat_messages',
+            filter: `chat_id=eq.${chatId}`
+          }, (payload) => {
+            loadMessages() // Recarregar mensagens quando nova mensagem chegar
+          })
+          .subscribe()
+      })
+      
+      return () => {
+        if (channel) {
+          supabase.removeChannel(channel)
+        }
+      }
+    }
+  }, [selectedProfessional, user?.id])
+
+  // Função auxiliar para gerar chat_id UUID
+  const generateChatIdUUID = async (user1Id: string, user2Id: string): Promise<string> => {
+    const sortedIds = [user1Id, user2Id].sort()
+    const chatIdString = `chat_${sortedIds.join('_')}`
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(chatIdString))
+    const hashArray = Array.from(new Uint8Array(hash))
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+    const uuid = `${hashHex.substring(0, 8)}-${hashHex.substring(8, 12)}-${hashHex.substring(12, 16)}-${hashHex.substring(16, 20)}-${hashHex.substring(20, 32)}`
+    return uuid
   }
 
-  const messages = getMessagesForProfessional(selectedProfessional)
+  const loadMessages = async () => {
+    if (!selectedProfessional || !user?.id) return
+    
+    try {
+      const chatId = await generateChatIdUUID(user.id, selectedProfessional)
+      
+      const { data: messagesData, error } = await supabase
+        .from('chat_messages')
+        .select('*, sender:users!chat_messages_sender_id_fkey(id, name, email)')
+        .eq('chat_id', chatId)
+        .order('created_at', { ascending: true })
+      
+      if (!error && messagesData) {
+        const formattedMessages = messagesData.map((msg: any) => {
+          const sender = msg.sender || {}
+          const isDoctor = msg.sender_id === selectedProfessional
+          
+          return {
+            id: msg.id,
+            user: isDoctor ? sender.name || 'Profissional' : 'Você',
+            avatar: isDoctor ? (sender.name?.[0] || 'P') : 'V',
+            message: msg.message,
+            timestamp: new Date(msg.created_at).toLocaleTimeString('pt-BR', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            }),
+            isDoctor
+          }
+        })
+        
+        setMessages(formattedMessages)
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }
+    } catch (error) {
+      console.error('Erro ao carregar mensagens:', error)
+    }
+  }
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      // Lógica para enviar mensagem
+  const currentProfessional = professionals.find(p => p.id === selectedProfessional)
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || !selectedProfessional || !user?.id) return
+
+    try {
+      const chatId = await generateChatIdUUID(user.id, selectedProfessional)
+      
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          chat_id: chatId,
+          sender_id: user.id,
+          message: message.trim(),
+          message_type: 'text',
+          created_at: new Date().toISOString()
+        })
+      
+      if (error) throw error
+      
       setMessage('')
+      loadMessages() // Recarregar mensagens
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error)
+      alert('Erro ao enviar mensagem. Tente novamente.')
     }
   }
 
@@ -126,16 +224,14 @@ const PatientChat: React.FC = () => {
               className="bg-slate-800 border border-slate-700 rounded-lg px-6 py-3 flex items-center space-x-3 hover:bg-slate-700 transition-colors mx-auto"
             >
               <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold">{currentProfessional?.avatar}</span>
+                <span className="text-white font-bold">{currentProfessional?.name?.[0] || 'P'}</span>
               </div>
               <div className="text-left">
                 <div className="flex items-center space-x-2">
-                  <p className="font-semibold text-white">{currentProfessional?.name}</p>
-                  {currentProfessional?.online && (
-                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  )}
+                  <p className="font-semibold text-white">{currentProfessional?.name || 'Profissional'}</p>
+                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 </div>
-                <p className="text-sm text-slate-400">{currentProfessional?.specialty}</p>
+                <p className="text-sm text-slate-400">{currentProfessional?.specialty || 'Cannabis Medicinal'}</p>
               </div>
               <ChevronDown className="w-5 h-5 text-slate-400" />
             </button>
@@ -148,7 +244,7 @@ const PatientChat: React.FC = () => {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="p-2">
-                  {PROFESSIONALS_ARRAY.map((professional) => (
+                  {professionals.map((professional) => (
                     <button
                       key={professional.id}
                       onClick={(e) => {
@@ -160,16 +256,14 @@ const PatientChat: React.FC = () => {
                       className="w-full p-3 rounded-lg hover:bg-slate-700 transition-colors flex items-center space-x-3"
                     >
                       <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
-                        <span className="text-white font-bold">{professional.avatar}</span>
+                        <span className="text-white font-bold">{professional.name?.[0] || 'P'}</span>
                       </div>
                       <div className="flex-1 text-left">
                         <div className="flex items-center space-x-2">
                           <p className="font-semibold text-white">{professional.name}</p>
-                          {professional.online && (
-                            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                          )}
+                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                         </div>
-                        <p className="text-sm text-slate-400">{professional.specialty}</p>
+                        <p className="text-sm text-slate-400">{professional.specialty || 'Cannabis Medicinal'}</p>
                       </div>
                       {selectedProfessional === professional.id && (
                         <CheckCircle className="w-5 h-5 text-green-400" />
@@ -202,11 +296,11 @@ const PatientChat: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium text-white">{currentProfessional?.avatar}</span>
+                  <span className="text-sm font-medium text-white">{currentProfessional?.name?.[0] || 'P'}</span>
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-white">{currentProfessional?.name}</h2>
-                  <p className="text-slate-300 text-sm">{currentProfessional?.specialty}</p>
+                  <h2 className="text-lg font-semibold text-white">{currentProfessional?.name || 'Profissional'}</h2>
+                  <p className="text-slate-300 text-sm">{currentProfessional?.specialty || 'Cannabis Medicinal'}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">

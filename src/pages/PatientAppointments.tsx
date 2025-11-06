@@ -240,46 +240,101 @@ const PatientAppointments: React.FC = () => {
 
   // Função para salvar agendamento (vinculado à IA residente)
   const handleSaveAppointment = async () => {
-    if (!appointmentData.date || !appointmentData.time || !appointmentData.specialty || !appointmentData.service) {
+    if (!appointmentData.date || !appointmentData.time || !appointmentData.specialty || !appointmentData.service || !user?.id) {
       alert('Por favor, preencha todos os campos obrigatórios.')
       return
     }
 
     try {
-      // TODO: Salvar agendamento no banco vinculado à avaliação clínica inicial pela IA residente
-      // O agendamento será processado pela IA residente que realizará a avaliação clínica inicial
-      // e gerará o relatório que será direcionado para o prontuário do paciente
+      // 1. Buscar profissional baseado na especialidade
+      const { data: professionals } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .eq('type', 'profissional')
+        .ilike('specialty', `%${appointmentData.specialty}%`)
+        .limit(1)
       
-      // Salvar agendamento no Supabase
-      const { data: sessionData } = await supabase.auth.getSession()
-      const patientId = sessionData?.session?.user?.id
-      
-      if (patientId) {
-        const { error: appointmentError } = await supabase
-          .from('appointments')
-          .insert({
-            patient_id: patientId,
-            appointment_date: appointmentData.date,
-            appointment_time: appointmentData.time,
-            appointment_type: appointmentData.service || 'Consulta',
-            status: 'scheduled',
-            notes: appointmentData.notes,
-            specialty: appointmentData.specialty,
-            type: appointmentData.type
-          })
-
-        if (appointmentError) {
-          console.error('Erro ao salvar agendamento:', appointmentError)
-        }
+      if (!professionals || professionals.length === 0) {
+        alert('Nenhum profissional disponível para esta especialidade. Por favor, escolha outra especialidade.')
+        return
       }
       
-      // Fechar modal
+      const professional = professionals[0]
+      
+      // 2. Verificar disponibilidade do horário
+      const appointmentDateTime = new Date(`${appointmentData.date}T${appointmentData.time}`)
+      const { data: conflicting } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('professional_id', professional.id)
+        .eq('appointment_date', appointmentDateTime.toISOString())
+        .eq('status', 'scheduled')
+        .maybeSingle()
+      
+      if (conflicting) {
+        alert('Este horário já está ocupado. Por favor, escolha outro horário.')
+        return
+      }
+      
+      // 3. Salvar agendamento no Supabase
+      const { data: appointment, error: appointmentError } = await supabase
+        .from('appointments')
+        .insert({
+          patient_id: user.id,
+          professional_id: professional.id,
+          appointment_date: appointmentDateTime.toISOString(),
+          appointment_time: appointmentData.time,
+          appointment_type: appointmentData.service || 'Consulta',
+          status: 'scheduled',
+          specialty: appointmentData.specialty,
+          type: appointmentData.type === 'online' ? 'consultation' : 'in-person',
+          is_remote: appointmentData.type === 'online',
+          duration: appointmentData.duration || 60,
+          description: appointmentData.notes || '',
+          location: appointmentData.room || (appointmentData.type === 'online' ? 'Plataforma digital' : 'Consultório'),
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (appointmentError) {
+        throw appointmentError
+      }
+      
+      // 4. Verificar se é primeira consulta e criar avaliação clínica inicial pendente
+      const { data: previousAppointments } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('patient_id', user.id)
+        .eq('status', 'completed')
+        .limit(1)
+        .maybeSingle()
+      
+      if (!previousAppointments && appointment) {
+        // Primeira consulta - criar avaliação clínica inicial pendente
+        await supabase
+          .from('clinical_assessments')
+          .insert({
+            patient_id: user.id,
+            professional_id: professional.id,
+            appointment_id: appointment.id,
+            assessment_type: 'INITIAL',
+            status: 'pending',
+            created_at: new Date().toISOString()
+          })
+      }
+      
+      // 5. Recarregar agendamentos
+      await loadAppointments()
+      
+      // 6. Fechar modal
       setShowAppointmentModal(false)
       
-      // Redirecionar para a IA residente para avaliação clínica inicial
+      // 7. Redirecionar para a IA residente para avaliação clínica inicial
       navigate('/app/chat-noa-esperanca', {
         state: {
           startAssessment: true,
+          appointmentId: appointment.id,
           appointmentData: {
             date: appointmentData.date,
             time: appointmentData.time,
