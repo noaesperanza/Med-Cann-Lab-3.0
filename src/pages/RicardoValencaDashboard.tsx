@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useUserView } from '../contexts/UserViewContext'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { normalizeUserType } from '../lib/userTypes'
 import PatientManagementAdvanced from './PatientManagementAdvanced'
 import ProfessionalChatSystem from '../components/ProfessionalChatSystem'
@@ -26,6 +26,7 @@ import {
   TrendingUp, 
   BookOpen, 
   Settings,
+  LayoutDashboard,
   Video,
   Phone,
   Download,
@@ -33,7 +34,8 @@ import {
   Bell,
   User,
   UserPlus,
-  GraduationCap
+  GraduationCap,
+  Loader2
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { getAllPatients, isAdmin } from '../lib/adminPermissions'
@@ -51,11 +53,66 @@ interface Patient {
   priority?: 'high' | 'medium' | 'low'
 }
 
+interface Appointment {
+  id: string
+  patient_id: string | null
+  professional_id: string | null
+  title: string
+  description: string | null
+  appointment_date: string
+  duration: number | null
+  status: string | null
+  type: string | null
+  location: string | null
+  is_remote: boolean | null
+  meeting_url: string | null
+}
+
+interface EnrichedAppointment extends Appointment {
+  patient?: {
+    id: string
+    name: string | null
+    email: string | null
+    phone?: string | null
+    type?: string | null
+  }
+  formattedTime: string
+  formattedDate: string
+  isPast: boolean
+}
+
+type SectionId =
+  | 'dashboard'
+  | 'admin-usuarios'
+  | 'admin-upload'
+  | 'admin-renal'
+  | 'atendimento'
+  | 'pacientes'
+  | 'agendamentos'
+  | 'prescricoes'
+  | 'relatorios-clinicos'
+  | 'chat-pacientes'
+  | 'chat-profissionais'
+  | 'aulas'
+  | 'biblioteca'
+  | 'avaliacao'
+  | 'newsletter'
+  | 'ferramentas-pedagogicas'
+  | 'financeiro'
+
+type SectionOption = {
+  id: SectionId
+  label: string
+  description: string
+  icon: React.ComponentType<{ className?: string }>
+}
+
 const RicardoValencaDashboard: React.FC = () => {
   const { user } = useAuth()
   const { isAdminViewingAs, viewAsType, setViewAsType, getEffectiveUserType } = useUserView()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   
   // Detectar eixo atual da URL
   const getCurrentEixo = (): 'clinica' | 'ensino' | 'pesquisa' | null => {
@@ -117,13 +174,252 @@ const RicardoValencaDashboard: React.FC = () => {
   const [patientSearch, setPatientSearch] = useState('')
   const [clinicalNotes, setClinicalNotes] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null)
+  const [appointments, setAppointments] = useState<EnrichedAppointment[]>([])
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false)
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null)
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false)
   const [isAudioCallOpen, setIsAudioCallOpen] = useState(false)
   const [callType, setCallType] = useState<'video' | 'audio'>('video')
-  const [activeSection, setActiveSection] = useState<'dashboard' | 'agendamentos' | 'pacientes' | 'aulas' | 'financeiro' | 'atendimento' | 'avaliacao' | 'biblioteca' | 'perfil' | 'chat-pacientes' | 'chat-profissionais' | 'kpis-admin' | 'newsletter' | 'prescricoes' | 'relatorios-clinicos' | 'admin-usuarios' | 'admin-upload' | 'admin-renal'>('dashboard')
   const [showProfessionalModal, setShowProfessionalModal] = useState(false)
+
+  const normalizedEffectiveType = normalizeUserType(effectiveType)
+  const isProfessionalDashboard =
+    normalizedEffectiveType === 'profissional' ||
+    viewAsType === 'profissional' ||
+    location.pathname.includes('/profissional/')
+
+  const sectionNavOptions = useMemo<SectionOption[] | null>(() => {
+    const clinicaOptions: SectionOption[] = [
+      {
+        id: 'atendimento',
+        label: 'Atendimento',
+        description: 'Fluxo completo de consultas e telemedicina',
+        icon: Stethoscope
+      },
+      {
+        id: 'agendamentos',
+        label: 'Agenda',
+        description: 'Gestão de sessões e follow-ups clínicos',
+        icon: Calendar
+      },
+      {
+        id: 'pacientes',
+        label: 'Pacientes',
+        description: 'Histórico, prioridades e anotações clínicas',
+        icon: Users
+      },
+      {
+        id: 'prescricoes',
+        label: 'Prescrições',
+        description: 'Protocolos terapêuticos e integrações',
+        icon: FileText
+      },
+      {
+        id: 'relatorios-clinicos',
+        label: 'Relatórios',
+        description: 'Documentos e insights gerados pela IA',
+        icon: BarChart3
+      },
+      {
+        id: 'chat-pacientes',
+        label: 'Chat Pacientes',
+        description: 'Acompanhamento contínuo com pacientes',
+        icon: MessageCircle
+      },
+      {
+        id: 'chat-profissionais',
+        label: 'Equipe Clínica',
+        description: 'Discussões entre profissionais da plataforma',
+        icon: MessageCircle
+      }
+    ]
+
+    const ensinoOptions: SectionOption[] = [
+      {
+        id: 'aulas',
+        label: 'Aulas',
+        description: 'Planejamento e acesso aos módulos formativos',
+        icon: GraduationCap
+      },
+      {
+        id: 'biblioteca',
+        label: 'Biblioteca',
+        description: 'Materiais acadêmicos e referências clínicas',
+        icon: BookOpen
+      },
+      {
+        id: 'avaliacao',
+        label: 'Avaliações',
+        description: 'Progresso dos alunos e instrumentos avaliativos',
+        icon: CheckCircle
+      },
+      {
+        id: 'newsletter',
+        label: 'Notícias & Eventos',
+        description: 'Atualizações da pós-graduação e comunidade',
+        icon: Bell
+      },
+      {
+        id: 'chat-profissionais',
+        label: 'Mentoria',
+        description: 'Comunicação com corpo docente e tutores',
+        icon: MessageCircle
+    },
+    {
+      id: 'ferramentas-pedagogicas',
+      label: 'Ferramentas Pedagógicas',
+      description: 'Recursos inteligentes para criação de aulas e slides',
+      icon: FileText
+      }
+    ]
+
+    const pesquisaOptions: SectionOption[] = [
+      {
+        id: 'avaliacao',
+        label: 'Protocolos',
+        description: 'Gestão de estudos e métricas de pesquisa',
+        icon: Activity
+      },
+      {
+        id: 'relatorios-clinicos',
+        label: 'Analytics',
+        description: 'Indicadores e resultados consolidados',
+        icon: TrendingUp
+      },
+      {
+        id: 'biblioteca',
+        label: 'Base Científica',
+        description: 'Publicações, datasets e referências',
+        icon: Search
+      },
+      {
+        id: 'newsletter',
+        label: 'Insights',
+        description: 'Atualizações científicas e relatórios da equipe',
+        icon: Bell
+      },
+      {
+        id: 'chat-profissionais',
+        label: 'Colaboração',
+        description: 'Sincronização com pesquisadores e parceiros',
+        icon: MessageCircle
+      }
+    ]
+
+    if (!isProfessionalDashboard && normalizedEffectiveType !== 'admin') {
+      return null
+    }
+
+    if (normalizedEffectiveType === 'admin') {
+      const eixoOptions =
+        currentEixo === 'ensino'
+          ? ensinoOptions
+          : currentEixo === 'pesquisa'
+          ? pesquisaOptions
+          : clinicaOptions
+
+      const eixoIds = new Set(eixoOptions.map(option => option.id))
+
+      const adminOptions: SectionOption[] = [
+        {
+          id: 'dashboard',
+          label: 'Resumo Administrativo',
+          description: 'Visão consolidada da plataforma',
+          icon: LayoutDashboard
+        },
+        {
+          id: 'admin-usuarios',
+          label: 'Usuários',
+          description: 'Gestão de equipes e permissões',
+          icon: Users
+        },
+        {
+          id: 'admin-upload',
+          label: 'Biblioteca Compartilhada',
+          description: 'Uploads e organização de documentos',
+          icon: Upload
+        },
+        {
+          id: 'admin-renal',
+          label: 'Função Renal',
+          description: 'Monitoramento integrado de nefrologia',
+          icon: Activity
+        },
+        ...eixoOptions.filter(option => !eixoIds.has(option.id) || !['dashboard'].includes(option.id))
+      ]
+
+      // Garantir que opções do eixo sejam incluídas após as administrativas
+      eixoOptions.forEach(option => {
+        if (!adminOptions.some(existing => existing.id === option.id)) {
+          adminOptions.push(option)
+        }
+      })
+
+      return adminOptions
+    }
+
+    if (currentEixo === 'ensino') {
+      return ensinoOptions
+    }
+
+    if (currentEixo === 'pesquisa') {
+      return pesquisaOptions
+    }
+
+    return clinicaOptions
+  }, [currentEixo, isProfessionalDashboard, normalizedEffectiveType])
+
+  const sectionParam = (searchParams.get('section') as SectionId | null) || null
+
+  const goToSection = useCallback(
+    (sectionId: SectionId) => {
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.set('section', sectionId)
+      setSearchParams(nextParams, { replace: true })
+    },
+    [searchParams, setSearchParams]
+  )
+
+  const resolvedSection: SectionId = useMemo(() => {
+    const defaultByContext: Record<string, SectionId> = {
+      admin: 'atendimento',
+      clinica: 'atendimento',
+      ensino: 'aulas',
+      pesquisa: 'avaliacao'
+    }
+
+    const eixoKey =
+      normalizedEffectiveType === 'admin' ? 'admin' : currentEixo || 'clinica'
+    const preferredSection = defaultByContext[eixoKey]
+
+    if (sectionNavOptions && sectionNavOptions.length > 0) {
+      if (
+        sectionParam &&
+        sectionNavOptions.some(option => option.id === sectionParam)
+      ) {
+        return sectionParam
+      }
+
+      if (
+        preferredSection &&
+        sectionNavOptions.some(option => option.id === preferredSection)
+      ) {
+        return preferredSection
+      }
+
+      return sectionNavOptions[0].id
+    }
+
+    return preferredSection || 'atendimento'
+  }, [sectionParam, sectionNavOptions, normalizedEffectiveType, currentEixo])
+
+  useEffect(() => {
+    if (!sectionNavOptions || sectionNavOptions.length === 0) return
+    if (sectionParam === resolvedSection) return
+    goToSection(resolvedSection)
+  }, [resolvedSection, sectionNavOptions, sectionParam, goToSection])
   
   // KPIs Administrativos Personalizados
   const [kpis, setKpis] = useState({
@@ -150,118 +446,88 @@ const RicardoValencaDashboard: React.FC = () => {
   })
 
   // Debug para verificar seção ativa
-  console.log('🎯 Seção ativa:', activeSection)
-
-  // Buscar pacientes do banco de dados
-  useEffect(() => {
-    loadPatients()
-    loadKPIs()
-  }, [])
+  console.log('🎯 Seção ativa:', resolvedSection)
 
   // Carregar KPIs das 3 camadas da plataforma
-  const loadKPIs = async () => {
+  const loadKPIs = useCallback(async () => {
     try {
-      // KPIs Administrativos - dados do banco
-      const { data: assessments, error } = await supabase
+      const { data: assessments, error: assessmentsError } = await supabase
         .from('clinical_assessments')
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('❌ Erro ao buscar avaliações:', error)
+      if (assessmentsError) {
+        console.error('❌ Erro ao buscar avaliações:', assessmentsError)
         return
       }
 
-      // Buscar pacientes únicos
-      const patientIds = [...new Set((assessments || []).map((a: any) => a.patient_id))]
-      const totalPacientesReal = patientIds.length
-      const avaliacoesCompletasReal = assessments?.filter(a => a.status === 'completed').length || 0
-      const protocolosAECReal = assessments?.filter(a => a.assessment_type === 'AEC').length || 0
-      const protocolosIMREReal = assessments?.filter(a => a.assessment_type === 'IMRE').length || 0
-      const respondedoresTEZReal = assessments?.filter(a => a.data?.improvement === true).length || 0
+      const assessmentList = assessments || []
 
-      // Se houver poucos dados reais (menos de 3 pacientes), usar dados mockados para demonstração
-      // Isso permite testar a interface mesmo com poucos dados no banco
-      const useMockData = totalPacientesReal < 3
+      const uniquePatientIds = new Set(
+        assessmentList
+          .map((assessment: any) => assessment.patient_id)
+          .filter((id: string | null) => Boolean(id))
+      )
+      const totalPacientes = uniquePatientIds.size
+      const avaliacoesCompletas = assessmentList.filter((assessment: any) => assessment.status === 'completed').length
+      const protocolosAEC = assessmentList.filter((assessment: any) => assessment.assessment_type === 'AEC').length
+      const protocolosIMRE = assessmentList.filter((assessment: any) => assessment.assessment_type === 'IMRE').length
+      const respondedoresTEZ = assessmentList.filter((assessment: any) => assessment.data?.improvement === true).length
+      const consultoriosAtivos = new Set(
+        assessmentList
+          .map((assessment: any) => assessment.doctor_id || assessment.data?.doctor_id)
+          .filter((id: string | null) => Boolean(id))
+      ).size
 
-      const totalPacientes = useMockData ? 24 : totalPacientesReal
-      const avaliacoesCompletas = useMockData ? 18 : avaliacoesCompletasReal
-      const protocolosAEC = useMockData ? 15 : protocolosAECReal
-      const protocolosIMRE = useMockData ? 15 : protocolosIMREReal
-      // TEZ = Tratamento de Epilepsia com Cannabis/Zonas (protocolo específico para epilepsia refratária)
-      // Respondedores TEZ são pacientes que tiveram melhora significativa (>50% redução de crises)
-      const respondedoresTEZ = useMockData ? 12 : respondedoresTEZReal
-      const consultoriosAtivos = 3 // Dr. Eduardo + Dr. Ricardo + outros
-
-      // KPIs Semânticos - buscar da tabela clinical_kpis ou calcular baseado em dados reais
-      const { data: semanticKPIs } = await supabase
+      const { data: semanticKPIs, error: semanticError } = await supabase
         .from('clinical_kpis')
-        .select('*')
-        .in('category', ['comportamental', 'cognitivo', 'social'])
+        .select('name, current_value, category')
+        .in('category', ['comportamental', 'cognitivo', 'social', 'neurologico'])
 
-      // Buscar KPIs específicos ou calcular baseado em dados reais
+      if (semanticError) {
+        console.warn('⚠️ Erro ao carregar KPIs semânticos:', semanticError)
+      }
+
       let qualidadeEscuta = 0
       let engajamentoPaciente = 0
       let satisfacaoClinica = 0
       let aderenciaTratamento = 0
 
       if (semanticKPIs && semanticKPIs.length > 0) {
-        // Buscar KPIs específicos por nome
-        const qualidadeKPI = semanticKPIs.find(k => k.name?.toLowerCase().includes('qualidade') || k.name?.toLowerCase().includes('escuta'))
-        const engajamentoKPI = semanticKPIs.find(k => k.name?.toLowerCase().includes('engajamento'))
-        const satisfacaoKPI = semanticKPIs.find(k => k.name?.toLowerCase().includes('satisfação') || k.name?.toLowerCase().includes('satisfacao'))
-        const aderenciaKPI = semanticKPIs.find(k => k.name?.toLowerCase().includes('aderência') || k.name?.toLowerCase().includes('aderencia'))
+        const qualidadeKPI = semanticKPIs.find(kpi => kpi.name?.toLowerCase().includes('qualidade') || kpi.name?.toLowerCase().includes('escuta'))
+        const engajamentoKPI = semanticKPIs.find(kpi => kpi.name?.toLowerCase().includes('engajamento'))
+        const satisfacaoKPI = semanticKPIs.find(kpi => kpi.name?.toLowerCase().includes('satisfação') || kpi.name?.toLowerCase().includes('satisfacao'))
+        const aderenciaKPI = semanticKPIs.find(kpi => kpi.name?.toLowerCase().includes('aderência') || kpi.name?.toLowerCase().includes('aderencia'))
 
-        qualidadeEscuta = qualidadeKPI?.current_value || 0
-        engajamentoPaciente = engajamentoKPI?.current_value || 0
-        satisfacaoClinica = satisfacaoKPI?.current_value || 0
-        aderenciaTratamento = aderenciaKPI?.current_value || 0
+        qualidadeEscuta = qualidadeKPI?.current_value ? Number(qualidadeKPI.current_value) : 0
+        engajamentoPaciente = engajamentoKPI?.current_value ? Number(engajamentoKPI.current_value) : 0
+        satisfacaoClinica = satisfacaoKPI?.current_value ? Number(satisfacaoKPI.current_value) : 0
+        aderenciaTratamento = aderenciaKPI?.current_value ? Number(aderenciaKPI.current_value) : 0
       }
 
-      // Se não houver KPIs específicos, usar dados mockados para demonstração quando houver poucos dados reais
-      if (qualidadeEscuta === 0 && engajamentoPaciente === 0 && satisfacaoClinica === 0 && aderenciaTratamento === 0) {
-        if (useMockData) {
-          // Dados mockados para demonstração/teste
-          qualidadeEscuta = 87
-          engajamentoPaciente = 76
-          satisfacaoClinica = 91
-          aderenciaTratamento = 80
-        } else {
-          // Sem dados reais e sem necessidade de mock - deixar zerado
-          qualidadeEscuta = 0
-          engajamentoPaciente = 0
-          satisfacaoClinica = 0
-          aderenciaTratamento = 0
-        }
-      }
-
-      // KPIs Clínicos - dados reais de wearables e eventos de epilepsia
-      const { data: wearableDevices } = await supabase
+      const { data: wearableDevices, error: wearableError } = await supabase
         .from('wearable_devices')
-        .select('id, patient_id, connection_status')
+        .select('id')
         .eq('connection_status', 'connected')
 
-      const { data: epilepsyEvents } = await supabase
+      if (wearableError) {
+        console.warn('⚠️ Erro ao carregar dispositivos conectados:', wearableError)
+      }
+
+      const { data: epilepsyEvents, error: epilepsyError } = await supabase
         .from('epilepsy_events')
-        .select('id, patient_id, severity')
-        .gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Últimos 30 dias
+        .select('severity, timestamp')
+        .gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
 
-      const wearablesAtivosReal = wearableDevices?.length || 0
-      const monitoramento24hReal = wearablesAtivosReal // Dispositivos conectados = monitoramento 24h
-      const episodiosEpilepsiaReal = epilepsyEvents?.length || 0
-      
-      // Calcular melhora de sintomas baseado em eventos de severidade menor
-      const eventosLeves = epilepsyEvents?.filter(e => e.severity === 'leve').length || 0
-      const eventosSeveros = epilepsyEvents?.filter(e => e.severity === 'severa').length || 0
-      const melhoraSintomasReal = episodiosEpilepsiaReal > 0
-        ? Math.round((eventosLeves / episodiosEpilepsiaReal) * 100)
-        : 0
+      if (epilepsyError) {
+        console.warn('⚠️ Erro ao carregar eventos de epilepsia:', epilepsyError)
+      }
 
-      // Dados mockados para demonstração quando houver poucos dados reais
-      const wearablesAtivos = useMockData ? 12 : wearablesAtivosReal
-      const monitoramento24h = useMockData ? 12 : monitoramento24hReal
-      const episodiosEpilepsia = useMockData ? 8 : episodiosEpilepsiaReal
-      const melhoraSintomas = useMockData ? 75 : melhoraSintomasReal
+      const wearablesAtivos = wearableDevices?.length || 0
+      const monitoramento24h = wearablesAtivos
+      const episodiosEpilepsia = epilepsyEvents?.length || 0
+      const eventosLeves = epilepsyEvents?.filter(evento => evento.severity === 'leve').length || 0
+      const melhoraSintomas = episodiosEpilepsia > 0 ? Math.round((eventosLeves / episodiosEpilepsia) * 100) : 0
 
       setKpis({
         administrativos: {
@@ -285,23 +551,15 @@ const RicardoValencaDashboard: React.FC = () => {
           melhoraSintomas
         }
       })
-
-      console.log('📊 KPIs das 3 Camadas carregados:', {
-        administrativos: { totalPacientes, avaliacoesCompletas, protocolosAEC, protocolosIMRE, respondedoresTEZ, consultoriosAtivos },
-        semanticos: { qualidadeEscuta, engajamentoPaciente, satisfacaoClinica, aderenciaTratamento },
-        clinicos: { wearablesAtivos, monitoramento24h, episodiosEpilepsia, melhoraSintomas }
-      })
-
     } catch (error) {
       console.error('❌ Erro ao carregar KPIs:', error)
     }
-  }
+  }, [user?.id])
 
-  const loadPatients = async () => {
+  const loadPatients = useCallback(async () => {
     try {
       setLoading(true)
-      
-      // Se for admin, usar função com permissões administrativas
+
       if (user && isAdmin(user)) {
         console.log('✅ Admin carregando pacientes com permissões administrativas')
         const allPatients = await getAllPatients(user.id, user.type || 'admin')
@@ -309,8 +567,7 @@ const RicardoValencaDashboard: React.FC = () => {
         setLoading(false)
         return
       }
-      
-      // Buscar avaliações clínicas para obter lista de pacientes (usuários normais)
+
       const { data: assessments, error } = await supabase
         .from('clinical_assessments')
         .select('*')
@@ -321,8 +578,7 @@ const RicardoValencaDashboard: React.FC = () => {
         return
       }
 
-      // Converter avaliações em lista de pacientes únicos
-      const uniquePatients = new Map()
+      const uniquePatients = new Map<string, Patient>()
       assessments?.forEach(assessment => {
         if (assessment.patient_id && !uniquePatients.has(assessment.patient_id)) {
           uniquePatients.set(assessment.patient_id, {
@@ -346,15 +602,16 @@ const RicardoValencaDashboard: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
 
-  const handlePatientSelect = (patientId: string) => {
+  const handlePatientSelect = useCallback((patientId: string) => {
     setSelectedPatient(patientId)
+    setSelectedAppointmentId(null)
     const patient = patients.find(p => p.id === patientId)
     if (patient) {
       setClinicalNotes(`Notas clínicas para ${patient.name}:\n\n`)
     }
-  }
+  }, [patients])
 
   const handleSaveNotes = async () => {
     if (!selectedPatient) return
@@ -368,6 +625,132 @@ const RicardoValencaDashboard: React.FC = () => {
     }
   }
 
+  const loadAppointments = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      setAppointmentsLoading(true)
+
+      const fromDate = new Date()
+      fromDate.setDate(fromDate.getDate() - 1)
+
+      let query = supabase
+        .from('appointments')
+        .select('id, patient_id, professional_id, title, description, appointment_date, duration, status, type, location, is_remote, meeting_url')
+        .gte('appointment_date', fromDate.toISOString())
+        .order('appointment_date', { ascending: true })
+        .limit(60)
+
+      if (normalizedEffectiveType === 'profissional' && user.id) {
+        query = query.eq('professional_id', user.id)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('❌ Erro ao carregar agendamentos:', error)
+        setAppointments([])
+        return
+      }
+
+      const appointmentList: Appointment[] = data || []
+
+      if (appointmentList.length === 0) {
+        setAppointments([])
+        return
+      }
+
+      const patientIds = Array.from(
+        new Set(
+          appointmentList
+            .map(appointment => appointment.patient_id)
+            .filter((id): id is string => Boolean(id))
+        )
+      )
+
+      const patientsMap = new Map<string, { id: string; name: string | null; email: string | null; phone?: string | null; type?: string | null }>()
+
+      if (patientIds.length > 0) {
+        const { data: patientsData, error: patientsError } = await supabase
+          .from('users_compatible')
+          .select('id, name, email, phone, type')
+          .in('id', patientIds)
+
+        if (patientsError) {
+          console.warn('⚠️ Erro ao carregar pacientes relacionados aos agendamentos:', patientsError)
+        }
+
+        patientsData?.forEach(patient => {
+          if (patient?.id) {
+            patientsMap.set(patient.id, {
+              id: patient.id,
+              name: patient.name || null,
+              email: patient.email || null,
+              phone: (patient as any).phone || null,
+              type: patient.type || null
+            })
+          }
+        })
+      }
+
+      const enrichedAppointments: EnrichedAppointment[] = appointmentList.map(appointment => {
+        const appointmentDate = new Date(appointment.appointment_date)
+        const patientInfo = appointment.patient_id ? patientsMap.get(appointment.patient_id) : undefined
+        return {
+          ...appointment,
+          patient: patientInfo,
+          formattedTime: new Intl.DateTimeFormat('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }).format(appointmentDate),
+          formattedDate: new Intl.DateTimeFormat('pt-BR', {
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+          }).format(appointmentDate),
+          isPast: appointmentDate.getTime() < Date.now()
+        }
+      })
+
+      setAppointments(enrichedAppointments)
+    } catch (error) {
+      console.error('❌ Erro inesperado ao carregar agendamentos:', error)
+      setAppointments([])
+    } finally {
+      setAppointmentsLoading(false)
+    }
+  }, [normalizedEffectiveType, user?.id])
+
+  useEffect(() => {
+    if (!user?.id) return
+    loadPatients()
+    loadKPIs()
+    loadAppointments()
+  }, [user?.id, loadPatients, loadKPIs, loadAppointments])
+
+  const handleStartAppointment = useCallback(
+    (appointment: EnrichedAppointment, opts?: { navigateToChat?: boolean }) => {
+      if (appointment.patient_id) {
+        handlePatientSelect(appointment.patient_id)
+      } else {
+        setSelectedPatient(null)
+        setSelectedAppointmentId(appointment.id)
+      }
+
+      setSelectedAppointmentId(appointment.id)
+
+      if (opts?.navigateToChat) {
+        if (appointment.patient_id) {
+          navigate(`/app/clinica/paciente/chat-profissional/${appointment.patient_id}`)
+        } else {
+          navigate('/app/clinica/paciente/chat-profissional')
+        }
+      }
+    },
+    [handlePatientSelect, navigate]
+  )
+
   const renderDashboard = () => (
     <>
       {/* Navegação por Eixos */}
@@ -379,9 +762,67 @@ const RicardoValencaDashboard: React.FC = () => {
               <Settings className="w-5 h-5 md:w-6 md:h-6 mr-2 text-orange-400 flex-shrink-0" />
               <span>🔧 Funcionalidades Administrativas</span>
             </h2>
+            <div className="mb-4 md:mb-6">
+              <div className="rounded-2xl border border-[#00C16A]/20 bg-gradient-to-br from-[#0A192F] via-[#102C45] to-[#1F4B38] p-5 md:p-6 lg:p-7 shadow-xl">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl flex items-center justify-center bg-gradient-to-r from-[#00C16A] to-[#1a365d] shadow-lg">
+                      <img
+                        src="/brain.png"
+                        alt="MedCann Lab"
+                        className="w-8 h-8 md:w-10 md:h-10 object-contain"
+                        style={{ filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.35)) brightness(1.2)' }}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[10px] md:text-[11px] uppercase tracking-[0.35em] text-[#00C16A] mb-2">MedCann Lab</p>
+                      <h3 className="text-xl md:text-2xl font-bold text-white">Integração Cannabis &amp; Nefrologia</h3>
+                      <p className="text-xs md:text-sm text-[#C8D6E5] mt-2 max-w-3xl">
+                        Pesquisa pioneira conectando ensino, clínica e pesquisa para mapear benefícios terapêuticos da cannabis medicinal,
+                        avaliando impactos na função renal com apoio da metodologia AEC.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate('/app/pesquisa/profissional/cidade-amiga-dos-rins')}
+                    className="self-start lg:self-center bg-gradient-to-r from-[#00C16A] to-[#1a365d] text-white px-5 md:px-6 py-2.5 md:py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+                  >
+                    Explorar Projeto
+                  </button>
+                </div>
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                  {[
+                    {
+                      title: 'Protocolos de prescrição AEC',
+                      description: 'Fluxos clínicos padronizados pela metodologia de anamnese AEC',
+                    },
+                    {
+                      title: 'Monitoramento de função renal',
+                      description: 'KPIs nefrológicos integrados ao prontuário avaliados em tempo real',
+                    },
+                    {
+                      title: 'Deep Learning em biomarcadores',
+                      description: 'Modelos que correlacionam exames laboratoriais e evolução clínica',
+                    },
+                    {
+                      title: 'Integração com dispositivos médicos',
+                      description: 'Wearables e equipamentos enviando dados contínuos para o LabPec',
+                    },
+                  ].map((item) => (
+                    <div key={item.title} className="bg-[#0F243C]/70 border border-[#00C16A]/10 rounded-lg p-4 flex items-start space-x-3">
+                      <CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" />
+                      <div>
+                        <h4 className="text-sm font-semibold text-white mb-1">{item.title}</h4>
+                        <p className="text-xs text-[#9FB3C6] leading-relaxed">{item.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6 w-full overflow-x-hidden">
               <button 
-                onClick={() => setActiveSection('admin-usuarios')}
+                onClick={() => goToSection('admin-usuarios')}
                 className="bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-2 gap-2">
@@ -425,29 +866,18 @@ const RicardoValencaDashboard: React.FC = () => {
               </button>
               
               <button 
-                onClick={() => navigate('/app/forum')}
-                className="bg-gradient-to-r from-orange-500 to-red-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-2 gap-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">🏛️ Moderação Fórum</h3>
-                  <MessageCircle className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
-                </div>
-                <p className="text-xs opacity-75 mt-1 break-words">Gestão e moderação do fórum</p>
-              </button>
-              
-              <button 
                 onClick={() => navigate('/app/gamificacao')}
                 className="bg-gradient-to-r from-yellow-500 to-orange-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-2 gap-2">
-                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">🏆 Ranking & Gamificação</h3>
+                  <h3 className="text-xs md:text-sm font-medium opacity-90 break-words flex-1 min-w-0">🏆 Ranking & Programa de Pontos</h3>
                   <Activity className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                 </div>
                 <p className="text-xs opacity-75 mt-1 break-words">Sistema de pontos e rankings</p>
               </button>
               
               <button 
-                onClick={() => setActiveSection('admin-upload')}
+                onClick={() => goToSection('admin-upload')}
                 className="bg-gradient-to-r from-indigo-500 to-purple-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-2 gap-2">
@@ -469,7 +899,7 @@ const RicardoValencaDashboard: React.FC = () => {
               </button>
               
               <button 
-                onClick={() => setActiveSection('admin-renal')}
+                onClick={() => goToSection('admin-renal')}
                 className="bg-gradient-to-r from-red-500 to-pink-400 rounded-xl p-4 md:p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left overflow-hidden cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-2 gap-2">
@@ -970,7 +1400,7 @@ const RicardoValencaDashboard: React.FC = () => {
       {/* Botão para voltar ao dashboard */}
       <div className="text-center">
         <button
-          onClick={() => setActiveSection('dashboard')}
+          onClick={() => goToSection('dashboard')}
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
         >
           ← Voltar ao Dashboard
@@ -1317,6 +1747,159 @@ const RicardoValencaDashboard: React.FC = () => {
     </div>
   )
 
+  const renderFerramentasPedagogicas = () => {
+    const heroStyle: React.CSSProperties = {
+      background: 'linear-gradient(135deg, #0A192F 0%, #1a365d 55%, #2d5a3d 100%)',
+      border: '1px solid rgba(0,193,106,0.18)',
+      boxShadow: '0 18px 42px rgba(2,12,27,0.45)'
+    }
+
+    const cardStyleLocal: React.CSSProperties = {
+      background: 'rgba(7,22,41,0.88)',
+      border: '1px solid rgba(0,193,106,0.12)',
+      boxShadow: '0 16px 32px rgba(2,12,27,0.38)'
+    }
+
+    const tileStyle: React.CSSProperties = {
+      background: 'rgba(12,34,54,0.75)',
+      border: '1px solid rgba(0,193,106,0.12)',
+      boxShadow: '0 10px 24px rgba(2,12,27,0.32)'
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="rounded-xl p-6" style={heroStyle}>
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2 flex items-center space-x-3">
+            <FileText className="w-6 h-6 text-[#00F5A0]" />
+            <span>Ferramentas Pedagógicas Integradas</span>
+          </h2>
+          <p className="text-slate-200/85 text-sm md:text-base max-w-3xl">
+            Produza relatos de caso, crie e publique aulas, além de colaborar com a IA residente na preparação e análise de slides. Todo o fluxo pedagógico foi integrado ao painel profissional para centralizar curadoria, revisão e publicação.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="rounded-xl p-6 space-y-4" style={cardStyleLocal}>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #1a365d 0%, #274a78 100%)' }}>
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Casos Clínicos</h3>
+                <p className="text-xs text-slate-300/80">2 dossiês disponíveis</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-200/85">
+              Acesse casos clínicos reais, extraia recortes relevantes e converta em aulas, relatos ou materiais avaliativos com apoio da IA residente.
+            </p>
+            <button
+              onClick={() => navigate('/app/chat?context=casos-clinicos')}
+              className="w-full px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
+              style={{ background: 'linear-gradient(135deg, #1a365d 0%, #274a78 100%)' }}
+            >
+              Acessar Casos
+            </button>
+          </div>
+
+          <div className="rounded-xl p-6 space-y-4" style={cardStyleLocal}>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)' }}>
+                <FileText className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Minhas Aulas</h3>
+                <p className="text-xs text-slate-300/80">Gestão centralizada</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-200/85">
+              Organize roteiros, módulos e materiais complementares. A IA residente oferece revisões, resumos e sugestões de aprimoramento para publicação.
+            </p>
+            <button
+              onClick={() => navigate('/app/chat?context=minhas-aulas')}
+              className="w-full px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
+              style={{ background: 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)' }}
+            >
+              Criar Nova Aula
+            </button>
+          </div>
+
+          <div className="rounded-xl p-6 space-y-4" style={cardStyleLocal}>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #FF5F6D 0%, #FFC371 100%)' }}>
+                <Upload className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Preparação de Slides</h3>
+                <p className="text-xs text-slate-300/80">Criação assistida</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-200/85">
+              Envie apresentações em PowerPoint ou crie slides do zero com a IA. Receba ajustes, refinamentos visuais e adequações para publicação oficial.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => navigate('/app/chat?context=slides&action=visualizar')}
+                className="flex-1 px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
+                style={{ background: 'linear-gradient(135deg, #FF5F6D 0%, #FFC371 100%)', color: '#12273D' }}
+              >
+                Visualizar Slides
+              </button>
+              <button
+                onClick={() => navigate('/app/chat?context=slides&action=criar')}
+                className="flex-1 px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
+                style={{ background: 'linear-gradient(135deg, #1a365d 0%, #274a78 100%)' }}
+              >
+                Enviar PowerPoint
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl p-6 space-y-6" style={cardStyleLocal}>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-semibold text-white mb-1">Visualize ou construa novos slides</h3>
+              <p className="text-sm text-slate-200/80">
+                Utilize o player integrado para apresentar materiais existentes e convoque a IA para construir sequências inéditas orientadas por protocolos clínicos ou pedagógicos.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => navigate('/app/chat?context=slides&action=player')}
+                className="px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
+                style={{ background: 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)' }}
+              >
+                Abrir Player de Slides
+              </button>
+              <button
+                onClick={() => navigate('/app/chat?context=slides&action=novo')}
+                className="px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
+                style={{ background: 'linear-gradient(135deg, #1a365d 0%, #274a78 100%)' }}
+              >
+                Criar Novo Slide
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-lg p-5" style={tileStyle}>
+            <h4 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
+              <Brain className="w-5 h-5 text-[#00F5A0]" />
+              <span>Como a IA Residente Apoia cada etapa</span>
+            </h4>
+            <ul className="space-y-2 text-sm text-slate-200/85 list-disc list-inside">
+              <li>Análise estruturada de apresentações enviadas e sugestão de melhorias narrativas e visuais.</li>
+              <li>Produção de slides profissionais a partir de temas, casos clínicos ou roteiros definidos.</li>
+              <li>Edição colaborativa com controles de versão e trilhas de feedback entre docentes.</li>
+              <li>Preparação para publicação em trilhas educacionais, biblioteca e fóruns temáticos.</li>
+              <li>Integração com casos clínicos, anexos avaliativos e materiais de pesquisa.</li>
+              <li>Geração automática de quizzes, resumos executivos e materiais complementares.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const renderFinanceiro = () => (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-orange-800 to-orange-700 rounded-lg p-6">
@@ -1446,210 +2029,410 @@ const RicardoValencaDashboard: React.FC = () => {
     </div>
   )
 
-  const renderAtendimento = () => (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-red-800 to-red-700 rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
-          <Stethoscope className="w-6 h-6" />
-          <span>Atendimento</span>
-        </h2>
-        <p className="text-red-200">
-          Sistema de atendimento integrado com metodologia AEC
-        </p>
-      </div>
+  const renderAtendimento = () => {
+    type SummaryCard = {
+      id: string
+      label: string
+      value: number
+      description: string
+      icon: React.ComponentType<{ className?: string }>
+      gradient: string
+      iconColor: string
+    }
 
-      {/* Status do Atendimento */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-slate-800/80 rounded-lg p-4 border border-slate-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-400 text-sm">Em Atendimento</p>
-              <p className="text-2xl font-bold text-white">2</p>
-            </div>
-            <Activity className="w-8 h-8 text-red-400" />
-          </div>
-        </div>
-        <div className="bg-slate-800/80 rounded-lg p-4 border border-slate-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-400 text-sm">Aguardando</p>
-              <p className="text-2xl font-bold text-white">5</p>
-            </div>
-            <Clock className="w-8 h-8 text-orange-400" />
-          </div>
-        </div>
-        <div className="bg-slate-800/80 rounded-lg p-4 border border-slate-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-400 text-sm">Finalizados</p>
-              <p className="text-2xl font-bold text-white">12</p>
-            </div>
-            <CheckCircle className="w-8 h-8 text-green-400" />
-          </div>
-        </div>
-      </div>
+    const headerStyle: React.CSSProperties = {
+      background: 'linear-gradient(135deg, rgba(10,25,47,0.96) 0%, rgba(26,54,93,0.92) 55%, rgba(45,90,61,0.9) 100%)',
+      border: '1px solid rgba(0,193,106,0.18)',
+      boxShadow: '0 18px 42px rgba(2,12,27,0.45)'
+    }
 
-      {/* Sala de Atendimento */}
-      <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
-        <h3 className="text-xl font-semibold text-white mb-4">Sala de Atendimento</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <h4 className="font-semibold text-white">Próximos Atendimentos</h4>
+    const surfaceStyle: React.CSSProperties = {
+      background: 'rgba(7,22,41,0.85)',
+      border: '1px solid rgba(0,193,106,0.1)',
+      boxShadow: '0 12px 32px rgba(2,12,27,0.4)'
+    }
+
+    const cardStyle: React.CSSProperties = {
+      background: 'rgba(15,36,60,0.78)',
+      border: '1px solid rgba(0,193,106,0.12)'
+    }
+
+    const summaryCards: SummaryCard[] = [
+      {
+        id: 'in-progress',
+        label: 'Em Atendimento',
+        value: inProgressCount,
+        description: 'Consultas confirmadas neste momento',
+        icon: Activity,
+        gradient: 'linear-gradient(135deg, rgba(255,107,107,0.28) 0%, rgba(249,115,22,0.22) 100%)',
+        iconColor: '#FF896B'
+      },
+      {
+        id: 'waiting',
+        label: 'Aguardando',
+        value: waitingCount,
+        description: 'Pacientes na sala de espera para hoje',
+        icon: Clock,
+        gradient: 'linear-gradient(135deg, rgba(255,211,61,0.28) 0%, rgba(255,161,22,0.22) 100%)',
+        iconColor: '#FFC44D'
+      },
+      {
+        id: 'completed',
+        label: 'Finalizados',
+        value: completedCount,
+        description: 'Consultas concluídas hoje',
+        icon: CheckCircle,
+        gradient: 'linear-gradient(135deg, rgba(16,185,129,0.28) 0%, rgba(34,197,94,0.2) 100%)',
+        iconColor: '#34D399'
+      },
+      {
+        id: 'next-24h',
+        label: 'Próximas 24h',
+        value: upcoming24hCount,
+        description: 'Consultas programadas até amanhã',
+        icon: Calendar,
+        gradient: 'linear-gradient(135deg, rgba(59,130,246,0.28) 0%, rgba(14,165,233,0.22) 100%)',
+        iconColor: '#60A5FA'
+      }
+    ]
+
+    return (
+      <div className="space-y-6">
+        <div className="rounded-xl p-6" style={headerStyle}>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
+                <Stethoscope className="w-6 h-6 text-[#FFD33D]" />
+                <span>Atendimento Clínico Integrado</span>
+              </h2>
+              <p className="text-[#C8D6E5] text-sm md:text-base max-w-2xl">
+                Conecte-se com seus pacientes, acompanhe consultas em tempo real e acione a IA residente para gerar relatórios e notas durante o atendimento.
+              </p>
+            </div>
+            <button
+              onClick={() => goToSection('agendamentos')}
+              className="bg-gradient-to-r from-[#00C16A] to-[#00F5A0] text-slate-900 px-5 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+            >
+              Abrir Agenda Completa
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {summaryCards.map(card => {
+            const SummaryIcon = card.icon
+            return (
+              <div key={card.id} className="rounded-xl p-4" style={{ ...surfaceStyle, background: card.gradient }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-xs text-white/60 uppercase tracking-[0.25em]">{card.label}</p>
+                    <div className="flex items-baseline space-x-2 mt-1">
+                      {appointmentsLoading ? (
+                        <Loader2 className="w-6 h-6 text-white animate-spin" />
+                      ) : (
+                        <span className="text-3xl font-bold text-white">{card.value}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{ background: 'rgba(255,255,255,0.12)' }}
+                  >
+                    <SummaryIcon className="w-5 h-5" style={{ color: card.iconColor }} />
+                  </div>
+                </div>
+                <p className="text-xs text-white/70 leading-relaxed">{card.description}</p>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[1.8fr_1.2fr] gap-6">
+          <div className="rounded-xl p-6 space-y-5" style={surfaceStyle}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-white">Próximos atendimentos</h3>
+                <p className="text-sm text-slate-300">
+                  {appointmentsLoading
+                    ? 'Sincronizando com o Supabase...'
+                    : `${upcomingAppointments.length} consulta(s) agendada(s)`}
+                </p>
+              </div>
+              <button
+                onClick={() => goToSection('agendamentos')}
+                className="text-xs text-[#00F5A0] hover:text-white transition-colors"
+              >
+                Ver agenda completa →
+              </button>
+            </div>
+
             <div className="space-y-3">
-              <div className={`rounded-lg p-3 ${selectedPatient === 'maria-santos' ? 'bg-red-700 border-2 border-red-400' : 'bg-slate-700'}`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h5 className="font-semibold text-white">Maria Santos</h5>
-                    <p className="text-slate-400 text-sm">Epilepsia - Retorno</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-white font-medium">09:00</p>
-                    <button 
-                      onClick={() => {
-                        // Encontrar o paciente Maria Santos na lista ou criar um ID temporário
-                        const mariaPatient = patients.find(p => p.name.includes('Maria')) || patients[0]
-                        let patientId: string
-                        if (mariaPatient) {
-                          patientId = mariaPatient.id
-                          setSelectedPatient(patientId)
-                        } else {
-                          patientId = 'maria-santos'
-                          setSelectedPatient(patientId)
-                        }
-                        // Abrir automaticamente o chat profissional para este paciente
-                        navigate(`/app/clinica/paciente/chat-profissional/${patientId}`)
-                      }}
-                      className={`px-3 py-1 rounded text-xs transition-colors ${
-                        selectedPatient === 'maria-santos' || (selectedPatient && patients.find(p => p.id === selectedPatient)?.name.includes('Maria'))
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'bg-red-600 hover:bg-red-700 text-white'
-                      }`}
+              {appointmentsLoading && (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div
+                      key={`skeleton-${idx}`}
+                      className="rounded-xl p-4 animate-pulse"
+                      style={cardStyle}
                     >
-                      {selectedPatient === 'maria-santos' || (selectedPatient && patients.find(p => p.id === selectedPatient)?.name.includes('Maria')) ? 'Em Atendimento' : 'Iniciar'}
-                    </button>
-                  </div>
+                      <div className="h-4 bg-slate-600/40 rounded w-1/2 mb-2" />
+                      <div className="h-3 bg-slate-600/30 rounded w-1/3" />
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className={`rounded-lg p-3 ${selectedPatient === 'joao-silva' ? 'bg-red-700 border-2 border-red-400' : 'bg-slate-700'}`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h5 className="font-semibold text-white">João Silva</h5>
-                    <p className="text-slate-400 text-sm">TEA - Avaliação</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-white font-medium">14:00</p>
-                    <button 
-                      onClick={() => {
-                        // Encontrar o paciente João Silva na lista ou criar um ID temporário
-                        const joaoPatient = patients.find(p => p.name.includes('João')) || patients[1]
-                        let patientId: string
-                        if (joaoPatient) {
-                          patientId = joaoPatient.id
-                          setSelectedPatient(patientId)
-                        } else {
-                          patientId = 'joao-silva'
-                          setSelectedPatient(patientId)
-                        }
-                        // Abrir automaticamente o chat profissional para este paciente
-                        navigate(`/app/clinica/paciente/chat-profissional/${patientId}`)
-                      }}
-                      className={`px-3 py-1 rounded text-xs transition-colors ${
-                        selectedPatient === 'joao-silva' || (selectedPatient && patients.find(p => p.id === selectedPatient)?.name.includes('João'))
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'bg-red-600 hover:bg-red-700 text-white'
-                      }`}
-                    >
-                      {selectedPatient === 'joao-silva' || (selectedPatient && patients.find(p => p.id === selectedPatient)?.name.includes('João')) ? 'Em Atendimento' : 'Iniciar'}
-                    </button>
-                  </div>
+              )}
+
+              {!appointmentsLoading && upcomingAppointments.length === 0 && (
+                <div className="rounded-xl p-6 text-center" style={cardStyle}>
+                  <p className="text-sm text-slate-300 mb-2">Nenhum atendimento futuro encontrado.</p>
+                  <p className="text-xs text-slate-500 mb-4">
+                    Cadastre um novo horário na agenda para habilitar os indicadores de atendimento.
+                  </p>
+                  <button
+                    onClick={() => goToSection('agendamentos')}
+                    className="bg-gradient-to-r from-[#00C16A] to-[#00F5A0] text-slate-900 px-4 py-2 rounded-lg text-sm font-semibold"
+                  >
+                    Agendar paciente
+                  </button>
                 </div>
-              </div>
+              )}
+
+              {!appointmentsLoading && upcomingAppointments.map(appointment => {
+                const badge = getStatusBadge(appointment.status)
+                const isSelected = selectedAppointmentId === appointment.id
+                return (
+                  <div
+                    key={appointment.id}
+                    onClick={() => handleStartAppointment(appointment)}
+                    className={`rounded-xl p-4 transition-all border ${
+                      isSelected
+                        ? 'border-[#00F5A0]/40 bg-emerald-500/10 shadow-lg'
+                        : 'border-slate-600/40 hover:border-[#00F5A0]/30 bg-slate-800/70'
+                    } cursor-pointer`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <h4 className="text-lg font-semibold text-white">
+                          {appointment.patient?.name || appointment.title}
+                        </h4>
+                        <p className="text-xs text-slate-300">
+                          {appointment.type ? appointment.type : 'Consulta clínica'} • {appointment.formattedDate}
+                        </p>
+                        {appointment.description && (
+                          <p className="text-xs text-slate-400 line-clamp-2">
+                            {appointment.description}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end space-y-2">
+                        <span
+                          className={`text-[10px] font-semibold uppercase tracking-[0.2em] px-2 py-1 rounded-full ${badge.className}`}
+                        >
+                          {badge.label}
+                        </span>
+                        <span className="text-sm font-semibold text-white bg-white/10 px-3 py-1 rounded-lg">
+                          {appointment.formattedTime}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-3 mt-3">
+                      <button
+                        onClick={event => {
+                          event.stopPropagation()
+                          handleStartAppointment(appointment)
+                        }}
+                        className="text-xs text-slate-300 hover:text-white transition-colors"
+                      >
+                        Selecionar
+                      </button>
+                      <button
+                        onClick={event => {
+                          event.stopPropagation()
+                          handleStartAppointment(appointment, { navigateToChat: true })
+                        }}
+                        className="bg-gradient-to-r from-[#00C16A] to-[#00F5A0] text-slate-900 px-3 py-2 rounded-lg text-xs font-semibold"
+                      >
+                        Iniciar atendimento
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
+
           <div className="space-y-4">
-            <h4 className="font-semibold text-white">Ferramentas de Atendimento</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <button 
-                onClick={() => {
-                  if (selectedPatient) {
-                    setCallType('video')
-                    setIsVideoCallOpen(true)
-                  } else {
-                    alert('Por favor, inicie um atendimento primeiro selecionando um paciente.')
-                  }
-                }}
-                disabled={!selectedPatient}
-                className={`rounded-lg p-3 transition-colors ${
-                  selectedPatient 
-                    ? 'bg-slate-700 hover:bg-slate-600 cursor-pointer' 
-                    : 'bg-slate-800 opacity-50 cursor-not-allowed'
-                }`}
-              >
-                <Video className="w-6 h-6 mx-auto mb-2 text-white" />
-                <span className="font-semibold text-white text-sm">Video Call</span>
-              </button>
-              <button 
-                onClick={() => {
-                  if (selectedPatient) {
-                    setCallType('audio')
-                    setIsVideoCallOpen(true)
-                  } else {
-                    alert('Por favor, inicie um atendimento primeiro selecionando um paciente.')
-                  }
-                }}
-                disabled={!selectedPatient}
-                className={`rounded-lg p-3 transition-colors ${
-                  selectedPatient 
-                    ? 'bg-slate-700 hover:bg-slate-600 cursor-pointer' 
-                    : 'bg-slate-800 opacity-50 cursor-not-allowed'
-                }`}
-              >
-                <Phone className="w-6 h-6 mx-auto mb-2 text-white" />
-                <span className="font-semibold text-white text-sm">Audio Call</span>
-              </button>
-              <button 
-                onClick={() => {
-                  if (selectedPatient) {
-                    // Navegar para o chat profissional com o paciente selecionado
-                    navigate(`/app/clinica/paciente/chat-profissional/${selectedPatient}`)
-                  } else {
-                    alert('Por favor, inicie um atendimento primeiro selecionando um paciente.')
-                  }
-                }}
-                disabled={!selectedPatient}
-                className={`rounded-lg p-3 transition-colors ${
-                  selectedPatient 
-                    ? 'bg-slate-700 hover:bg-slate-600 cursor-pointer' 
-                    : 'bg-slate-800 opacity-50 cursor-not-allowed'
-                }`}
-              >
-                <MessageCircle className="w-6 h-6 mx-auto mb-2 text-white" />
-                <span className="font-semibold text-white text-sm">Chat</span>
-              </button>
-              <button 
-                onClick={() => {
-                  if (selectedPatient) {
-                    navigate(`/app/patients?patientId=${selectedPatient}`)
-                  } else {
-                    alert('Por favor, inicie um atendimento primeiro selecionando um paciente.')
-                  }
-                }}
-                disabled={!selectedPatient}
-                className={`rounded-lg p-3 transition-colors ${
-                  selectedPatient 
-                    ? 'bg-slate-700 hover:bg-slate-600 cursor-pointer' 
-                    : 'bg-slate-800 opacity-50 cursor-not-allowed'
-                }`}
-              >
-                <FileText className="w-6 h-6 mx-auto mb-2 text-white" />
-                <span className="font-semibold text-white text-sm">Prontuário</span>
-              </button>
+            <div className="rounded-xl p-6 space-y-4" style={surfaceStyle}>
+              <div className="flex items-center justify-between">
+                <h4 className="text-lg font-semibold text-white">Detalhes do atendimento</h4>
+                {selectedAppointment && (
+                  <span
+                    className={`text-[10px] font-semibold uppercase tracking-[0.18em] px-2 py-1 rounded-full ${getStatusBadge(selectedAppointment.status).className}`}
+                  >
+                    {getStatusBadge(selectedAppointment.status).label}
+                  </span>
+                )}
+              </div>
+
+              {selectedAppointment ? (
+                <div className="space-y-4">
+                  <div className="bg-slate-900/70 rounded-lg p-4 border border-slate-700/60">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs text-slate-400">Paciente</p>
+                        <p className="text-sm font-semibold text-white">
+                          {selectedAppointment.patient?.name || selectedAppointment.title || 'Paciente não identificado'}
+                        </p>
+                        {selectedAppointment.patient?.email && (
+                          <p className="text-xs text-slate-400">
+                            {selectedAppointment.patient.email}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-slate-400">Horário</p>
+                        <p className="text-sm font-semibold text-white">{selectedAppointment.formattedTime}</p>
+                        <p className="text-xs text-slate-400">{selectedAppointment.formattedDate}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-300">
+                    <div className="bg-slate-900/70 rounded-lg p-3 border border-slate-700/60">
+                      <p className="uppercase tracking-[0.15em] text-white/50 mb-1">Tipo</p>
+                      <p className="text-white font-semibold">{selectedAppointment.type || 'Consulta clínica'}</p>
+                    </div>
+                    <div className="bg-slate-900/70 rounded-lg p-3 border border-slate-700/60">
+                      <p className="uppercase tracking-[0.15em] text-white/50 mb-1">Duração</p>
+                      <p className="text-white font-semibold">{selectedAppointment.duration ? `${selectedAppointment.duration} min` : '60 min'}</p>
+                    </div>
+                    <div className="bg-slate-900/70 rounded-lg p-3 border border-slate-700/60">
+                      <p className="uppercase tracking-[0.15em] text-white/50 mb-1">Formato</p>
+                      <p className="text-white font-semibold">{selectedAppointment.is_remote ? 'Teleatendimento' : 'Presencial'}</p>
+                    </div>
+                    <div className="bg-slate-900/70 rounded-lg p-3 border border-slate-700/60">
+                      <p className="uppercase tracking-[0.15em] text-white/50 mb-1">Local / Link</p>
+                      <p className="text-white font-semibold break-words">
+                        {selectedAppointment.is_remote
+                          ? selectedAppointment.meeting_url || 'Link não informado'
+                          : selectedAppointment.location || 'Consultório MedCannLab'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedAppointment.description && (
+                    <div className="bg-slate-900/70 rounded-lg p-3 border border-slate-700/60">
+                      <p className="uppercase tracking-[0.15em] text-white/50 mb-1">Observações</p>
+                      <p className="text-xs text-slate-300 leading-relaxed">{selectedAppointment.description}</p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={() => handleStartAppointment(selectedAppointment, { navigateToChat: true })}
+                      className="bg-gradient-to-r from-[#00C16A] to-[#00F5A0] text-slate-900 px-4 py-2 rounded-lg text-sm font-semibold"
+                    >
+                      Abrir chat clínico
+                    </button>
+                    {selectedAppointment.meeting_url && (
+                      <button
+                        onClick={() => window.open(selectedAppointment.meeting_url as string, '_blank', 'noopener,noreferrer')}
+                        className="bg-slate-800 border border-slate-600 hover:border-[#00F5A0]/40 text-white px-4 py-2 rounded-lg text-sm"
+                      >
+                        Abrir link da consulta
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg p-6 text-center" style={cardStyle}>
+                  <p className="text-sm text-slate-300 mb-2">Selecione um atendimento para ver detalhes.</p>
+                  <p className="text-xs text-slate-500">
+                    Ao iniciar uma consulta, a IA residente ficará disponível para registrar notas e gerar o relatório clínico.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl p-6 space-y-4" style={surfaceStyle}>
+              <h4 className="text-lg font-semibold text-white">Ferramentas de atendimento</h4>
+              <p className="text-xs text-slate-300">
+                Ative recursos de telemedicina e prontuário. Selecione um paciente para habilitar as ações abaixo.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => {
+                    if (selectedPatient) {
+                      setCallType('video')
+                      setIsVideoCallOpen(true)
+                    } else {
+                      alert('Selecione um atendimento para iniciar a videochamada.')
+                    }
+                  }}
+                  className={`rounded-lg p-3 text-sm font-semibold transition-colors ${
+                    selectedPatient
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  📹 Video Call
+                </button>
+                <button
+                  onClick={() => {
+                    if (selectedPatient) {
+                      setCallType('audio')
+                      setIsVideoCallOpen(true)
+                    } else {
+                      alert('Selecione um atendimento para iniciar a ligação.')
+                    }
+                  }}
+                  className={`rounded-lg p-3 text-sm font-semibold transition-colors ${
+                    selectedPatient
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  📞 Audio Call
+                </button>
+                <button
+                  onClick={() => {
+                    if (selectedPatient) {
+                      navigate(`/app/clinica/paciente/chat-profissional/${selectedPatient}`)
+                    } else {
+                      alert('Selecione um atendimento para abrir o chat.')
+                    }
+                  }}
+                  className={`rounded-lg p-3 text-sm font-semibold transition-colors ${
+                    selectedPatient
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  💬 Chat Clínico
+                </button>
+                <button
+                  onClick={() => {
+                    if (selectedPatient) {
+                      navigate(`/app/patients?patientId=${selectedPatient}`)
+                    } else {
+                      alert('Selecione um atendimento para acessar o prontuário.')
+                    }
+                  }}
+                  className={`rounded-lg p-3 text-sm font-semibold transition-colors ${
+                    selectedPatient
+                      ? 'bg-gradient-to-r from-slate-600 to-slate-500 text-white hover:from-slate-500 hover:to-slate-400'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  📁 Prontuário
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const renderAvaliacao = () => (
     <div className="space-y-6">
@@ -1960,6 +2743,21 @@ const RicardoValencaDashboard: React.FC = () => {
     </div>
   )
 
+  const renderChatProfissionais = () => (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-indigo-800 to-indigo-700 rounded-lg p-6">
+        <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
+          <MessageCircle className="w-6 h-6" />
+          <span>Chat com Profissionais</span>
+        </h2>
+        <p className="text-indigo-200">
+          Comunicação segura entre consultórios da plataforma MedCannLab
+        </p>
+      </div>
+      <ProfessionalChatSystem />
+    </div>
+  )
+
   const renderChatPacientes = () => (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-blue-800 to-blue-700 rounded-lg p-6">
@@ -2176,42 +2974,158 @@ const RicardoValencaDashboard: React.FC = () => {
     )
   }
 
+  const renderActiveSection = (section: SectionId) => {
+    switch (section) {
+      case 'dashboard':
+        if (normalizedEffectiveType === 'admin') {
+          return renderKPIsAdmin()
+        }
+        if (currentEixo === 'ensino') {
+          return renderAulas()
+        }
+        if (currentEixo === 'pesquisa') {
+          return renderAvaliacao()
+        }
+        return renderAtendimento()
+      case 'admin-usuarios':
+        return renderAdminUsuarios()
+      case 'admin-upload':
+        return renderAdminUpload()
+      case 'admin-renal':
+        return renderAdminRenal()
+      case 'atendimento':
+        return renderAtendimento()
+      case 'pacientes':
+        return renderPacientes()
+      case 'agendamentos':
+        return renderAgendamentos()
+      case 'financeiro':
+        return renderFinanceiro()
+      case 'prescricoes':
+        return renderPrescricoes()
+      case 'relatorios-clinicos':
+        return renderRelatoriosClinicos()
+      case 'chat-pacientes':
+        return renderChatPacientes()
+      case 'chat-profissionais':
+        return renderChatProfissionais()
+      case 'aulas':
+        return renderAulas()
+      case 'biblioteca':
+        return renderBiblioteca()
+      case 'avaliacao':
+        return renderAvaliacao()
+      case 'newsletter':
+        return renderNewsletter()
+      case 'ferramentas-pedagogicas':
+        return renderFerramentasPedagogicas()
+      default:
+        if (normalizedEffectiveType === 'admin') {
+          return renderKPIsAdmin()
+        }
+        if (currentEixo === 'ensino') {
+          return renderAulas()
+        }
+        if (currentEixo === 'pesquisa') {
+          return renderAvaliacao()
+        }
+        return renderAtendimento()
+    }
+  }
+
+  const statusToKey = useCallback((status?: string | null) => (status || '').toLowerCase(), [])
+
+  const todaysAppointments = useMemo(() => {
+    const today = new Date()
+    return appointments.filter(appointment => {
+      const apptDate = new Date(appointment.appointment_date)
+      return (
+        apptDate.getFullYear() === today.getFullYear() &&
+        apptDate.getMonth() === today.getMonth() &&
+        apptDate.getDate() === today.getDate()
+      )
+    })
+  }, [appointments])
+
+  const upcomingAppointments = useMemo(() => {
+    const now = Date.now()
+    return [...appointments]
+      .filter(appointment => new Date(appointment.appointment_date).getTime() >= now)
+      .sort(
+        (a, b) =>
+          new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime()
+      )
+      .slice(0, 4)
+  }, [appointments])
+
+  const upcoming24hCount = useMemo(() => {
+    const limit = Date.now() + 24 * 60 * 60 * 1000
+    return upcomingAppointments.filter(appointment => new Date(appointment.appointment_date).getTime() <= limit).length
+  }, [upcomingAppointments])
+
+  const waitingCount = useMemo(() => {
+    return todaysAppointments.filter(appointment => statusToKey(appointment.status) === 'scheduled').length
+  }, [todaysAppointments, statusToKey])
+
+  const inProgressCount = useMemo(() => {
+    return todaysAppointments.filter(appointment => {
+      const status = statusToKey(appointment.status)
+      return status === 'confirmed' || status === 'in_progress' || status === 'in-session'
+    }).length
+  }, [todaysAppointments, statusToKey])
+
+  const completedCount = useMemo(() => {
+    return todaysAppointments.filter(appointment => statusToKey(appointment.status) === 'completed').length
+  }, [todaysAppointments, statusToKey])
+
+  const getStatusBadge = useCallback(
+    (status?: string | null): { label: string; className: string } => {
+      const key = statusToKey(status)
+      switch (key) {
+        case 'confirmed':
+          return {
+            label: 'Confirmado',
+            className: 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/30'
+          }
+        case 'scheduled':
+          return {
+            label: 'Agendado',
+            className: 'bg-blue-500/15 text-blue-300 border border-blue-400/30'
+          }
+        case 'completed':
+          return {
+            label: 'Concluído',
+            className: 'bg-green-500/15 text-green-200 border border-green-400/30'
+          }
+        case 'cancelled':
+          return {
+            label: 'Cancelado',
+            className: 'bg-red-500/15 text-red-200 border border-red-400/30'
+          }
+        case 'no_show':
+          return {
+            label: 'Não compareceu',
+            className: 'bg-orange-500/15 text-orange-200 border border-orange-400/30'
+          }
+        default:
+          return {
+            label: 'Sem status',
+            className: 'bg-slate-500/15 text-slate-300 border border-slate-400/20'
+          }
+      }
+    },
+    [statusToKey]
+  )
+
+  const selectedAppointment = useMemo(() => {
+    if (!selectedAppointmentId) return null
+    return appointments.find(appointment => appointment.id === selectedAppointmentId) || null
+  }, [appointments, selectedAppointmentId])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-x-hidden w-full">
       <div className="max-w-7xl mx-auto px-2 md:px-4 lg:px-6 py-4 md:py-6 lg:py-8 w-full overflow-x-hidden">
-        {/* Renderizar seção ativa */}
-        {activeSection === 'dashboard' && renderDashboard()}
-        {activeSection === 'kpis-admin' && renderKPIsAdmin()}
-        {activeSection === 'admin-usuarios' && renderAdminUsuarios()}
-        {activeSection === 'admin-upload' && renderAdminUpload()}
-        {activeSection === 'admin-renal' && renderAdminRenal()}
-        {activeSection === 'chat-profissionais' && (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-indigo-800 to-indigo-700 rounded-lg p-6">
-              <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
-                <MessageCircle className="w-6 h-6" />
-                <span>Chat com Profissionais</span>
-              </h2>
-              <p className="text-indigo-200">
-                Comunicação segura entre consultórios da plataforma MedCannLab
-              </p>
-            </div>
-            <ProfessionalChatSystem />
-          </div>
-        )}
-        {activeSection === 'chat-pacientes' && renderChatPacientes()}
-        
-        {/* Outras seções */}
-        {activeSection === 'agendamentos' && renderAgendamentos()}
-        {activeSection === 'pacientes' && renderPacientes()}
-        {activeSection === 'aulas' && renderAulas()}
-        {activeSection === 'financeiro' && renderFinanceiro()}
-        {activeSection === 'atendimento' && renderAtendimento()}
-        {activeSection === 'avaliacao' && renderAvaliacao()}
-        {activeSection === 'biblioteca' && renderBiblioteca()}
-        {activeSection === 'newsletter' && renderNewsletter()}
-        {activeSection === 'prescricoes' && renderPrescricoes()}
-        {activeSection === 'relatorios-clinicos' && renderRelatoriosClinicos()}
+        {renderActiveSection(resolvedSection)}
 
         {/* Modal de Seleção de Dashboard Profissional */}
         {showProfessionalModal && (
@@ -2297,7 +3211,7 @@ const RicardoValencaDashboard: React.FC = () => {
           </div>
         )}
 
-        {activeSection === 'perfil' && (
+        {resolvedSection === 'perfil' && (
           <div className="text-center py-12">
             <User className="w-16 h-16 text-cyan-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-white mb-2">👤 Meu Perfil</h2>

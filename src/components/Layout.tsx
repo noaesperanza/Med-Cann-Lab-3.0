@@ -10,13 +10,18 @@ import Breadcrumbs from './Breadcrumbs'
 import NavegacaoIndividualizada from './NavegacaoIndividualizada'
 import MobileResponsiveWrapper from './MobileResponsiveWrapper'
 import { normalizeUserType } from '../lib/userTypes'
+import { useUserView } from '../contexts/UserViewContext'
 
 const Layout: React.FC = () => {
   const { user, isLoading } = useAuth()
+  const { getEffectiveUserType, viewAsType } = useUserView()
   const [isMobile, setIsMobile] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const location = useLocation()
+
+  const landingGradient = 'linear-gradient(135deg, #0A192F 0%, #1a365d 50%, #2d5a3d 100%)'
+  const surfaceColor = 'rgba(7, 22, 41, 0.82)'
 
   useEffect(() => {
     const checkMobile = () => {
@@ -77,7 +82,8 @@ const Layout: React.FC = () => {
   }
 
   // Normalizar tipo de usuário
-  const normalizedUserType = user ? normalizeUserType(user.type) : null
+  const effectiveType = user ? getEffectiveUserType(user.type) : null
+  const normalizedUserType = effectiveType ? normalizeUserType(effectiveType) : null
   
   // Verificar se o email não foi confirmado
   if (user?.type === 'unconfirmed') {
@@ -123,12 +129,18 @@ const Layout: React.FC = () => {
     return (
       <ProtectedRoute>
         <MobileResponsiveWrapper>
-          <div className="min-h-screen bg-slate-900">
+          <div
+            className="min-h-screen"
+            style={{ background: landingGradient }}
+          >
             {/* Main Content - sem sidebar externa */}
             <div className="flex flex-col min-h-screen">
               <Header />
               {/* NavegacaoIndividualizada removida - botões dos eixos já estão na sidebar */}
-              <main className={`flex-1 bg-slate-900 ${isMobile ? 'px-2 py-2' : 'px-4 py-4'}`}>
+              <main
+                className={`flex-1 ${isMobile ? 'px-2 py-2' : 'px-4 py-4'}`}
+                style={{ backgroundColor: surfaceColor }}
+              >
                 <Outlet />
               </main>
               <Footer />
@@ -149,10 +161,13 @@ const Layout: React.FC = () => {
   return (
     <ProtectedRoute>
       <MobileResponsiveWrapper onMobileMenuToggle={setIsSidebarOpen}>
-        <div className="min-h-screen bg-slate-900">
+        <div
+          className="min-h-screen"
+          style={{ background: landingGradient }}
+        >
           {/* Sidebar */}
           <Sidebar 
-            userType={user?.type} 
+            userType={viewAsType ?? user?.type} 
             isMobile={isMobile}
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
@@ -168,7 +183,10 @@ const Layout: React.FC = () => {
           >
             <Header />
             {/* NavegacaoIndividualizada removida - botões dos eixos já estão na sidebar */}
-            <main className={`flex-1 bg-slate-900 ${isMobile ? 'px-2 py-2' : 'px-4 py-4 lg:ml-4'}`}>
+            <main
+              className={`flex-1 ${isMobile ? 'px-2 py-2' : 'px-4 py-4 lg:ml-4'}`}
+              style={{ backgroundColor: surfaceColor }}
+            >
               <Outlet />
             </main>
             <Footer />

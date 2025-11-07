@@ -59,6 +59,33 @@ const Library: React.FC = () => {
   const [showStats, setShowStats] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
 
+  const backgroundGradient = 'linear-gradient(135deg, #0A192F 0%, #1a365d 55%, #2d5a3d 100%)'
+  const surfaceStyle: React.CSSProperties = {
+    background: 'rgba(7, 22, 41, 0.88)',
+    border: '1px solid rgba(0, 193, 106, 0.12)',
+    boxShadow: '0 18px 42px rgba(2, 12, 27, 0.55)'
+  }
+  const secondarySurfaceStyle: React.CSSProperties = {
+    background: 'rgba(12, 31, 54, 0.78)',
+    border: '1px solid rgba(0, 193, 106, 0.1)',
+    boxShadow: '0 14px 32px rgba(2, 12, 27, 0.45)'
+  }
+  const accentGradient = 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)'
+  const secondaryGradient = 'linear-gradient(135deg, #1a365d 0%, #274a78 100%)'
+  const highlightGradient = 'linear-gradient(135deg, rgba(0, 193, 106, 0.25) 0%, rgba(16, 49, 91, 0.4) 60%, rgba(9, 25, 43, 0.75) 100%)'
+  const goldenGradient = 'linear-gradient(135deg, #FFD33D 0%, #FFAA00 100%)'
+  const dropzoneStyle: React.CSSProperties = isDragging
+    ? {
+        border: '1px dashed rgba(0,193,106,0.6)',
+        background: 'rgba(0,193,106,0.18)',
+        boxShadow: '0 0 0 2px rgba(0,193,106,0.25) inset'
+      }
+    : {
+        border: '1px dashed rgba(0,193,106,0.3)',
+        background: 'rgba(10, 25, 47, 0.58)',
+        boxShadow: '0 16px 32px rgba(2,12,27,0.42)'
+      }
+
   // Tipos de usuário
   const userTypes = [
     { id: 'all', name: 'Todos os Usuários', icon: Users, color: 'blue' },
@@ -261,7 +288,7 @@ const Library: React.FC = () => {
       case 'image':
         return <span className="text-green-500 text-xl">🖼️</span>
       case 'book':
-        return <span className="text-purple-500 text-xl">📚</span>
+      return <span className="text-[#4FE0C1] text-xl">📚</span>
       default:
         return <span className="text-gray-500 text-xl">📁</span>
     }
@@ -514,7 +541,7 @@ const Library: React.FC = () => {
       name: 'Avatar IA Residente',
       description: 'Imagem do avatar da Nôa Esperança',
       icon: <Brain className="w-5 h-5" />,
-      color: 'from-purple-500 to-pink-500'
+      color: 'from-green-500 to-teal-500'
     },
     {
       id: 'ai-documents',
@@ -542,7 +569,7 @@ const Library: React.FC = () => {
       name: 'Relatórios e Análises',
       description: 'Relatórios clínicos e análises',
       icon: <ReportIcon className="w-5 h-5" />,
-      color: 'from-indigo-500 to-purple-500'
+      color: 'from-blue-500 to-cyan-500'
     },
     {
       id: 'research',
@@ -717,24 +744,29 @@ const Library: React.FC = () => {
   }, [searchTerm])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+    <div className="min-h-screen text-white" style={{ background: backgroundGradient }}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header Melhorado - Conectado à IA Residente */}
         <div className="mb-8">
-          <div className="bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border-2 border-purple-500/50 shadow-xl relative overflow-hidden">
-            {/* Gradiente de fundo sutil */}
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-pink-600/10 to-blue-600/10 pointer-events-none"></div>
+          <div
+            className="relative overflow-hidden rounded-2xl p-6 border"
+            style={{ ...surfaceStyle, border: '1px solid rgba(0,193,106,0.18)' }}
+          >
+            <div className="absolute inset-0" style={{ background: highlightGradient }}></div>
             <div className="relative z-10">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               <div className="flex items-center gap-4">
-                <div className="p-4 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 rounded-2xl shadow-lg transform hover:scale-105 transition-transform">
+                <div
+                  className="p-4 rounded-2xl shadow-lg transform hover:scale-105 transition-transform"
+                  style={{ background: accentGradient, boxShadow: '0 18px 36px rgba(0,193,106,0.32)' }}
+                >
                   <Brain className="w-10 h-10 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent mb-1">
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-green-300 via-teal-200 to-cyan-200 bg-clip-text text-transparent mb-1">
                     Base de Conhecimento
                   </h1>
-                  <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">
+                  <p className="text-sm font-semibold text-[rgba(200,214,229,0.85)]">
                     Nôa Esperança IA • Educação • Pesquisa
                   </p>
                 </div>
@@ -743,33 +775,46 @@ const Library: React.FC = () => {
               {/* Estatísticas Inline Melhoradas - Conectadas à IA */}
               {knowledgeStats && (
                 <div className="flex flex-wrap items-center gap-4">
-                  <div className="flex items-center gap-3 bg-slate-700/80 backdrop-blur-sm px-4 py-3 rounded-xl border-2 border-purple-500/50 shadow-lg hover:border-purple-400 transition-colors">
+                  <div
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all"
+                    style={{ background: 'rgba(7, 44, 68, 0.78)', border: '1px solid rgba(0,193,106,0.22)', boxShadow: '0 14px 28px rgba(0,0,0,0.35)' }}
+                  >
                     <div className="flex items-center gap-2">
-                      <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg">
+                      <div
+                        className="p-2 rounded-lg shadow-lg"
+                        style={{ background: accentGradient }}
+                      >
                         <Brain className="w-4 h-4 text-white" />
                       </div>
                       <div>
-                        <div className="text-xs text-slate-300 font-medium">Vinculados à IA Residente</div>
-                        <div className="text-lg font-bold text-purple-400">{knowledgeStats.aiLinkedDocuments}</div>
+                        <div className="text-xs text-slate-200 font-medium">Vinculados à IA Residente</div>
+                        <div className="text-lg font-bold text-[#00F5A0]">{knowledgeStats.aiLinkedDocuments}</div>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3 bg-slate-700/80 backdrop-blur-sm px-4 py-3 rounded-xl border-2 border-green-500/50 shadow-lg hover:border-green-400 transition-colors">
+                  <div
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all"
+                    style={{ background: 'rgba(7, 36, 54, 0.78)', border: '1px solid rgba(0,193,106,0.22)', boxShadow: '0 14px 28px rgba(0,0,0,0.35)' }}
+                  >
                     <div className="flex items-center gap-2">
-                      <div className="p-2 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg shadow-lg">
+                      <div
+                        className="p-2 rounded-lg shadow-lg"
+                        style={{ background: secondaryGradient }}
+                      >
                         <TrendingUp className="w-4 h-4 text-white" />
                       </div>
                       <div>
-                        <div className="text-xs text-slate-300 font-medium">Relevância Média IA</div>
-                        <div className="text-lg font-bold text-green-400">{knowledgeStats.averageRelevance.toFixed(2)}</div>
+                        <div className="text-xs text-slate-200 font-medium">Relevância Média IA</div>
+                        <div className="text-lg font-bold text-[#4FE0C1]">{knowledgeStats.averageRelevance.toFixed(2)}</div>
                       </div>
                     </div>
                   </div>
                   
                   <button
                     onClick={() => setShowStats(!showStats)}
-                    className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                    className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                    style={{ background: goldenGradient, color: '#0A192F' }}
                   >
                     <BarChart3 className="w-5 h-5" />
                     {showStats ? 'Ocultar' : 'Ver'} Estatísticas
@@ -779,56 +824,62 @@ const Library: React.FC = () => {
             </div>
             
             <div className="mt-4 flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-600/20 border border-purple-500/50 rounded-lg">
-                <Brain className="w-4 h-4 text-purple-400" />
-                <span className="text-sm text-slate-300 font-medium">Treinamento da IA Residente</span>
+              <div
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+                style={{ background: 'rgba(0,193,106,0.12)', border: '1px solid rgba(0,193,106,0.35)' }}
+              >
+                <Brain className="w-4 h-4 text-[#00F5A0]" />
+                <span className="text-sm text-slate-200 font-medium">Treinamento da IA Residente</span>
               </div>
               <span className="text-slate-500">•</span>
-              <span className="text-sm text-slate-400 font-medium">Recursos educacionais</span>
+              <span className="text-sm text-slate-300 font-medium">Recursos educacionais</span>
               <span className="text-slate-500">•</span>
-              <span className="text-sm text-slate-400 font-medium">Referências científicas</span>
+              <span className="text-sm text-slate-300 font-medium">Referências científicas</span>
               <span className="text-slate-500">•</span>
-              <span className="text-sm text-slate-400 font-medium">Protocolos clínicos</span>
+              <span className="text-sm text-slate-300 font-medium">Protocolos clínicos</span>
             </div>
             </div>
           </div>
 
           {/* Painel de Estatísticas Expandido */}
           {showStats && knowledgeStats && (
-            <div className="mt-6 p-6 bg-slate-800/90 backdrop-blur-sm rounded-xl border-2 border-purple-500/30 shadow-xl">
+            <div
+              className="mt-6 p-6 rounded-xl"
+              style={{ ...secondarySurfaceStyle, border: '1px solid rgba(0,193,106,0.16)' }}
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-400">
+                  <div className="text-3xl font-bold text-[#00F5A0]">
                     {knowledgeStats.totalDocuments}
                   </div>
-                  <div className="text-sm text-slate-300">
+                  <div className="text-sm text-slate-200">
                     Total de Documentos
                   </div>
                 </div>
                 
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-400">
+                  <div className="text-3xl font-bold text-[#4FE0C1]">
                     {knowledgeStats.aiLinkedDocuments}
                   </div>
-                  <div className="text-sm text-slate-300">
+                  <div className="text-sm text-slate-200">
                     Vinculados à IA
                   </div>
                 </div>
                 
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-400">
+                  <div className="text-3xl font-bold text-[#4FE0C1]">
                     {knowledgeStats.averageRelevance.toFixed(2)}
                   </div>
-                  <div className="text-sm text-slate-300">
+                  <div className="text-sm text-slate-200">
                     Relevância Média
                   </div>
                 </div>
                 
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-orange-400">
+                  <div className="text-3xl font-bold text-[#FFD33D]">
                     {knowledgeStats.topCategories.length}
                   </div>
-                  <div className="text-sm text-slate-300">
+                  <div className="text-sm text-slate-200">
                     Categorias Ativas
                   </div>
                 </div>
@@ -837,19 +888,20 @@ const Library: React.FC = () => {
               {/* Top Categorias */}
               <div className="mt-6">
                 <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-purple-400" />
+                  <BarChart3 className="w-5 h-5 text-[#00F5A0]" />
                   Top Categorias
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {knowledgeStats.topCategories.map((cat, index) => (
                     <div
                       key={cat.category}
-                      className="flex items-center gap-2 px-3 py-2 bg-slate-700/80 rounded-lg border-2 border-purple-500/30"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                      style={{ background: 'rgba(7, 44, 68, 0.65)', border: '1px solid rgba(0,193,106,0.16)' }}
                     >
                       <span className="text-sm font-medium text-slate-200">
                         {cat.category}
                       </span>
-                      <span className="text-xs bg-purple-600 text-purple-100 px-2 py-1 rounded-full font-bold">
+                      <span className="text-xs px-2 py-1 rounded-full font-bold" style={{ background: accentGradient }}>
                         {cat.count}
                       </span>
                     </div>
@@ -861,28 +913,35 @@ const Library: React.FC = () => {
         </div>
 
         {/* Busca Melhorada - Conectada à IA Residente */}
-        <div className="bg-slate-800/90 backdrop-blur-sm rounded-2xl shadow-xl p-6 mb-8 border-2 border-purple-500/50 relative overflow-hidden">
-          {/* Gradiente de fundo sutil */}
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-pink-600/10 to-blue-600/10 pointer-events-none"></div>
+        <div
+          className="relative overflow-hidden rounded-2xl shadow-xl p-6 mb-8"
+          style={{ ...surfaceStyle, border: '1px solid rgba(0,193,106,0.16)' }}
+        >
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(0,193,106,0.2) 0%, rgba(16,49,91,0.35) 45%, rgba(7,22,41,0.85) 100%)' }}></div>
           <div className="relative z-10">
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search Bar Melhorada */}
             <div className="flex-1">
               <div className="relative">
                 <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                  <Search className="w-6 h-6 text-purple-500" />
+                  <Search className="w-6 h-6 text-[#4FE0C1]" />
                 </div>
                 <input
                   type="text"
                   placeholder="Buscar documentos por título, conteúdo, autor..."
                   value={searchTerm}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                  className="w-full pl-14 pr-4 py-4 border-2 border-purple-500/50 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-500/30 focus:border-purple-400 bg-slate-700/80 text-white font-medium text-lg shadow-lg"
+                  className="w-full pl-14 pr-4 py-4 rounded-xl focus:outline-none focus:ring-4 text-white font-medium text-lg shadow-lg"
+                  style={{
+                    border: '1px solid rgba(0,193,106,0.3)',
+                    background: 'rgba(12,34,54,0.85)',
+                    boxShadow: '0 10px 28px rgba(2,12,27,0.45)'
+                  }}
                 />
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm('')}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -893,7 +952,8 @@ const Library: React.FC = () => {
             {/* Upload Button Melhorado */}
             <button 
               onClick={() => setShowUploadModal(true)}
-              className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 hover:from-purple-700 hover:via-pink-700 hover:to-blue-700 text-white font-bold rounded-xl shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 text-lg"
+              className="flex items-center justify-center gap-2 px-8 py-4 text-white font-bold rounded-xl shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 text-lg"
+              style={{ background: accentGradient }}
             >
               <Upload className="w-6 h-6" />
               Fazer Upload
@@ -901,13 +961,14 @@ const Library: React.FC = () => {
           </div>
           
           {/* Filtros Secundários */}
-          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t-2 border-purple-500/30">
+          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4" style={{ borderTop: '1px solid rgba(0,193,106,0.16)' }}>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-300">Categoria:</span>
+              <span className="text-sm font-semibold text-slate-200">Categoria:</span>
               <select
                 value={selectedCategory}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedCategory(e.target.value)}
-                className="px-4 py-2 border-2 border-purple-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/50 bg-slate-700/80 text-white font-semibold"
+                className="px-4 py-2 rounded-lg text-white font-semibold focus:outline-none"
+                style={{ background: 'rgba(12,34,54,0.82)', border: '1px solid rgba(0,193,106,0.16)', boxShadow: '0 8px 20px rgba(2,12,27,0.35)' }}
               >
                 {categoriesWithCount.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -918,11 +979,12 @@ const Library: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-300">Tipo:</span>
+              <span className="text-sm font-semibold text-slate-200">Tipo:</span>
               <select
                 value={selectedType}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedType(e.target.value)}
-                className="px-4 py-2 border-2 border-purple-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/50 bg-slate-700/80 text-white font-semibold"
+                className="px-4 py-2 rounded-lg text-white font-semibold focus:outline-none"
+                style={{ background: 'rgba(12,34,54,0.82)', border: '1px solid rgba(0,193,106,0.16)', boxShadow: '0 8px 20px rgba(2,12,27,0.35)' }}
               >
                 {documentTypes.map((type) => (
                   <option key={type.id} value={type.id}>
@@ -933,11 +995,12 @@ const Library: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-300">Área:</span>
+              <span className="text-sm font-semibold text-slate-200">Área:</span>
               <select
                 value={selectedArea}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedArea(e.target.value)}
-                className="px-4 py-2 border-2 border-purple-500/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/50 bg-slate-700/80 text-white font-semibold"
+                className="px-4 py-2 rounded-lg text-white font-semibold focus:outline-none"
+                style={{ background: 'rgba(12,34,54,0.82)', border: '1px solid rgba(0,193,106,0.16)', boxShadow: '0 8px 20px rgba(2,12,27,0.35)' }}
               >
                 {knowledgeAreas.map((area) => (
                   <option key={area.id} value={area.id}>
@@ -949,9 +1012,12 @@ const Library: React.FC = () => {
           </div>
           
           {/* Contador e Atualizar - Integrado ao Card de Busca */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4 pt-4 border-t-2 border-purple-500/30">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4 pt-4" style={{ borderTop: '1px solid rgba(0,193,106,0.16)' }}>
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg">
+              <div
+                className="p-2 rounded-lg shadow-lg"
+                style={{ background: accentGradient }}
+              >
                 <FileText className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -959,8 +1025,8 @@ const Library: React.FC = () => {
                   {filteredDocuments.length} {filteredDocuments.length === 1 ? 'documento encontrado' : 'documentos encontrados'}
                 </p>
                 {selectedUserType !== 'all' && (
-                  <p className="text-sm text-slate-400 mt-1 flex items-center gap-1">
-                    <Brain className="w-3 h-3 text-purple-400" />
+                  <p className="text-sm text-slate-300 mt-1 flex items-center gap-1">
+                    <Brain className="w-3 h-3" style={{ color: '#4FE0C1' }} />
                     Filtrado para: {userTypes.find(ut => ut.id === selectedUserType)?.name}
                   </p>
                 )}
@@ -970,7 +1036,8 @@ const Library: React.FC = () => {
               <button
                 onClick={() => loadDocuments(true)}
                 disabled={isLoadingDocuments || isUploading}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
+                className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
+                style={{ background: secondaryGradient, color: '#E6F4FF' }}
               >
                 {isLoadingDocuments ? (
                   <>
@@ -990,7 +1057,8 @@ const Library: React.FC = () => {
               <button
                 onClick={syncAllDocuments}
                 disabled={isLoadingDocuments || isUploading}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
+                className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
+                style={{ background: accentGradient }}
                 title="Sincronizar todos os documentos da plataforma com a base de conhecimento"
               >
                 <Brain className="w-5 h-5" />
@@ -1005,11 +1073,8 @@ const Library: React.FC = () => {
         {/* Upload Hint - Unified system with Drag and Drop */}
         {filteredDocuments.length === 0 && (
           <div
-            className={`mb-8 text-center py-12 border-2 border-dashed rounded-xl transition-all ${
-              isDragging
-                ? 'border-purple-500 bg-purple-500/20 dark:bg-purple-900/40'
-                : 'border-purple-300 dark:border-purple-700 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 hover:border-purple-500'
-            }`}
+            className="mb-8 text-center py-12 rounded-xl transition-all"
+            style={dropzoneStyle}
             onDragEnter={(e) => {
               e.preventDefault()
               e.stopPropagation()
@@ -1038,23 +1103,24 @@ const Library: React.FC = () => {
               }
             }}
           >
-            <Brain className={`w-12 h-12 mx-auto mb-3 ${isDragging ? 'text-purple-500' : 'text-purple-600'}`} />
+            <Brain className="w-12 h-12 mx-auto mb-3" style={{ color: isDragging ? '#00F5A0' : '#4FE0C1' }} />
             <h3 className="text-lg font-bold text-white mb-2">
               Base de Conhecimento da Nôa Esperança
             </h3>
-            <p className="text-slate-300 mb-4">
+            <p className="text-slate-200 mb-4">
               {isDragging 
                 ? 'Solte o arquivo aqui para fazer upload' 
                 : 'Faça upload de documentos para treinar a IA e expandir a base de conhecimento'}
             </p>
             <button
               onClick={() => setShowUploadModal(true)}
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all"
+              className="px-6 py-2 text-white font-semibold rounded-lg transition-all"
+              style={{ background: accentGradient }}
             >
               <Upload className="w-5 h-5 inline mr-2" />
               Fazer Upload
             </button>
-            <p className="text-xs text-slate-400 mt-3">
+            <p className="text-xs text-slate-300 mt-3">
               Ou arraste e solte um arquivo aqui
             </p>
           </div>
@@ -1065,11 +1131,15 @@ const Library: React.FC = () => {
           {filteredDocuments.map((doc) => (
             <div 
               key={doc.id} 
-              className="bg-slate-800/90 backdrop-blur-sm rounded-xl border-2 border-slate-700 p-6 hover:shadow-2xl hover:border-purple-500/50 transition-all duration-300 hover:bg-slate-800"
+              className="rounded-xl border transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]"
+              style={{ ...secondarySurfaceStyle, border: '1px solid rgba(0,193,106,0.16)' }}
             >
               <div className="flex items-start gap-4">
                 {/* Icon */}
-                <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
+                <div
+                  className="flex-shrink-0 w-16 h-16 rounded-xl flex items-center justify-center shadow-lg"
+                  style={{ background: 'linear-gradient(135deg, #00C16A 0%, #1a6ab3 100%)', boxShadow: '0 16px 32px rgba(0,0,0,0.35)' }}
+                >
                   <div className="text-3xl">
                     {getTypeIcon(doc.file_type)}
                   </div>
@@ -1079,7 +1149,7 @@ const Library: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex-1">
-                      <h3 className="text-base font-bold text-white mb-2 line-clamp-2 group-hover:text-purple-400">
+                      <h3 className="text-base font-bold text-white mb-2 line-clamp-2">
                         {doc.title}
                       </h3>
                       <div className="flex items-center gap-3 text-xs text-slate-300 font-medium mb-3">
@@ -1102,7 +1172,10 @@ const Library: React.FC = () => {
                     {/* AI Badge */}
                     {doc.isLinkedToAI === true && (
                       <div className="flex-shrink-0">
-                        <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                        <div
+                          className="text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1"
+                          style={{ background: accentGradient }}
+                        >
                           <Brain className="w-3 h-3" />
                           IA Ativa
                         </div>
@@ -1112,7 +1185,7 @@ const Library: React.FC = () => {
 
                   {/* Summary */}
                   {doc.summary && (
-                    <p className="text-sm text-slate-300 mb-3 line-clamp-2 italic">
+                    <p className="text-sm text-slate-200 mb-3 line-clamp-2 italic">
                       {doc.summary}
                     </p>
                   )}
@@ -1123,7 +1196,8 @@ const Library: React.FC = () => {
                       {doc.tags && doc.tags.length > 0 && doc.tags.map((tag: string, index: number) => (
                         <span
                           key={index}
-                          className="px-3 py-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-xs rounded-full font-semibold shadow-md"
+                          className="px-3 py-1 text-white text-xs rounded-full font-semibold shadow-md"
+                          style={{ background: secondaryGradient }}
                         >
                           {tag}
                         </span>
@@ -1131,7 +1205,8 @@ const Library: React.FC = () => {
                       {doc.keywords && doc.keywords.map((keyword: string, index: number) => (
                         <span
                           key={`kw-${index}`}
-                          className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full font-semibold shadow-md"
+                          className="px-3 py-1 text-white text-xs rounded-full font-semibold shadow-md"
+                          style={{ background: accentGradient }}
                         >
                           {keyword}
                         </span>
@@ -1140,13 +1215,13 @@ const Library: React.FC = () => {
                   )}
 
                   {/* Actions */}
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-slate-700">
-                    <div className="flex items-center gap-4 text-xs text-slate-300 font-medium">
-                      <span className="flex items-center gap-1 bg-slate-700 px-2 py-1 rounded">
+                  <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid rgba(0,193,106,0.16)' }}>
+                    <div className="flex items-center gap-4 text-xs text-slate-200 font-medium">
+                      <span className="flex items-center gap-1 px-2 py-1 rounded" style={{ background: 'rgba(12, 48, 68, 0.65)' }}>
                         ⬇️ {doc.downloads || 0} downloads
                       </span>
                       {doc.aiRelevance && doc.aiRelevance > 0 && (
-                        <span className="flex items-center gap-1 bg-purple-900/50 border border-purple-500/50 text-purple-300 px-2 py-1 rounded">
+                        <span className="flex items-center gap-1 px-2 py-1 rounded" style={{ background: 'rgba(0,193,106,0.12)', border: '1px solid rgba(0,193,106,0.35)', color: '#4FE0C1' }}>
                           <Brain className="w-3 h-3" />
                           Relevância IA: {doc.aiRelevance}
                         </span>
@@ -1214,7 +1289,8 @@ const Library: React.FC = () => {
                             alert('Erro ao visualizar o arquivo. Verifique as permissões do Storage.')
                           }
                         }}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                        className="flex items-center gap-2 px-4 py-2 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                        style={{ background: secondaryGradient }}
                       >
                         <Eye className="w-4 h-4" />
                         Visualizar
@@ -1289,7 +1365,8 @@ const Library: React.FC = () => {
                             alert('Erro ao fazer download do arquivo')
                           }
                         }}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                        className="flex items-center gap-2 px-4 py-2 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                        style={{ background: accentGradient }}
                       >
                         ⬇️ Baixar
                       </button>
@@ -1322,7 +1399,8 @@ const Library: React.FC = () => {
                               alert('Erro ao desvincular documento da IA.')
                             }
                           }}
-                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                          className="flex items-center gap-2 px-4 py-2 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                          style={{ background: 'linear-gradient(135deg, #1a365d 0%, #00A176 100%)' }}
                           title="Desvincular da IA residente"
                         >
                           <XCircle className="w-4 h-4" />
@@ -1353,7 +1431,8 @@ const Library: React.FC = () => {
                               alert('Erro ao vincular documento à IA.')
                             }
                           }}
-                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                          className="flex items-center gap-2 px-4 py-2 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                          style={{ background: accentGradient }}
                           title="Atribuir à IA residente"
                         >
                           <LinkIcon className="w-4 h-4" />
@@ -1428,7 +1507,8 @@ const Library: React.FC = () => {
                             alert('Erro ao excluir documento. Verifique as permissões.')
                           }
                         }}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                        className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg font-bold transition-all shadow-lg hover:shadow-xl"
+                        style={{ background: 'linear-gradient(135deg, #FF5F6D 0%, #FFC371 100%)', color: '#0A192F' }}
                         title="Excluir documento"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1444,15 +1524,22 @@ const Library: React.FC = () => {
 
         {/* Empty State */}
         {filteredDocuments.length === 0 && (
-          <div className="text-center py-12 border-2 border-dashed border-slate-700 rounded-lg bg-slate-800/50">
-            <div className="w-16 h-16 text-slate-400 mx-auto mb-4 text-5xl">📁</div>
+          <div
+            className="text-center py-12 rounded-lg"
+            style={{
+              border: '1px dashed rgba(0,193,106,0.4)',
+              background: 'rgba(12,34,54,0.72)',
+              boxShadow: '0 16px 32px rgba(2,12,27,0.4)'
+            }}
+          >
+            <div className="w-16 h-16 mx-auto mb-4 text-5xl" style={{ color: '#4FE0C1' }}>📁</div>
             <h3 className="text-lg font-medium text-white mb-2">
               Nenhum documento encontrado
             </h3>
-            <p className="text-slate-400">
+            <p className="text-slate-300">
               Tente ajustar os filtros ou fazer uma nova busca
             </p>
-            <p className="text-xs text-purple-400 mt-2">
+            <p className="text-xs text-[#00F5A0] mt-2">
               Ou faça upload de um novo documento para a base de conhecimento
             </p>
           </div>
@@ -1460,8 +1547,8 @@ const Library: React.FC = () => {
 
         {/* Quick Stats */}
         <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-6 text-center border-2 border-purple-500/30 shadow-xl">
-            <FileText className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+          <div className="rounded-xl p-6 text-center" style={{ ...secondarySurfaceStyle, border: '1px solid rgba(0,193,106,0.16)' }}>
+            <FileText className="w-8 h-8 mx-auto mb-2" style={{ color: '#4FE0C1' }} />
             <div className="text-2xl font-bold text-white">
               {totalDocs > 0 ? totalDocs : '1,247'}
             </div>
@@ -1469,15 +1556,15 @@ const Library: React.FC = () => {
               {totalDocs > 0 ? 'Documentos Reais' : 'Documentos (Fictício)'}
             </div>
           </div>
-          <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-6 text-center border-2 border-purple-500/30 shadow-xl">
-            <div className="w-8 h-8 text-green-400 mx-auto mb-2 text-2xl">⬇️</div>
+          <div className="rounded-xl p-6 text-center" style={{ ...secondarySurfaceStyle, border: '1px solid rgba(0,193,106,0.16)' }}>
+            <div className="w-8 h-8 mx-auto mb-2 text-2xl" style={{ color: '#00F5A0' }}>⬇️</div>
             <div className="text-2xl font-bold text-white">
               {realDocuments.reduce((sum, doc: any) => sum + (doc.downloads || 0), 0)}
             </div>
             <div className="text-sm text-slate-300">Total de Downloads</div>
           </div>
-          <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-6 text-center border-2 border-purple-500/30 shadow-xl">
-            <div className="w-8 h-8 text-purple-400 mx-auto mb-2 text-2xl">#</div>
+          <div className="rounded-xl p-6 text-center" style={{ ...secondarySurfaceStyle, border: '1px solid rgba(0,193,106,0.16)' }}>
+            <div className="w-8 h-8 mx-auto mb-2 text-2xl" style={{ color: '#4FE0C1' }}>#</div>
             <div className="text-2xl font-bold text-white">
               {realDocuments.filter((d: any) => d.isLinkedToAI === true).length}
             </div>
@@ -1485,8 +1572,8 @@ const Library: React.FC = () => {
               Vinculados à IA
             </div>
           </div>
-          <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-6 text-center border-2 border-purple-500/30 shadow-xl">
-            <Star className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+          <div className="rounded-xl p-6 text-center" style={{ ...secondarySurfaceStyle, border: '1px solid rgba(0,193,106,0.16)' }}>
+            <Star className="w-8 h-8 mx-auto mb-2" style={{ color: '#FFD33D' }} />
             <div className="text-2xl font-bold text-white">
               {realDocuments.length > 0 
                 ? (realDocuments.reduce((sum: number, doc: any) => sum + (doc.aiRelevance || 0), 0) / realDocuments.length).toFixed(1)
@@ -1500,10 +1587,13 @@ const Library: React.FC = () => {
 
       {/* Upload Modal */}
       {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div
+            className="rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+            style={{ background: 'rgba(7,22,41,0.96)', border: '1px solid rgba(0,193,106,0.16)' }}
+          >
             {/* Modal Header */}
-            <div className="p-6 border-b border-slate-700">
+            <div className="p-6" style={{ borderBottom: '1px solid rgba(0,193,106,0.12)' }}>
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-white">Upload de Documentos</h2>
                 <button
@@ -1529,8 +1619,8 @@ const Library: React.FC = () => {
                       onClick={() => setUploadCategory(category.id)}
                       className={`p-4 rounded-lg border-2 transition-all ${
                         uploadCategory === category.id
-                          ? 'border-purple-500 bg-purple-500/10'
-                          : 'border-slate-600 hover:border-slate-500 bg-slate-700/50'
+                          ? 'border-emerald-400 bg-emerald-500/10'
+                          : 'border-slate-600 hover:border-emerald-400 bg-slate-700/40'
                       }`}
                     >
                       <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${category.color} flex items-center justify-center mb-3 text-white`}>
@@ -1555,10 +1645,10 @@ const Library: React.FC = () => {
                 <div
                   className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                     isDragging
-                      ? 'border-purple-500 bg-purple-500/10'
+                      ? 'border-emerald-400 bg-emerald-500/10'
                       : uploadedFile
-                      ? 'border-green-500 bg-green-500/10'
-                      : 'border-slate-600 hover:border-purple-500'
+                      ? 'border-emerald-400 bg-emerald-500/10'
+                      : 'border-slate-600 hover:border-emerald-400'
                   }`}
                   onDragEnter={(e) => {
                     e.preventDefault()
@@ -1642,8 +1732,8 @@ const Library: React.FC = () => {
                   </div>
                   <div className="w-full bg-slate-700 rounded-full h-2">
                     <div
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
+                      className="h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%`, background: accentGradient }}
                     />
                   </div>
                 </div>
@@ -1670,14 +1760,16 @@ const Library: React.FC = () => {
               <div className="flex space-x-3">
                 <button
                   onClick={() => setShowUploadModal(false)}
-                  className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                  className="flex-1 px-4 py-3 rounded-lg transition-colors text-white"
+                  style={{ background: 'rgba(12,34,54,0.85)', border: '1px solid rgba(0,193,106,0.2)' }}
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleUpload}
                   disabled={!uploadedFile || isUploading}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  className="flex-1 px-4 py-3 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  style={{ background: accentGradient }}
                 >
                   {isUploading ? 'Enviando...' : 'Fazer Upload'}
                 </button>

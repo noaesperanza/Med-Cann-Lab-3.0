@@ -187,56 +187,86 @@ const PatientDashboard: React.FC = () => {
 
   // Função para agendar consulta
   const handleScheduleAppointment = () => {
-    navigate('/app/clinica/paciente/agendamentos')
+    setActiveTab('agendamento')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   // Renderizar Dashboard Principal
   const renderDashboard = () => (
     <div className="space-y-6">
       {/* Mensagem de Boas-vindas */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-500 rounded-xl p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">Bem-vindo, {user?.name || 'Paciente'}!</h2>
-        <p className="text-white/90">
-          Seu centro de acompanhamento personalizado para cuidado renal e cannabis medicinal
-        </p>
+      <div className="rounded-xl p-6 mb-6" style={{ background: 'rgba(7,22,41,0.82)', border: '1px solid rgba(0,193,106,0.12)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-white">Bem-vindo, {user?.name || 'Paciente'}!</h2>
+            <p className="text-slate-400">Seu centro de acompanhamento personalizado para cuidado renal e cannabis medicinal</p>
+          </div>
+          
+          {/* User Profile */}
+          <div className="flex items-center space-x-3 bg-slate-700 p-3 rounded-lg">
+            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+              <span className="text-white font-bold">
+                {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'P'}
+              </span>
+            </div>
+            <div>
+              <p className="font-semibold text-white">{user?.name || 'Paciente'}</p>
+              <p className="text-sm text-slate-400">Paciente</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Cards de Ações Rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Agendar Consulta */}
         <button
           onClick={handleScheduleAppointment}
-          className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+          className="rounded-xl p-4 text-left transition-transform transform hover:scale-[1.01]"
+          style={{ background: 'linear-gradient(135deg, #1a365d 0%, #274a78 100%)', boxShadow: '0 10px 24px rgba(26,54,93,0.35)' }}
         >
-          <Calendar className="w-8 h-8 mb-3" />
-          <h3 className="text-lg font-semibold mb-2">📅 Agendar Consulta</h3>
-          <p className="text-sm text-white/80">Agende sua consulta com profissionais especializados</p>
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <Calendar className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">📅 Agendar Consulta</h3>
+            <p className="text-sm text-white/80">Agende sua consulta com profissionais especializados</p>
+          </div>
         </button>
 
         {/* Chat com Médico */}
         <button
-          onClick={() => navigate('/app/clinica/paciente/chat-profissional')}
-          className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+          onClick={() => navigate('/app/clinica/paciente/chat-profissional?origin=patient-dashboard')}
+          className="rounded-xl p-4 text-left transition-transform transform hover:scale-[1.01]"
+          style={{ background: 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)', boxShadow: '0 10px 24px rgba(0,193,106,0.35)' }}
         >
-          <MessageCircle className="w-8 h-8 mb-3" />
-          <h3 className="text-lg font-semibold mb-2">💬 Chat com Médico</h3>
-          <p className="text-sm text-white/80">Comunicação direta com seu profissional</p>
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <MessageCircle className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">💬 Chat com Médico</h3>
+            <p className="text-sm text-white/80">Comunicação direta com seu profissional</p>
+          </div>
         </button>
 
         {/* Plano Terapêutico - Card Compacto */}
         <button
           onClick={() => setActiveTab('plano')}
-          className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left relative overflow-hidden"
+          className="rounded-xl p-4 text-left transition-transform transform hover:scale-[1.01]"
+          style={{ background: 'linear-gradient(135deg, #2d5a3d 0%, #1a365d 100%)', boxShadow: '0 10px 24px rgba(45,90,61,0.35)' }}
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-          <Brain className="w-8 h-8 mb-3 relative z-10" />
-          <h3 className="text-lg font-semibold mb-2 relative z-10">💊 Plano Terapêutico</h3>
-          <p className="text-sm text-white/80 relative z-10">
-            {therapeuticPlan 
-              ? `Progresso: ${therapeuticPlan.progress}% • ${therapeuticPlan.medications.length} medicações`
-              : 'Acesse suas prescrições integrativas'}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2 relative z-10">
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <Heart className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">💊 Plano Terapêutico</h3>
+            <p className="text-sm text-white/80">
+              {therapeuticPlan 
+                ? `Progresso: ${therapeuticPlan.progress}% • ${therapeuticPlan.medications.length} medicações`
+                : 'Acesse suas prescrições integrativas'}
+            </p>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
                          <span className="text-xs bg-white/20 px-2 py-1 rounded flex items-center space-x-1">
                <Stethoscope className="w-3 h-3" />
                <span>Biomédica</span>
@@ -307,16 +337,22 @@ const PatientDashboard: React.FC = () => {
           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                     <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-                          <Heart className="w-8 h-8 text-green-400 mb-2" />
-             <h4 className="text-white font-semibold mb-1">Cannabis Medicinal</h4>
+          <button
+            onClick={() => setActiveTab('conteudo')}
+            className="bg-slate-700 rounded-lg p-4 text-left hover:bg-slate-600 transition-colors"
+          >
+            <Heart className="w-8 h-8 text-green-400 mb-2" />
+            <h4 className="text-white font-semibold mb-1">Cannabis Medicinal</h4>
             <p className="text-slate-400 text-xs">Fundamentos e aplicações clínicas</p>
-          </div>
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
+          </button>
+          <button
+            onClick={() => setActiveTab('conteudo')}
+            className="bg-slate-700 rounded-lg p-4 text-left hover:bg-slate-600 transition-colors"
+          >
             <div className="w-8 h-8 mb-2 flex items-center justify-center">
-              <img 
-                src="/brain.png" 
-                alt="MedCannLab Logo" 
+              <img
+                src="/brain.png"
+                alt="MedCannLab Logo"
                 className="w-full h-full object-contain"
                 style={{
                   filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.4)) brightness(1.1)'
@@ -325,12 +361,15 @@ const PatientDashboard: React.FC = () => {
             </div>
             <h4 className="text-white font-semibold mb-1">Saúde Renal</h4>
             <p className="text-slate-400 text-xs">Fatores tradicionais e não tradicionais</p>
-          </div>
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
+          </button>
+          <button
+            onClick={() => setActiveTab('conteudo')}
+            className="bg-slate-700 rounded-lg p-4 text-left hover:bg-slate-600 transition-colors"
+          >
             <Heart className="w-8 h-8 text-red-400 mb-2" />
             <h4 className="text-white font-semibold mb-1">Bem-estar Integral</h4>
             <p className="text-slate-400 text-xs">Abordagem integrativa de saúde</p>
-          </div>
+          </button>
         </div>
       </div>
     </div>
@@ -408,7 +447,7 @@ const PatientDashboard: React.FC = () => {
         {appointments.length > 0 ? (
           <div className="space-y-3">
             {appointments.map((apt) => (
-              <div key={apt.id} className="bg-slate-700 rounded-lg p-4">
+              <div key={apt.id} className="rounded-lg p-4" style={{ background: 'rgba(15,36,60,0.68)', border: '1px solid rgba(0,193,106,0.12)' }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <Calendar className="w-8 h-8 text-blue-400" />
@@ -450,38 +489,48 @@ const PatientDashboard: React.FC = () => {
       {therapeuticPlan ? (
         <>
           {/* Progresso Geral */}
-          <div className="bg-slate-800 rounded-xl p-6">
-            <h3 className="text-xl font-semibold text-white mb-4">Progresso do Tratamento</h3>
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-slate-300">{therapeuticPlan.title}</span>
-                <span className="text-white font-semibold">{therapeuticPlan.progress}%</span>
+          <div className="rounded-xl p-6" style={{ background: 'rgba(7,22,41,0.86)', border: '1px solid rgba(0,193,106,0.16)', boxShadow: '0 16px 32px rgba(2,12,27,0.45)' }}>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-white">Progresso do Tratamento</h3>
+                <p className="text-slate-300 text-sm">{therapeuticPlan.title}</p>
               </div>
-              <div className="w-full bg-slate-700 rounded-full h-4">
-                <div 
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 h-4 rounded-full transition-all"
-                  style={{ width: `${therapeuticPlan.progress}%` }}
+              <div className="px-4 py-2 rounded-lg" style={{ background: 'rgba(0,193,106,0.12)', border: '1px solid rgba(0,193,106,0.28)' }}>
+                <span className="text-2xl font-bold text-[#00F5A0]">{therapeuticPlan.progress}%</span>
+              </div>
+            </div>
+            <div className="mt-6">
+              <div className="w-full h-3 rounded-full" style={{ background: 'rgba(12,34,54,0.75)', border: '1px solid rgba(0,193,106,0.12)' }}>
+                <div
+                  className="h-3 rounded-full transition-all"
+                  style={{ width: `${therapeuticPlan.progress}%`, background: 'linear-gradient(135deg, #00C16A 0%, #00F5A0 100%)' }}
                 />
               </div>
             </div>
           </div>
 
           {/* Medicações */}
-          <div className="bg-slate-800 rounded-xl p-6">
+          <div className="rounded-xl p-6" style={{ background: 'rgba(7,22,41,0.86)', border: '1px solid rgba(0,193,106,0.16)', boxShadow: '0 16px 32px rgba(2,12,27,0.45)' }}>
             <h3 className="text-xl font-semibold text-white mb-4">Medicações Ativas</h3>
             <div className="space-y-3">
               {therapeuticPlan.medications.map((med, idx) => (
-                <div key={idx} className="bg-slate-700 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                                             <CheckCircle className="w-6 h-6 text-green-400" />
-                      <div>
-                        <p className="text-white font-semibold">{med.name}</p>
-                        <p className="text-slate-400 text-sm">{med.dosage}</p>
-                        <p className="text-slate-500 text-xs">{med.frequency}</p>
-                      </div>
+                <div
+                  key={idx}
+                  className="rounded-lg p-4 flex items-start justify-between"
+                  style={{ background: 'rgba(12,34,54,0.75)', border: '1px solid rgba(0,193,106,0.14)' }}
+                >
+                  <div className="flex items-start space-x-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,193,106,0.15)' }}>
+                      <CheckCircle className="w-5 h-5 text-[#00F5A0]" />
                     </div>
-                    <CheckCircle className="w-6 h-6 text-green-400" />
+                    <div>
+                      <p className="text-white font-semibold">{med.name}</p>
+                      <p className="text-slate-300 text-sm">{med.dosage}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs uppercase tracking-wide text-slate-400">Frequência</span>
+                    <p className="text-white font-medium text-sm mt-1">{med.frequency}</p>
                   </div>
                 </div>
               ))}
@@ -489,18 +538,26 @@ const PatientDashboard: React.FC = () => {
           </div>
 
           {/* Próximas Ações */}
-          <div className="bg-slate-800 rounded-xl p-6">
+          <div className="rounded-xl p-6" style={{ background: 'rgba(7,22,41,0.86)', border: '1px solid rgba(0,193,106,0.16)', boxShadow: '0 16px 32px rgba(2,12,27,0.45)' }}>
             <h3 className="text-xl font-semibold text-white mb-4">Próximas Ações</h3>
             <div className="space-y-3">
-              <div className="bg-slate-700 rounded-lg p-4 flex items-center justify-between">
+              <div className="rounded-lg p-4 flex items-center justify-between" style={{ background: 'rgba(12,34,54,0.75)', border: '1px solid rgba(0,193,106,0.14)' }}>
                 <div className="flex items-center space-x-3">
-                  <Calendar className="w-6 h-6 text-blue-400" />
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.18)' }}>
+                    <Calendar className="w-5 h-5 text-blue-400" />
+                  </div>
                   <div>
                     <p className="text-white font-semibold">Revisão do Plano Terapêutico</p>
-                    <p className="text-slate-400 text-sm">{therapeuticPlan.nextReview}</p>
+                    <p className="text-slate-300 text-sm">{therapeuticPlan.nextReview}</p>
                   </div>
                 </div>
-                <button className="text-blue-400 hover:text-blue-300 text-sm">Agendar</button>
+                <button
+                  onClick={() => setActiveTab('agendamento')}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-transform transform hover:scale-[1.02]"
+                  style={{ background: 'linear-gradient(135deg, #007BFF 0%, #00C1FF 100%)' }}
+                >
+                  Agendar Revisão
+                </button>
               </div>
             </div>
           </div>
@@ -627,8 +684,12 @@ const PatientDashboard: React.FC = () => {
     </div>
   )
 
+  const backgroundGradient = 'linear-gradient(135deg, #0A192F 0%, #1a365d 55%, #2d5a3d 100%)'
+  const surfaceColor = 'rgba(7, 22, 41, 0.82)'
+  const headerGradient = 'linear-gradient(135deg, rgba(10,25,47,0.96) 0%, rgba(26,54,93,0.92) 55%, rgba(45,90,61,0.9) 100%)'
+
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <div className="min-h-screen text-white" style={{ background: backgroundGradient }}>
       {/* Aviso de Visualização (Admin) */}
       {isViewingAsPatient && (
         <div className="bg-yellow-600/20 border-b border-yellow-500/50 p-3">
@@ -645,7 +706,7 @@ const PatientDashboard: React.FC = () => {
       )}
       
       {/* Header */}
-      <div className="bg-slate-800 border-b border-slate-700 p-6">
+      <div className="p-6" style={{ background: headerGradient, borderBottom: '1px solid rgba(0,193,106,0.18)' }}>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">Meu Dashboard de Saúde</h1>
@@ -668,15 +729,15 @@ const PatientDashboard: React.FC = () => {
       </div>
 
       {/* Tabs de Navegação */}
-      <div className="bg-slate-800 border-b border-slate-700">
+      <div style={{ background: 'rgba(15, 36, 60, 0.85)', borderBottom: '1px solid rgba(28,64,94,0.6)' }}>
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex space-x-1 overflow-x-auto">
             <button
               onClick={() => setActiveTab('dashboard')}
               className={`px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'dashboard'
-                  ? 'text-blue-400 border-b-2 border-blue-400'
-                  : 'text-slate-400 hover:text-slate-300'
+                  ? 'text-[#FFD33D] border-b-2 border-[#FFD33D]'
+                  : 'text-[#8FA7BF] hover:text-[#C8D6E5]'
               }`}
             >
               🏠 Dashboard
@@ -685,8 +746,8 @@ const PatientDashboard: React.FC = () => {
               onClick={() => setActiveTab('agendamento')}
               className={`px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'agendamento'
-                  ? 'text-blue-400 border-b-2 border-blue-400'
-                  : 'text-slate-400 hover:text-slate-300'
+                  ? 'text-[#FFD33D] border-b-2 border-[#FFD33D]'
+                  : 'text-[#8FA7BF] hover:text-[#C8D6E5]'
               }`}
             >
               📅 Agendamento
@@ -695,8 +756,8 @@ const PatientDashboard: React.FC = () => {
               onClick={() => setActiveTab('plano')}
               className={`px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'plano'
-                  ? 'text-blue-400 border-b-2 border-blue-400'
-                  : 'text-slate-400 hover:text-slate-300'
+                  ? 'text-[#FFD33D] border-b-2 border-[#FFD33D]'
+                  : 'text-[#8FA7BF] hover:text-[#C8D6E5]'
               }`}
             >
               💊 Plano Terapêutico
@@ -705,8 +766,8 @@ const PatientDashboard: React.FC = () => {
               onClick={() => setActiveTab('conteudo')}
               className={`px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'conteudo'
-                  ? 'text-blue-400 border-b-2 border-blue-400'
-                  : 'text-slate-400 hover:text-slate-300'
+                  ? 'text-[#FFD33D] border-b-2 border-[#FFD33D]'
+                  : 'text-[#8FA7BF] hover:text-[#C8D6E5]'
               }`}
             >
               📚 Conteúdo Educacional

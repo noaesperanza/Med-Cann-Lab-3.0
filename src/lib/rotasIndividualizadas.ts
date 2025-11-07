@@ -182,7 +182,7 @@ export const ROTAS_INDIVIDUALIZADAS: Record<string, UserRoute> = {
         path: '/app/ensino/aluno/gamificacao',
         component: () => import('../pages/Gamificacao').then(m => m.default),
         requiredRole: 'aluno',
-        title: 'Gamificação',
+        title: 'Programa de Pontos',
         description: 'Pontos e certificados',
         icon: '🏆'
       }
@@ -283,7 +283,7 @@ export const getBreadcrumbs = (path: string): Array<{label: string, path: string
       'chat-pacientes': 'Chat com Pacientes',
       'cursos': 'Cursos',
       'biblioteca': 'Biblioteca',
-      'gamificacao': 'Gamificação',
+      'gamificacao': 'Programa de Pontos',
       'preparacao-aulas': 'Preparação de Aulas',
       'arte-entrevista-clinica': 'Arte da Entrevista Clínica',
       'forum-casos': 'Fórum de Casos'

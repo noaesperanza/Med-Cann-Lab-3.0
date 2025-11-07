@@ -69,6 +69,16 @@ const ChatGlobal: React.FC = () => {
   const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  const headerGradient = 'linear-gradient(135deg, #0A192F 0%, #1a365d 55%, #2d5a3d 100%)'
+  const accentGradient = 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)'
+  const secondaryGradient = 'linear-gradient(135deg, #1a365d 0%, #274a78 100%)'
+  const bannerGradient = 'linear-gradient(135deg, rgba(0,193,106,0.18) 0%, rgba(16,49,91,0.35) 50%, rgba(7,22,41,0.82) 100%)'
+  const bannerSurface: React.CSSProperties = {
+    background: 'rgba(7,22,41,0.88)',
+    border: '1px solid rgba(0,193,106,0.12)',
+    boxShadow: '0 18px 42px rgba(2,12,27,0.45)'
+  }
+
   const [channels, setChannels] = useState([
     { id: 'general', name: 'Geral', type: 'public', members: 0, unread: 0, description: 'Discussões gerais sobre medicina' },
     { id: 'cannabis', name: 'Cannabis Medicinal', type: 'public', members: 0, unread: 0, description: 'Especialistas em cannabis medicinal' },
@@ -710,18 +720,18 @@ const ChatGlobal: React.FC = () => {
   return (
     <div className="space-y-4 md:space-y-6 lg:space-y-8 px-2 md:px-4">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-xl p-4 md:p-6 lg:p-8 mb-4 md:mb-6 border border-purple-500/50 shadow-xl overflow-hidden">
+      <div className="rounded-xl p-4 md:p-6 lg:p-8 mb-4 md:mb-6 overflow-hidden shadow-xl" style={{ background: headerGradient, border: '1px solid rgba(0,193,106,0.18)' }}>
         <div className="text-center px-4">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0 mr-4">
-              <MessageSquare className="w-8 h-8 md:w-10 md:h-10 text-white" />
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0 mr-4" style={{ background: 'rgba(0,193,106,0.2)' }}>
+              <MessageSquare className="w-8 h-8 md:w-10 md:h-10" style={{ color: '#00F5A0' }} />
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2 break-words">
-                💬 Fórum de Conselheiros em IA na Saúde
+                💬 Fórum Cann Matrix
               </h1>
               <p className="text-white/90 text-sm md:text-base lg:text-lg">
-                Conecte-se com colegas, participe de debates e compartilhe conhecimento
+                Comunidade viva para debates profissionais sobre cannabis medicinal, protocolos clínicos e pesquisa aplicada
               </p>
             </div>
           </div>
@@ -754,37 +764,34 @@ const ChatGlobal: React.FC = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-slate-800/80 rounded-lg p-1 md:p-2 border border-slate-700">
+      <div className="rounded-lg p-1 md:p-2" style={{ background: 'rgba(7,22,41,0.78)', border: '1px solid rgba(0,193,106,0.12)' }}>
         <div className="flex space-x-1">
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex-1 flex items-center justify-center space-x-1 md:space-x-2 py-2 md:py-3 px-2 md:px-4 rounded-lg transition-colors text-sm md:text-base ${
-              activeTab === 'chat'
-                ? 'bg-primary-600 text-white'
-                : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-            }`}
+            className="flex-1 flex items-center justify-center space-x-1 md:space-x-2 py-2 md:py-3 px-2 md:px-4 rounded-lg text-sm md:text-base font-medium transition-transform"
+            style={activeTab === 'chat'
+              ? { background: accentGradient, color: '#fff', boxShadow: '0 12px 24px rgba(0,193,106,0.32)' }
+              : { background: 'rgba(12,34,54,0.6)', color: '#C8D6E5' }}
           >
             <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />
             <span className="hidden sm:inline">Chat</span>
           </button>
           <button
             onClick={() => setActiveTab('forum')}
-            className={`flex-1 flex items-center justify-center space-x-1 md:space-x-2 py-2 md:py-3 px-2 md:px-4 rounded-lg transition-colors text-sm md:text-base ${
-              activeTab === 'forum'
-                ? 'bg-primary-600 text-white'
-                : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-            }`}
+            className="flex-1 flex items-center justify-center space-x-1 md:space-x-2 py-2 md:py-3 px-2 md:px-4 rounded-lg text-sm md:text-base font-medium transition-transform"
+            style={activeTab === 'forum'
+              ? { background: accentGradient, color: '#fff', boxShadow: '0 12px 24px rgba(0,193,106,0.32)' }
+              : { background: 'rgba(12,34,54,0.6)', color: '#C8D6E5' }}
           >
             <BookOpen className="w-4 h-4 md:w-5 md:h-5" />
             <span className="hidden sm:inline">Fórum</span>
           </button>
           <button
             onClick={() => setActiveTab('friends')}
-            className={`flex-1 flex items-center justify-center space-x-1 md:space-x-2 py-2 md:py-3 px-2 md:px-4 rounded-lg transition-colors text-sm md:text-base ${
-              activeTab === 'friends'
-                ? 'bg-primary-600 text-white'
-                : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-            }`}
+            className="flex-1 flex items-center justify-center space-x-1 md:space-x-2 py-2 md:py-3 px-2 md:px-4 rounded-lg text-sm md:text-base font-medium transition-transform"
+            style={activeTab === 'friends'
+              ? { background: accentGradient, color: '#fff', boxShadow: '0 12px 24px rgba(0,193,106,0.32)' }
+              : { background: 'rgba(12,34,54,0.6)', color: '#C8D6E5' }}
           >
             <Users className="w-4 h-4 md:w-5 md:h-5" />
             <span className="hidden sm:inline">Amigos</span>
@@ -798,52 +805,63 @@ const ChatGlobal: React.FC = () => {
       </div>
 
       {/* Banner de Avisos - Como Participar e Limitações por Tipo */}
-      <div className="bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 rounded-xl p-3 md:p-4 border-2 border-purple-500/30 shadow-lg backdrop-blur-sm overflow-hidden w-full max-w-full mb-4 md:mb-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4">
-          {/* Como Participar */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2 mb-2 md:mb-3">
-              <div className="p-1.5 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg shadow-md flex-shrink-0">
-                <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-white" />
+      <div
+        className="rounded-xl p-3 md:p-4 mb-4 md:mb-6 overflow-hidden"
+        style={{ background: bannerGradient, border: '1px solid rgba(0,193,106,0.16)' }}
+      >
+        <div className="rounded-xl p-4 md:p-6" style={bannerSurface}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-lg" style={{ background: secondaryGradient }}>
+                  <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-lg md:text-xl font-semibold text-white">📖 Como Participar</h3>
               </div>
-              <h3 className="text-base md:text-lg font-bold text-white">
-                📖 Como Participar
-              </h3>
+              <ul className="space-y-2 text-sm md:text-base text-slate-200/85">
+                <li className="flex items-start space-x-2">
+                  <span className="text-[#00F5A0] mt-0.5">•</span>
+                  <span>Escolha o canal que melhor corresponde ao tema que deseja discutir.</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <span className="text-[#00F5A0] mt-0.5">•</span>
+                  <span>Mantenha a comunicação colaborativa e siga o código de conduta.</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <span className="text-[#00F5A0] mt-0.5">•</span>
+                  <span>Compartilhe evidências, referências científicas e experiências clínicas relevantes.</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <span className="text-[#00F5A0] mt-0.5">•</span>
+                  <span>Respeite as permissões do seu perfil ao interagir em debates especializados.</span>
+                </li>
+              </ul>
             </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs md:text-sm text-purple-200">
-              <span>• Escolha um canal ou tema</span>
-              <span>• Respeite o código de conduta</span>
-              <span>• Contribua com conhecimento e experiências relevantes</span>
-              <span>• Respeite as limitações do seu tipo de usuário</span>
-            </div>
-          </div>
 
-          {/* Limitações por Tipo */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2 mb-2 md:mb-3">
-              <div className="p-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg shadow-md flex-shrink-0">
-                <Award className="w-4 h-4 md:w-5 md:h-5 text-white" />
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-lg" style={{ background: accentGradient }}>
+                  <Award className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-lg md:text-xl font-semibold text-white">⚠️ Limitações por Perfil</h3>
               </div>
-              <h3 className="text-base md:text-lg font-bold text-white">
-                ⚠️ Limitações por Tipo
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs md:text-sm">
-              <div className="flex items-start space-x-1">
-                <Users className="w-3 h-3 md:w-4 md:h-4 text-purple-400 flex-shrink-0 mt-0.5" />
-                <span className="text-purple-200"><strong className="text-white">Profissional:</strong> Acesso completo a todos os canais e temas. Pode criar debates e moderar discussões.</span>
-              </div>
-              <div className="flex items-start space-x-1">
-                <Award className="w-3 h-3 md:w-4 md:h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-                <span className="text-purple-200"><strong className="text-white">Admin:</strong> Acesso total e controle administrativo. Pode gerenciar usuários e conteúdo.</span>
-              </div>
-              <div className="flex items-start space-x-1">
-                <BookOpen className="w-3 h-3 md:w-4 md:h-4 text-green-400 flex-shrink-0 mt-0.5" />
-                <span className="text-purple-200"><strong className="text-white">Aluno:</strong> Acesso a canais educacionais e temas de pesquisa. Participação limitada em debates clínicos.</span>
-              </div>
-              <div className="flex items-start space-x-1">
-                <Heart className="w-3 h-3 md:w-4 md:h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                <span className="text-purple-200"><strong className="text-white">Paciente:</strong> Acesso a canais de suporte e discussões gerais. Participação em temas específicos pode ser limitada.</span>
+              <div className="space-y-3 text-sm md:text-base text-slate-200/85">
+                <div className="flex items-start space-x-2">
+                  <Users className="w-4 h-4 flex-shrink-0" style={{ color: '#4FE0C1' }} />
+                  <span><strong className="text-white">Profissional:</strong> acesso completo, pode abrir debates clínicos, conduzir mentorias e moderar discussões especializadas.</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <Award className="w-4 h-4 flex-shrink-0" style={{ color: '#FFD33D' }} />
+                  <span><strong className="text-white">Admin:</strong> gestão total da comunidade, incluindo curadoria de conteúdos, permissões e acompanhamento de métricas.</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <BookOpen className="w-4 h-4 flex-shrink-0" style={{ color: '#86E3CE' }} />
+                  <span><strong className="text-white">Aluno:</strong> foco em canais formativos e de pesquisa; debates clínicos avançados exigem mediação docente.</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <Heart className="w-4 h-4 flex-shrink-0" style={{ color: '#FF8E72' }} />
+                  <span><strong className="text-white">Paciente:</strong> participação orientada em canais de suporte e bem-estar; discussões técnicas requerem acompanhamento profissional.</span>
+                </div>
               </div>
             </div>
           </div>

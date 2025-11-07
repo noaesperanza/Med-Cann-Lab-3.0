@@ -28,6 +28,156 @@ interface Lesson {
   status: 'draft' | 'published' | 'archived'
 }
 
+interface SlideContent {
+  id: string
+  title: string
+  content: string
+  bullets: string[]
+  notes: string
+  layout: 'cover' | 'bullets' | 'two-column' | 'image-focus'
+  accent: 'emerald' | 'blue' | 'purple' | 'amber'
+  imagePrompt?: string
+  imageUrl?: string
+  aiDraft?: boolean
+  order: number
+  updatedAt?: string
+}
+
+const slideAccentStyles: Record<SlideContent['accent'], { background: string; headline: string; body: string }> = {
+  emerald: {
+    background: 'linear-gradient(135deg, rgba(0,193,106,0.9) 0%, rgba(19,121,79,0.92) 45%, rgba(10,25,47,0.95) 100%)',
+    headline: '#E6FFFA',
+    body: '#D1FAE5'
+  },
+  blue: {
+    background: 'linear-gradient(135deg, rgba(14,116,238,0.9) 0%, rgba(37,99,235,0.92) 50%, rgba(30,64,175,0.94) 100%)',
+    headline: '#DBEAFE',
+    body: '#BFDBFE'
+  },
+  purple: {
+    background: 'linear-gradient(135deg, rgba(139,92,246,0.92) 0%, rgba(109,40,217,0.92) 50%, rgba(59,7,100,0.95) 100%)',
+    headline: '#F5F3FF',
+    body: '#EDE9FE'
+  },
+  amber: {
+    background: 'linear-gradient(135deg, rgba(255,193,7,0.9) 0%, rgba(245,158,11,0.92) 45%, rgba(120,53,15,0.94) 100%)',
+    headline: '#FFFBEB',
+    body: '#FEF3C7'
+  }
+}
+
+const slideTemplates: Array<{ id: SlideContent['layout']; label: string; description: string; accent: SlideContent['accent']; bullets: string[] }> = [
+  {
+    id: 'cover',
+    label: 'Capa',
+    description: 'Apresente o tema com impacto visual e destaque institucional.',
+    accent: 'emerald',
+    bullets: ['Objetivo principal da apresentação', 'Módulo ou disciplina da aula', 'Facilitador responsável']
+  },
+  {
+    id: 'bullets',
+    label: 'Lista de Destaques',
+    description: 'Organize conceitos principais e mensagens prioritárias.',
+    accent: 'blue',
+    bullets: ['Conceito-chave 1', 'Conceito-chave 2', 'Conceito-chave 3']
+  },
+  {
+    id: 'two-column',
+    label: 'Comparativo',
+    description: 'Contraste condutas, abordagens clínicas ou análises A/B.',
+    accent: 'purple',
+    bullets: ['Coluna A: pontos fortes', 'Coluna B: pontos de atenção', 'Insights da IA residente']
+  },
+  {
+    id: 'image-focus',
+    label: 'Slide Visual',
+    description: 'Combine narrativa textual com imagens geradas pela IA.',
+    accent: 'amber',
+    bullets: ['Contextualização da imagem', 'Insight clínico', 'Próximos passos sugeridos']
+  }
+]
+
+const aiDraftLibrary = [
+  {
+    keywords: ['entrevista', 'aec', 'arte da entrevista'],
+    bullets: [
+      'Estabelecer vínculo e acolhimento na abertura da consulta',
+      'Investigar fatores tradicionais, não tradicionais e simbólicos',
+      'Registrar narrativas utilizando a metodologia IMRE'
+    ],
+    notes: 'Reforce a tríade Escuta-Observação-Registro e conecte com avaliações da IA residente.'
+  },
+  {
+    keywords: ['cannabis', 'canabin'],
+    bullets: [
+      'Classificação de fitocanabinóides e terpenos chave',
+      'Indicações clínicas respaldadas em evidências recentes',
+      'Monitoramento de efeitos adversos e ajustes terapêuticos'
+    ],
+    notes: 'Citar protocolos MedCannLab e critérios de acompanhamento nefrológico.'
+  },
+  {
+    keywords: ['nefro', 'renal', 'rim'],
+    bullets: [
+      'KPIs de função renal para acompanhamento longitudinal',
+      'Fatores de risco tradicionais e não tradicionais avaliados',
+      'Insights de dispositivos conectados e relatórios da IA residente'
+    ],
+    notes: 'Sugerir recomendações de adesão e educação em saúde para pacientes.'
+  }
+]
+
+const createDraftForSlide = (slide: SlideContent): Partial<SlideContent> => {
+  const combinedText = `${slide.title} ${slide.content}`.toLowerCase()
+  const matchedDraft = aiDraftLibrary.find((draft) =>
+    draft.keywords.some((keyword) => combinedText.includes(keyword))
+  )
+
+  const defaultBullets = [
+    'Introduzir o conceito principal com clareza clínica',
+    'Apresentar evidências ou casos ilustrativos',
+    'Relacionar com a jornada do paciente, estudante ou equipe'
+  ]
+
+  const bullets = matchedDraft?.bullets || defaultBullets
+  return {
+    bullets,
+    content: bullets.join('\n'),
+    notes:
+      matchedDraft?.notes ||
+      'Inclua exemplos, dados clínicos e referências bibliográficas para aprofundar a discussão.',
+    aiDraft: true
+  }
+}
+
+const createSlideFromTemplate = (
+  templateId: SlideContent['layout'],
+  order: number,
+  title?: string
+): SlideContent => {
+  const template = slideTemplates.find((tpl) => tpl.id === templateId) || slideTemplates[1]
+  return {
+    id: `slide_${Date.now()}_${order}`,
+    title: title || template.label,
+    content: template.bullets.join('\n'),
+    bullets: template.bullets,
+    notes: '',
+    layout: template.id,
+    accent: template.accent,
+    order,
+    aiDraft: false
+  }
+}
+
+let slideSaveTimeout: number | undefined
+
+const scheduleSlideSave = (callback: () => void) => {
+  if (slideSaveTimeout) {
+    window.clearTimeout(slideSaveTimeout)
+  }
+  slideSaveTimeout = window.setTimeout(callback, 800)
+}
+
 export function LessonPreparation() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -41,10 +191,11 @@ export function LessonPreparation() {
   const [activeTab, setActiveTab] = useState<'cases' | 'lessons' | 'editor' | 'slides' | 'flipped' | 'quizzes'>('cases')
   
   // Slides states
-  const [slides, setSlides] = useState<any[]>([])
+  const [slides, setSlides] = useState<SlideContent[]>([])
   const [currentSlide, setCurrentSlide] = useState(0)
-  const [slideTitle, setSlideTitle] = useState('')
-  const [slideContent, setSlideContent] = useState('')
+  const [selectedTemplateId, setSelectedTemplateId] = useState<SlideContent['layout']>('bullets')
+  const [isGeneratingSlide, setIsGeneratingSlide] = useState(false)
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false)
   
   // Flipped Classroom states
   const [flippedLessons, setFlippedLessons] = useState<any[]>([])
@@ -78,63 +229,50 @@ export function LessonPreparation() {
     loadCases()
     loadLessons()
     loadSlides()
-    
-    // Listener para detectar quando a IA cria um slide
+
     const handleSlideCreated = (event: CustomEvent) => {
       const slideData = event.detail
-      if (slideData && slideData.title) {
-        console.log('📝 Slide criado pela IA detectado:', slideData)
-        
-        // Verificar se o slide já existe (evitar duplicatas)
-        const slideExists = slides.some(s => s.id === slideData.id || s.title === slideData.title)
-        if (slideExists) {
-          console.log('⚠️ Slide já existe, atualizando...')
-          setSlides(prev => prev.map(s => 
-            (s.id === slideData.id || s.title === slideData.title)
-              ? { ...s, title: slideData.title, content: slideData.content || s.content }
-              : s
-          ))
-        } else {
-          const newSlide = {
-            id: slideData.id || `slide_${Date.now()}`,
-            title: slideData.title,
-            content: slideData.content || '',
-            order: slides.length
-          }
-          setSlides(prev => {
-            const updated = [...prev, newSlide]
-            console.log('✅ Slide adicionado à lista:', updated.length, 'slides')
-            return updated
-          })
-          setCurrentSlide(slides.length)
+      if (!slideData || !slideData.title) return
+
+      let targetIndex = 0
+      setSlides((prev) => {
+        const normalized = normalizeSlide(slideData, prev.length)
+        const existingIndex = prev.findIndex(
+          (s) => s.id === normalized.id || s.title === normalized.title
+        )
+        if (existingIndex >= 0) {
+          targetIndex = existingIndex
+          const updated = [...prev]
+          updated[existingIndex] = { ...prev[existingIndex], ...normalized }
+          return updated
         }
-        
-        // Mudar para a aba de slides e recarregar do Supabase
-        setActiveTab('slides')
-        loadSlides()
-      }
+        targetIndex = prev.length
+        return [...prev, normalized]
+      })
+
+      setCurrentSlide(targetIndex)
+      setActiveTab('slides')
+      loadSlides()
     }
-    
-    // Listener para detectar quando a IA atualiza um slide
+
     const handleSlideUpdated = (event: CustomEvent) => {
       const slideData = event.detail
-      if (slideData && slideData.id) {
-        setSlides(prev => prev.map(slide => 
-          slide.id === slideData.id 
-            ? { ...slide, title: slideData.title, content: slideData.content || slide.content }
-            : slide
-        ))
-      }
+      if (!slideData || !slideData.id) return
+
+      setSlides((prev) => {
+        const normalized = normalizeSlide(slideData, 0)
+        return prev.map((slide) => (slide.id === slideData.id ? { ...slide, ...normalized } : slide))
+      })
     }
-    
+
     window.addEventListener('slideCreated', handleSlideCreated as EventListener)
     window.addEventListener('slideUpdated', handleSlideUpdated as EventListener)
-    
+
     return () => {
       window.removeEventListener('slideCreated', handleSlideCreated as EventListener)
       window.removeEventListener('slideUpdated', handleSlideUpdated as EventListener)
     }
-  }, [slides.length])
+  }, [user?.id])
 
   const loadCases = async () => {
     try {
@@ -160,8 +298,7 @@ export function LessonPreparation() {
   const loadSlides = async () => {
     try {
       if (!user?.id) return
-      
-      // Buscar slides do Supabase (usar documents com categoria 'slides')
+
       const authorFilter = user.name || user.email
       const { data, error } = await supabase
         .from('documents')
@@ -169,72 +306,76 @@ export function LessonPreparation() {
         .eq('category', 'slides')
         .or(`author.eq.${authorFilter},author.eq.${user.email}`)
         .order('created_at', { ascending: true })
-      
+
       if (error) {
         console.warn('⚠️ Erro ao carregar slides do Supabase, usando estado local:', error)
         return
       }
-      
+
       if (data && data.length > 0) {
-        const loadedSlides = data.map((doc, index) => ({
-          id: doc.id,
-          title: doc.title || `Slide ${index + 1}`,
-          content: doc.content || doc.summary || '',
-          order: index
-        }))
+        const loadedSlides = data.map((doc, index) => normalizeSlide(doc, index))
         setSlides(loadedSlides)
-        if (loadedSlides.length > 0) {
-          setCurrentSlide(0)
-        }
+        setCurrentSlide(0)
+      } else {
+        setSlides([])
+        setCurrentSlide(0)
       }
     } catch (error) {
       console.error('❌ Erro ao carregar slides:', error)
     }
   }
 
-  const saveSlide = async (slide: any) => {
+  const saveSlide = async (slide: SlideContent) => {
     try {
       if (!user?.id) return
-      
+
+      const contentPreview = slide.content || slide.bullets.join('\n')
+
       const slideData = {
         title: slide.title,
-        content: slide.content || '',
+        content: contentPreview,
         category: 'slides',
         file_type: 'slide',
         author: user.name || user.email,
-        summary: slide.content?.substring(0, 200) || '',
+        summary: contentPreview.substring(0, 200),
         tags: ['slide', 'aula', 'pedagogico'],
         keywords: ['slide', 'presentation'],
         target_audience: ['student', 'professional'],
-        isLinkedToAI: true
+        isLinkedToAI: true,
+        metadata: {
+          layout: slide.layout,
+          accent: slide.accent,
+          bullets: slide.bullets,
+          notes: slide.notes,
+          imagePrompt: slide.imagePrompt,
+          imageUrl: slide.imageUrl,
+          aiDraft: slide.aiDraft || false,
+          updatedAt: new Date().toISOString()
+        }
       }
-      
-      // Se o slide tem ID do Supabase (UUID), atualizar
+
       if (slide.id && slide.id.length > 20 && !slide.id.startsWith('slide_')) {
-        // Atualizar slide existente no Supabase
         const { error } = await supabase
           .from('documents')
           .update(slideData)
           .eq('id', slide.id)
-        
+
         if (error) throw error
       } else {
-        // Criar novo slide
         const { data, error } = await supabase
           .from('documents')
           .insert(slideData)
           .select()
           .single()
-        
+
         if (error) throw error
-        
-        // Atualizar o slide local com o ID do banco
-        setSlides(prev => prev.map(s => 
-          s === slide ? { ...s, id: data.id } : s
-        ))
+
+        if (data) {
+          setSlides((prev) =>
+            prev.map((s) => (s.id === slide.id ? normalizeSlide(data, s.order) : s))
+          )
+        }
       }
-      
-      console.log('✅ Slide salvo no Supabase')
     } catch (error) {
       console.error('❌ Erro ao salvar slide:', error)
     }
@@ -368,6 +509,89 @@ export function LessonPreparation() {
     if (window.confirm('Tem certeza que deseja deletar esta aula?')) {
       setLessons(lessons.filter(l => l.id !== lessonId))
     }
+  }
+
+  const normalizeSlide = (slideData: any, index: number): SlideContent => {
+    const metadata = slideData?.metadata || {}
+    const rawContent = slideData?.content || slideData?.summary || ''
+    const bullets = Array.isArray(metadata.bullets)
+      ? metadata.bullets
+      : rawContent
+          .split(/\n|\r|\u2022|\-/)
+          .map((chunk: string) => chunk.trim())
+          .filter((chunk: string) => chunk.length > 0)
+          .slice(0, 8)
+
+    return {
+      id: slideData?.id || `slide_${Date.now()}_${index}`,
+      title: slideData?.title || metadata.title || `Slide ${index + 1}`,
+      content: rawContent,
+      bullets,
+      notes: metadata.notes || '',
+      layout: metadata.layout || 'bullets',
+      accent: metadata.accent || 'emerald',
+      imagePrompt: metadata.imagePrompt,
+      imageUrl: metadata.imageUrl,
+      aiDraft: metadata.aiDraft ?? false,
+      order: typeof slideData?.order === 'number' ? slideData.order : index,
+      updatedAt: slideData?.updated_at || metadata.updatedAt
+    }
+  }
+
+  const updateSlideAtIndex = (index: number, updates: Partial<SlideContent>, persist = true) => {
+    setSlides((prev) => {
+      if (!prev[index]) return prev
+      const updatedSlide = { ...prev[index], ...updates }
+      const nextSlides = [...prev]
+      nextSlides[index] = updatedSlide
+      if (persist) {
+        scheduleSlideSave(() => saveSlide(updatedSlide))
+      }
+      return nextSlides
+    })
+  }
+
+  const handleAddSlide = (layout?: SlideContent['layout']) => {
+    const templateId = layout || selectedTemplateId
+    const newSlide = createSlideFromTemplate(templateId, slides.length)
+    setSlides((prev) => [...prev, newSlide])
+    setCurrentSlide(slides.length)
+    scheduleSlideSave(() => saveSlide(newSlide))
+  }
+
+  const handleGenerateSlideWithAI = () => {
+    if (!slides[currentSlide]) return
+    setIsGeneratingSlide(true)
+    const draft = createDraftForSlide(slides[currentSlide])
+    updateSlideAtIndex(currentSlide, {
+      ...draft,
+      content: draft.content || slides[currentSlide].content,
+      bullets: draft.bullets || slides[currentSlide].bullets,
+      notes: draft.notes ?? slides[currentSlide].notes,
+      aiDraft: true
+    })
+    sendInitialMessage(
+      `Nôa, gere tópicos e notas de fala para o slide "${slides[currentSlide].title}" seguindo a metodologia AEC, ` +
+        'retornando instruções objetivas para apresentação.'
+    )
+    setTimeout(() => setIsGeneratingSlide(false), 600)
+  }
+
+  const handleGenerateImage = () => {
+    const slide = slides[currentSlide]
+    if (!slide) return
+    if (!slide.imagePrompt || slide.imagePrompt.trim().length < 4) {
+      alert('Descreva o que deseja visualizar antes de gerar a imagem (ex.: "neurônios conectados em tons verdes").')
+      return
+    }
+    setIsGeneratingImage(true)
+    const encodedPrompt = encodeURIComponent(slide.imagePrompt)
+    const imageUrl = `https://source.unsplash.com/1600x900/?${encodedPrompt}`
+    updateSlideAtIndex(currentSlide, { imageUrl }, false)
+    setTimeout(() => {
+      setIsGeneratingImage(false)
+      scheduleSlideSave(() => saveSlide({ ...slide, imageUrl }))
+    }, 500)
   }
 
   return (
@@ -765,189 +989,15 @@ export function LessonPreparation() {
         {/* Slides Tab */}
         {activeTab === 'slides' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-2">Preparação de Slides</h2>
-                <p className="text-slate-400 text-sm">
-                  Envie um PowerPoint ou crie slides do zero. A IA residente trabalhará com você na produção e análise.
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    const fileInput = document.createElement('input')
-                    fileInput.type = 'file'
-                    fileInput.accept = '.pptx,.ppt'
-                    fileInput.onchange = async (e: any) => {
-                      const file = e.target.files[0]
-                      if (file) {
-                        openChat()
-                        sendInitialMessage(
-                          `Recebi seu arquivo PowerPoint: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB). ` +
-                          `Vou analisar o conteúdo dos slides, sugerir melhorias, ajudar na edição e preparar para publicação. ` +
-                          `Vamos começar a análise detalhada?`
-                        )
-                      }
-                    }
-                    fileInput.click()
-                  }}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
-                >
-                  <Upload size={18} />
-                  Enviar PowerPoint
-                </button>
-                <button
-                  onClick={() => {
-                    const newSlide = {
-                      id: Date.now().toString(),
-                      title: `Slide ${slides.length + 1}`,
-                      content: '',
-                      order: slides.length
-                    }
-                    setSlides([...slides, newSlide])
-                    setCurrentSlide(slides.length)
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
-                >
-                  <Plus size={18} />
-                  Novo Slide
-                </button>
-              </div>
-            </div>
-
-            {slides.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Slides List */}
-                <div className="lg:col-span-1 bg-slate-800 rounded-xl p-4">
-                  <h3 className="text-lg font-semibold text-white mb-4">Slides</h3>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {slides.map((slide, index) => (
-                      <div
-                        key={slide.id}
-                        onClick={() => setCurrentSlide(index)}
-                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                          currentSlide === index
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-slate-700 hover:bg-slate-600 text-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">{slide.title}</span>
-                          <span className="text-xs">#{index + 1}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+            <div className="bg-gradient-to-r from-blue-900/40 via-slate-900/60 to-emerald-900/40 border border-slate-700/60 rounded-xl p-6">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-1">Preparação de Slides</h2>
+                  <p className="text-slate-300 text-sm max-w-2xl">
+                    Crie apresentações clínicas com a paleta da landing page, gere rascunhos com a IA residente e exporte em formato PowerPoint.
+                  </p>
                 </div>
-
-                {/* Slide Editor */}
-                <div className="lg:col-span-2 bg-slate-800 rounded-xl p-6">
-                  {slides[currentSlide] && (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-300 mb-2">Título do Slide</label>
-                        <input
-                          type="text"
-                          value={slides[currentSlide].title}
-                          onChange={(e) => {
-                            const updated = [...slides]
-                            updated[currentSlide].title = e.target.value
-                            setSlides(updated)
-                            // Salvar automaticamente após 2 segundos de inatividade
-                            clearTimeout((window as any).slideSaveTimeout)
-                            ;(window as any).slideSaveTimeout = setTimeout(() => {
-                              saveSlide(updated[currentSlide])
-                            }, 2000)
-                          }}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Digite o título do slide..."
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-300 mb-2">Conteúdo</label>
-                        <textarea
-                          value={slides[currentSlide].content}
-                          onChange={(e) => {
-                            const updated = [...slides]
-                            updated[currentSlide].content = e.target.value
-                            setSlides(updated)
-                            // Salvar automaticamente após 2 segundos de inatividade
-                            clearTimeout((window as any).slideSaveTimeout)
-                            ;(window as any).slideSaveTimeout = setTimeout(() => {
-                              saveSlide(updated[currentSlide])
-                            }, 2000)
-                          }}
-                          rows={12}
-                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Digite o conteúdo do slide..."
-                        />
-                      </div>
-                      <div className="flex gap-3">
-                        <button 
-                          onClick={() => {
-                            openChat()
-                            sendInitialMessage(
-                              `Vou ajudá-lo a exportar os slides para PowerPoint. ` +
-                              `Atualmente você tem ${slides.length} slides. ` +
-                              `Vamos preparar o arquivo PPT para download?`
-                            )
-                          }}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
-                        >
-                          <Download size={18} />
-                          Exportar PPT
-                        </button>
-                        <button 
-                          onClick={() => {
-                            openChat()
-                            sendInitialMessage(
-                              `Vou ajudá-lo a melhorar o slide "${slides[currentSlide].title}". ` +
-                              `Conteúdo atual: ${slides[currentSlide].content || '(vazio)'}. ` +
-                              `Vou analisar e sugerir melhorias, edições e otimizações. ` +
-                              `Vamos começar?`
-                            )
-                          }}
-                          className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
-                        >
-                          <Brain size={18} />
-                          IA: Analisar/Editar
-                        </button>
-                        <button 
-                          onClick={() => {
-                            openChat()
-                            sendInitialMessage(
-                              `Vou gerar conteúdo para o slide "${slides[currentSlide].title}". ` +
-                              `Me diga o tema ou contexto que você quer abordar e eu vou criar um conteúdo profissional e bem estruturado.`
-                            )
-                          }}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
-                        >
-                          <Sparkles size={18} />
-                          IA: Gerar Conteúdo
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-slate-800 rounded-xl p-12 text-center">
-                <Presentation className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-400 mb-4">Nenhum slide criado ainda</p>
-                <p className="text-slate-500 text-sm mb-6">
-                  Comece criando seu primeiro slide ou envie um PowerPoint para análise
-                </p>
-                <div className="flex items-center justify-center gap-4">
-                  <button
-                    onClick={() => {
-                      openChat()
-                      sendInitialMessage('Vamos criar seu primeiro slide! Me diga o tema ou assunto que você quer abordar e eu vou ajudá-lo a criar slides profissionais e bem estruturados.')
-                    }}
-                    className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2"
-                  >
-                    <Plus size={18} />
-                    Criar Primeiro Slide
-                  </button>
+                <div className="flex flex-wrap items-center gap-3">
                   <button
                     onClick={() => {
                       const fileInput = document.createElement('input')
@@ -958,22 +1008,331 @@ export function LessonPreparation() {
                         if (file) {
                           openChat()
                           sendInitialMessage(
-                            `Recebi seu arquivo PowerPoint: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB). ` +
-                            `Vou analisar o conteúdo dos slides, sugerir melhorias, ajudar na edição e preparar para publicação. ` +
-                            `Vamos começar a análise detalhada?`
+                            `Recebi o arquivo PowerPoint ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB). ` +
+                            'Analise o deck, destaque oportunidades de melhoria e devolva um plano para atualização dos slides.'
                           )
                         }
                       }
                       fileInput.click()
                     }}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2"
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-lg"
                   >
                     <Upload size={18} />
                     Enviar PowerPoint
                   </button>
+                  <button
+                    onClick={() => handleAddSlide()}
+                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-lg"
+                  >
+                    <Plus size={18} />
+                    Novo Slide
+                  </button>
                 </div>
               </div>
-            )}
+
+              <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {slideTemplates.map((template) => {
+                  const isSelected = selectedTemplateId === template.id
+                  return (
+                    <button
+                      key={template.id}
+                      onClick={() => setSelectedTemplateId(template.id)}
+                      className={`text-left p-4 rounded-xl transition-all border ${
+                        isSelected
+                          ? 'border-[#00F5A0] bg-slate-900/80 shadow-xl scale-[1.02]'
+                          : 'border-slate-700/60 bg-slate-900/60 hover:border-slate-500/60'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                          <Layout size={16} />
+                          {template.label}
+                        </div>
+                        {isSelected && <CheckCircle className="w-5 h-5 text-[#00F5A0]" />}
+                      </div>
+                      <p className="text-xs text-slate-300 mt-2 leading-relaxed">{template.description}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-[300px_1fr]">
+              <div className="space-y-4">
+                <div className="bg-slate-900/70 border border-slate-700/60 rounded-xl p-4 shadow-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-semibold text-white uppercase tracking-wide">Meus slides ({slides.length})</h3>
+                    <button onClick={loadSlides} className="text-xs text-slate-400 flex items-center gap-1">
+                      <RotateCcw size={14} />
+                      Recarregar
+                    </button>
+                  </div>
+                  <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                    {slides.length === 0 && <p className="text-xs text-slate-400">Selecione um template e clique em "Novo Slide" para iniciar.</p>}
+                    {slides.map((slide, index) => {
+                      const accentStyle = slideAccentStyles[(slide.accent as SlideContent['accent']) || 'emerald']
+                      const isActive = currentSlide === index
+                      return (
+                        <button
+                          key={slide.id}
+                          onClick={() => setCurrentSlide(index)}
+                          className={`w-full p-3 rounded-lg text-left transition-all border ${
+                            isActive
+                              ? 'border-[#00F5A0] bg-slate-800/90 shadow-lg'
+                              : 'border-slate-700/60 bg-slate-800/60 hover:border-slate-500/60'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-semibold text-white truncate">{slide.title || `Slide ${index + 1}`}</span>
+                            <span className="text-[11px] text-slate-400">#{index + 1}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                            <span>{slide.layout === 'cover' ? 'Capa' : slide.layout === 'two-column' ? 'Comparativo' : slide.layout === 'image-focus' ? 'Visual' : 'Tópicos'}</span>
+                            <span style={{ color: accentStyle.body }}>•</span>
+                            <span>{(slide.bullets || []).length} tópicos</span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {slides[currentSlide] ? (
+                  <>
+                    {(() => {
+                      const slide = slides[currentSlide]
+                      const accentStyle = slideAccentStyles[(slide.accent as SlideContent['accent']) || 'emerald']
+                      return (
+                        <div className="bg-slate-900/70 border border-slate-700/60 rounded-xl p-4 shadow-xl">
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <h3 className="text-sm font-semibold text-white uppercase tracking-wide">Pré-visualização</h3>
+                              <p className="text-xs text-slate-400">Ajuste o layout e veja como o slide será apresentado.</p>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-slate-300">
+                              <Sparkles size={14} />
+                              {slide.aiDraft ? 'Rascunho gerado pela IA' : 'Edição manual'}
+                            </div>
+                          </div>
+                          <div className="rounded-2xl overflow-hidden border border-slate-700/60" style={{ background: accentStyle.background }}>
+                            {slide.imageUrl && (
+                              <div className="h-48 bg-black/20 overflow-hidden">
+                                <img src={slide.imageUrl} alt={slide.imagePrompt || 'Imagem gerada'} className="w-full h-full object-cover" />
+                              </div>
+                            )}
+                            <div className="p-8 space-y-4">
+                              <h4 className="text-2xl font-semibold" style={{ color: accentStyle.headline }}>{slide.title || 'Título do Slide'}</h4>
+                              <div
+                                className={`${slide.layout === 'two-column' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'space-y-2'} text-sm leading-relaxed`}
+                                style={{ color: accentStyle.body }}
+                              >
+                                {slide.layout === 'cover' ? (
+                                  <p>{slide.content || 'Descreva o objetivo da aula, o módulo e a credencial do facilitador.'}</p>
+                                ) : slide.layout === 'two-column' ? (
+                                  <>
+                                    <div>
+                                      <p className="font-semibold mb-1">Coluna A</p>
+                                      <ul className="space-y-1 text-sm">
+                                        {(slide.bullets || []).slice(0, Math.ceil((slide.bullets || []).length / 2)).map((bullet, idx) => (
+                                          <li key={`colA-${idx}`} className="flex items-start gap-2">
+                                            <span className="text-xs">•</span>
+                                            <span>{bullet}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold mb-1">Coluna B</p>
+                                      <ul className="space-y-1 text-sm">
+                                        {(slide.bullets || []).slice(Math.ceil((slide.bullets || []).length / 2)).map((bullet, idx) => (
+                                          <li key={`colB-${idx}`} className="flex items-start gap-2">
+                                            <span className="text-xs">•</span>
+                                            <span>{bullet}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <ul className="space-y-2 text-sm">
+                                    {(slide.bullets || []).length > 0
+                                      ? (slide.bullets || []).map((bullet, idx) => (
+                                          <li key={idx} className="flex items-start gap-2">
+                                            <span className="text-xs">•</span>
+                                            <span>{bullet}</span>
+                                          </li>
+                                        ))
+                                      : <li className="text-white/70">Insira tópicos para estruturar o slide.</li>}
+                                  </ul>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    <div className="bg-slate-900/70 border border-slate-700/60 rounded-xl p-6 shadow-xl space-y-5">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-2">Título</label>
+                          <input
+                            type="text"
+                            value={slides[currentSlide].title}
+                            onChange={(e) => updateSlideAtIndex(currentSlide, { title: e.target.value })}
+                            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            placeholder="Digite o título do slide"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <label className="block font-semibold text-slate-300 mb-2">Layout</label>
+                            <select
+                              value={slides[currentSlide].layout}
+                              onChange={(e) => updateSlideAtIndex(currentSlide, { layout: e.target.value as SlideContent['layout'] })}
+                              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            >
+                              <option value="cover">Capa / Destaque</option>
+                              <option value="bullets">Tópicos</option>
+                              <option value="two-column">Comparativo</option>
+                              <option value="image-focus">Visual + Legenda</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block font-semibold text-slate-300 mb-2">Paleta</label>
+                            <select
+                              value={slides[currentSlide].accent}
+                              onChange={(e) => updateSlideAtIndex(currentSlide, { accent: e.target.value as SlideContent['accent'] })}
+                              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            >
+                              <option value="emerald">Verde Neon</option>
+                              <option value="blue">Azul Profundo</option>
+                              <option value="purple">Roxo Holográfico</option>
+                              <option value="amber">Âmbar / Dourado</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-2">Texto livre</label>
+                        <textarea
+                          rows={4}
+                          value={slides[currentSlide].content}
+                          onChange={(e) => updateSlideAtIndex(currentSlide, { content: e.target.value })}
+                          className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                          placeholder="Cole aqui parágrafos ou adicione observações para transformar em tópicos."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-2">Tópicos (um por linha)</label>
+                        <textarea
+                          rows={5}
+                          value={(slides[currentSlide].bullets || []).join('\n')}
+                          onChange={(e) => {
+                            const bulletArray = e.target.value
+                              .split('\n')
+                              .map((item) => item.trim())
+                              .filter((item) => item.length > 0)
+                            updateSlideAtIndex(currentSlide, {
+                              bullets: bulletArray,
+                              content: bulletArray.join('\n')
+                            })
+                          }}
+                          className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                          placeholder="• Introdução ao tema\n• Evidência clínica relevante\n• Conexão com o plano terapêutico"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-2">Notas de apresentação</label>
+                        <textarea
+                          rows={4}
+                          value={slides[currentSlide].notes || ''}
+                          onChange={(e) => updateSlideAtIndex(currentSlide, { notes: e.target.value })}
+                          className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                          placeholder="Apontamentos para o facilitador, insights da IA residente, referências clínicas..."
+                        />
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-2">Prompt para imagem</label>
+                          <input
+                            type="text"
+                            value={slides[currentSlide].imagePrompt || ''}
+                            onChange={(e) => {
+                              const newPrompt = e.target.value
+                              const baseSlide = slides[currentSlide]
+                              updateSlideAtIndex(currentSlide, { imagePrompt: newPrompt }, false)
+                              if (baseSlide) {
+                                scheduleSlideSave(() => saveSlide({ ...baseSlide, imagePrompt: newPrompt }))
+                              }
+                            }}
+                            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                            placeholder="Ex.: neurônios conectados em tons verdes neon"
+                          />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <button
+                            onClick={handleGenerateImage}
+                            disabled={isGeneratingImage}
+                            className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-semibold px-4 py-3 rounded-lg shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {isGeneratingImage ? 'Gerando imagem...' : 'Gerar imagem com IA'}
+                          </button>
+                          {slides[currentSlide].imageUrl && (
+                            <button
+                              onClick={() => updateSlideAtIndex(currentSlide, { imageUrl: undefined })}
+                              className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-xs text-slate-300"
+                            >
+                              Remover
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 pt-2">
+                        <button
+                          onClick={handleGenerateSlideWithAI}
+                          disabled={isGeneratingSlide}
+                          className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <Sparkles size={18} />
+                          {isGeneratingSlide ? 'Gerando rascunho...' : 'Gerar texto com IA'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            openChat()
+                            sendInitialMessage(
+                              `Monte um arquivo PPTX com os ${slides.length} slides, respeitando título, tópicos, notas e imagens sugeridas. ` +
+                              'Finalize com um slide de conclusão e uma chamada para ação clínica.'
+                            )
+                          }}
+                          className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+                        >
+                          <Download size={18} />
+                          Exportar PPT
+                        </button>
+                        <button
+                          onClick={() => handleAddSlide(slides[currentSlide].layout)}
+                          className="bg-slate-800 border border-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm"
+                        >
+                          Duplicar template
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-slate-900/70 border border-slate-700/60 rounded-xl p-10 text-center text-slate-400">
+                    Crie seu primeiro slide selecionando um template acima.
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

@@ -277,7 +277,7 @@ const Gamificacao: React.FC = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white dark:text-slate-900 dark:text-white mb-2">
-            Gamificação e Engajamento
+            Programa de Pontos e Engajamento
           </h1>
           <p className="text-gray-600 dark:text-gray-300">
             Ganhe pontos, desbloqueie conquistas e colete NFTs únicos

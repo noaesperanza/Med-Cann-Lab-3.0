@@ -26,7 +26,6 @@ const Landing: React.FC = () => {
   const navigate = useNavigate()
   const { register, login, isLoading: authLoading, user } = useAuth()
   const { success, error } = useToast()
-  const [activeProfile, setActiveProfile] = useState<'profissional' | 'paciente' | 'aluno' | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isLoginMode, setIsLoginMode] = useState(false)
@@ -236,6 +235,82 @@ const Landing: React.FC = () => {
     { name: 'IEP Remederi', logo: null, type: 'Instituto' }
   ]
 
+  const professionalPlans = [
+    {
+      id: 'medcann-basic',
+      name: 'MedCann Básico',
+      price: 150,
+      description: 'Entrada ideal para profissionais que desejam integrar a IA Nôa Esperanza ao atendimento clínico.',
+      features: [
+        'Gestão de pacientes e consultas online',
+        'Avaliação clínica IMRE guiada',
+        'Relatórios essenciais com assinatura digital',
+        'Acesso à Biblioteca MedCannLab'
+      ]
+    },
+    {
+      id: 'medcann-professional',
+      name: 'MedCann Professional',
+      price: 250,
+      description: 'Plano avançado com foco em equipes multiprofissionais e acompanhamento contínuo.',
+      highlight: 'Plano mais assinado',
+      features: [
+        'Tudo do plano Básico',
+        'Protocolos IMRE completos e personalizáveis',
+        'Dashboards analíticos da IA residente',
+        'Atendimento síncrono com suporte clínico'
+      ]
+    },
+    {
+      id: 'medcann-premium',
+      name: 'MedCann Premium',
+      price: 350,
+      description: 'Experiência premium para centros clínicos e grupos de pesquisa avançados.',
+      features: [
+        'Tudo do plano Professional',
+        'Consultoria estratégica com equipe MedCannLab',
+        'Integração com wearables e KPIs em tempo real',
+        'Suporte prioritário 24/7 e onboarding dedicado'
+      ]
+    }
+  ]
+
+  const healthPlans = [
+    {
+      id: 'medcann-saude-individual',
+      name: 'Med Cann Saúde Individual',
+      price: 200,
+      tagline: 'Cuidado personalizado para você',
+      features: [
+        'Cuidado personalizado para você',
+        'Acesso direto aos profissionais de saúde',
+        'Escuta personalizada para você',
+        '50% de desconto nas consultas mensais ou bimensais',
+        '24h diárias de acesso à Nôa Esperanza',
+        'Monitoramento renal individualizado',
+        'Avaliação com Nôa Esperanza'
+      ]
+    },
+    {
+      id: 'medcann-saude-familia',
+      name: 'Med Cann Saúde Família',
+      price: 400,
+      tagline: 'Proteção para toda a família',
+      features: [
+        'Contato contínuo com os profissionais de saúde',
+        'Escuta personalizada para toda a família',
+        'Acesso direto com os profissionais de saúde',
+        '50% de desconto nas consultas para toda família',
+        '24h diárias de acesso à Nôa Esperanza',
+        'Programa de benefícios Amores'
+      ]
+    }
+  ]
+
+  const handlePlanSelect = (planId: string) => {
+    navigate(`/app/checkout?plan=${planId}`)
+  }
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900">
@@ -354,15 +429,11 @@ const Landing: React.FC = () => {
       <section id="profiles" className="py-8" style={{ backgroundColor: '#0A192F' }}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-6">
-            <h2 className="text-3xl font-bold text-white mb-3">
-              Escolha seu Perfil
-            </h2>
+            <h2 className="text-3xl font-bold text-white mb-3">Escolha seu Perfil</h2>
             <p className="text-lg text-slate-200 max-w-3xl mx-auto mb-2">
               Acesse funcionalidades personalizadas para seu tipo de usuário
             </p>
-            <p className="text-sm text-slate-300">
-              Clique em um perfil abaixo para começar seu cadastro
-            </p>
+            <p className="text-sm text-slate-300">Clique em um perfil abaixo para começar seu cadastro</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -370,32 +441,22 @@ const Landing: React.FC = () => {
               <div
                 key={profile.id}
                 onClick={() => {
-                  setActiveProfile(profile.id as any)
-                  setRegisterData(prev => ({ ...prev, userType: profile.id as any }))
+                  setRegisterData((prev) => ({ ...prev, userType: profile.id as any }))
                 }}
-                className={`p-4 cursor-pointer transition-all duration-300 group`}
+                className="p-4 cursor-pointer transition-all duration-300 group"
                 style={{
-                  backgroundColor: activeProfile === profile.id ? 'rgba(0, 193, 106, 0.1)' : 'rgba(255,255,255,0.03)',
-                  border: activeProfile === profile.id ? '2px solid #00C16A' : '1px solid rgba(255,255,255,0.1)',
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.1)',
                   borderRadius: '12px',
-                  boxShadow: activeProfile === profile.id ? '0 8px 20px rgba(0, 193, 106, 0.3)' : '0 4px 10px rgba(0,0,0,0.2)',
-                  transform: activeProfile === profile.id ? 'scale(1.05)' : 'scale(1)'
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+                  transform: 'scale(1)'
                 }}
               >
                 <div className="text-center">
                   <div className={`w-12 h-12 bg-gradient-to-r ${profile.color} rounded-xl flex items-center justify-center text-white mx-auto mb-3 relative`}>
-                    <div className="scale-75">
-                      {profile.icon}
-                    </div>
-                    {activeProfile === profile.id && (
-                      <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: '#00C16A' }}>
-                        <CheckCircle className="w-3 h-3 text-white" />
-                      </div>
-                    )}
+                    <div className="scale-75">{profile.icon}</div>
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-1">
-                    {profile.title}
-                  </h3>
+                  <h3 className="text-lg font-semibold text-white mb-1">{profile.title}</h3>
                   <p className="text-sm text-slate-300 mb-4">{profile.subtitle}</p>
                   <ul className="space-y-1.5 text-left text-sm">
                     {profile.features.map((feature, index) => (
@@ -410,184 +471,173 @@ const Landing: React.FC = () => {
             ))}
           </div>
 
-          {/* Card de Cadastro */}
-          {activeProfile && (
-            <div className="max-w-md mx-auto mt-6"> {/* Compactado */}
-              <div className="p-8" 
-                   style={{ 
-                     backgroundColor: 'rgba(255,255,255,0.03)', 
-                     border: '1px solid rgba(255,255,255,0.1)',
-                     borderRadius: '12px',
-                     boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
-                   }}> {/* Nova paleta de cores */}
-                <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-white mb-2">
-                    {isLoginMode ? 'Entrar' : profiles.find(p => p.id === activeProfile)?.title}
-                  </h3>
-                  <p style={{ color: '#C8D6E5' }}>
-                    {isLoginMode ? 'Faça login em sua conta' : 'Preencha os dados para criar sua conta'}
-                  </p>
-                </div>
+          <div className="max-w-md mx-auto mt-6">
+            <div
+              className="p-8"
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '12px',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+              }}
+            >
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-bold text-white mb-2">
+                  {isLoginMode ? 'Entrar' : profiles.find((p) => p.id === 'profissional')?.title}
+                </h3>
+                <p style={{ color: '#C8D6E5' }}>
+                  {isLoginMode ? 'Faça login em sua conta' : 'Preencha os dados para criar sua conta'}
+                </p>
+              </div>
 
-                <form className="space-y-4 pointer-events-auto relative z-10" onClick={(e) => e.stopPropagation()}>
-                  {!isLoginMode && (
-                    <div className="pointer-events-auto">
-                      <label className="block text-sm font-medium text-slate-200 mb-2">
-                        Nome Completo
-                      </label>
-                      <input
-                        type="text"
-                        value={registerData.name}
-                        onChange={(e) => setRegisterData(prev => ({ ...prev, name: e.target.value }))}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full px-4 py-3 text-white focus:outline-none relative z-20"
-                        style={{ 
-                          backgroundColor: 'rgba(255,255,255,0.03)', 
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '12px'
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#00C16A'}
-                        onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-                        placeholder="Seu nome completo"
-                      />
-                    </div>
-                  )}
-
+              <form className="space-y-4 pointer-events-auto relative z-10" onClick={(e) => e.stopPropagation()}>
+                {!isLoginMode && (
                   <div className="pointer-events-auto">
-                    <label className="block text-sm font-medium text-slate-200 mb-2">
-                      Email
-                    </label>
+                    <label className="block text-sm font-medium text-slate-200 mb-2">Nome Completo</label>
                     <input
-                      type="email"
-                      value={isLoginMode ? loginData.email : registerData.email}
-                      onChange={(e) => {
-                        if (isLoginMode) {
-                          setLoginData(prev => ({ ...prev, email: e.target.value }))
-                        } else {
-                          setRegisterData(prev => ({ ...prev, email: e.target.value }))
-                        }
-                      }}
+                      type="text"
+                      value={registerData.name}
+                      onChange={(e) => setRegisterData((prev) => ({ ...prev, name: e.target.value }))}
                       onClick={(e) => e.stopPropagation()}
                       className="w-full px-4 py-3 text-white focus:outline-none relative z-20"
-                      style={{ 
-                        backgroundColor: 'rgba(255,255,255,0.03)', 
+                      style={{
+                        backgroundColor: 'rgba(255,255,255,0.03)',
                         border: '1px solid rgba(255,255,255,0.1)',
                         borderRadius: '12px'
                       }}
-                      onFocus={(e) => e.target.style.borderColor = '#00C16A'}
-                      onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-                      placeholder="seu@email.com"
+                      onFocus={(e) => (e.target.style.borderColor = '#00C16A')}
+                      onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                      placeholder="Seu nome completo"
                     />
                   </div>
+                )}
 
-                  <div className="pointer-events-auto">
-                    <label className="block text-sm font-medium text-slate-200 mb-2">
-                      Senha
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={isLoginMode ? loginData.password : registerData.password}
-                        onChange={(e) => {
-                          if (isLoginMode) {
-                            setLoginData(prev => ({ ...prev, password: e.target.value }))
-                          } else {
-                            setRegisterData(prev => ({ ...prev, password: e.target.value }))
-                          }
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full px-4 py-3 text-white focus:outline-none pr-10"
-                        style={{ 
-                          backgroundColor: 'rgba(255,255,255,0.03)', 
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '12px'
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#00C16A'}
-                        onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-                        placeholder="Sua senha"
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setShowPassword(!showPassword)
-                        }}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
-                      >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                  </div>
+                <div className="pointer-events-auto">
+                  <label className="block text-sm font-medium text-slate-200 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={isLoginMode ? loginData.email : registerData.email}
+                    onChange={(e) => {
+                      if (isLoginMode) {
+                        setLoginData((prev) => ({ ...prev, email: e.target.value }))
+                      } else {
+                        setRegisterData((prev) => ({ ...prev, email: e.target.value }))
+                      }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full px-4 py-3 text-white focus:outline-none relative z-20"
+                    style={{
+                      backgroundColor: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '12px'
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = '#00C16A')}
+                    onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                    placeholder="seu@email.com"
+                  />
+                </div>
 
-                  {!isLoginMode && (
-                    <div className="pointer-events-auto">
-                      <label className="block text-sm font-medium text-slate-200 mb-2">
-                        Confirmar Senha
-                      </label>
-                      <input
-                        type="password"
-                        value={registerData.confirmPassword}
-                        onChange={(e) => setRegisterData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full px-4 py-3 text-white focus:outline-none relative z-20"
-                        style={{ 
-                          backgroundColor: 'rgba(255,255,255,0.03)', 
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '12px'
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = '#00C16A'}
-                        onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-                        placeholder="Confirme sua senha"
-                      />
-                    </div>
-                  )}
-
-                  <div className="pt-4 pointer-events-auto">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
+                <div className="pointer-events-auto">
+                  <label className="block text-sm font-medium text-slate-200 mb-2">Senha</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={isLoginMode ? loginData.password : registerData.password}
+                      onChange={(e) => {
                         if (isLoginMode) {
-                          handleLogin()
+                          setLoginData((prev) => ({ ...prev, password: e.target.value }))
                         } else {
-                          handleRegister()
+                          setRegisterData((prev) => ({ ...prev, password: e.target.value }))
                         }
                       }}
-                      disabled={isLoading}
-                      className="w-full text-white py-3 font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ 
-                        backgroundColor: '#00C16A', 
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full px-4 py-3 text-white focus:outline-none pr-10"
+                      style={{
+                        backgroundColor: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '12px'
                       }}
-                      onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#00A85A'}
-                      onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#00C16A'}
-                    >
-                      {isLoading ? (isLoginMode ? 'Entrando...' : 'Criando conta...') : (isLoginMode ? 'Entrar' : 'Criar Conta')}
-                    </button>
-                  </div>
-
-                  <div className="text-center pointer-events-auto">
+                      onFocus={(e) => (e.target.style.borderColor = '#00C16A')}
+                      onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                      placeholder="Sua senha"
+                    />
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setIsLoginMode(!isLoginMode)
+                        setShowPassword(!showPassword)
                       }}
-                      className="font-medium"
-                      style={{ color: '#00A85A' }}
-                      onMouseEnter={(e) => (e.target as HTMLButtonElement).style.color = '#00C16A'}
-                      onMouseLeave={(e) => (e.target as HTMLButtonElement).style.color = '#00A85A'}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
                     >
-                      {isLoginMode ? 'Não tem uma conta? Criar conta' : 'Já tem uma conta? Entrar'}
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
+                </div>
 
-                </form>
-              </div>
+                {!isLoginMode && (
+                  <div className="pointer-events-auto">
+                    <label className="block text-sm font-medium text-slate-200 mb-2">Confirmar Senha</label>
+                    <input
+                      type="password"
+                      value={registerData.confirmPassword}
+                      onChange={(e) => setRegisterData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full px-4 py-3 text-white focus:outline-none relative z-20"
+                      style={{
+                        backgroundColor: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '12px'
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = '#00C16A')}
+                      onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                      placeholder="Confirme sua senha"
+                    />
+                  </div>
+                )}
+
+                <div className="pt-4 pointer-events-auto">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (isLoginMode) {
+                        handleLogin()
+                      } else {
+                        handleRegister()
+                      }
+                    }}
+                    disabled={isLoading}
+                    className="w-full text-white py-3 font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      backgroundColor: '#00C16A',
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+                    }}
+                    onMouseEnter={(e) => ((e.target as HTMLButtonElement).style.backgroundColor = '#00A85A')}
+                    onMouseLeave={(e) => ((e.target as HTMLButtonElement).style.backgroundColor = '#00C16A')}
+                  >
+                    {isLoading ? (isLoginMode ? 'Entrando...' : 'Criando conta...') : isLoginMode ? 'Entrar' : 'Criar Conta'}
+                  </button>
+                </div>
+
+                <div className="text-center pointer-events-auto">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsLoginMode(!isLoginMode)
+                    }}
+                    className="font-medium"
+                    style={{ color: '#00A85A' }}
+                    onMouseEnter={(e) => ((e.target as HTMLButtonElement).style.color = '#00C16A')}
+                    onMouseLeave={(e) => ((e.target as HTMLButtonElement).style.color = '#00A85A')}
+                  >
+                    {isLoginMode ? 'Não tem uma conta? Criar conta' : 'Já tem uma conta? Entrar'}
+                  </button>
+                </div>
+              </form>
             </div>
-          )}
-
+          </div>
         </div>
       </section>
 
@@ -650,6 +700,125 @@ const Landing: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Subscription Plans */}
+      <section id="plans" className="py-10" style={{ background: 'linear-gradient(135deg, rgba(7,22,41,0.95) 0%, rgba(10,25,47,0.92) 55%, rgba(26,54,93,0.9) 100%)' }}>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto text-center mb-10">
+            <span className="inline-flex items-center px-4 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(0,193,106,0.12)', border: '1px solid rgba(0,193,106,0.2)', color: '#00F5A0' }}>
+              PLANOS DE ASSINATURA MEDCANNLAB
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mt-4 mb-4">
+              Plataforma clínica, educacional e de pesquisa em um só lugar
+            </h2>
+            <p className="text-slate-300 text-base md:text-lg leading-relaxed">
+              A MedCannLab conecta profissionais, pacientes e estudantes em torno da IA residente Nôa Esperanza, trazendo protocolos IMRE, agendamento inteligente e acompanhamento terapêutico humanizado. Escolha o plano ideal para o seu perfil e o da sua família.
+            </p>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-5 mb-12">
+            <div className="lg:col-span-2 p-6 rounded-2xl h-full" style={{ background: 'rgba(12,34,54,0.85)', border: '1px solid rgba(0,193,106,0.14)', boxShadow: '0 18px 36px rgba(2,12,27,0.45)' }}>
+              <h3 className="text-xl font-semibold text-white mb-3">Por que escolher a MedCannLab?</h3>
+              <ul className="space-y-3 text-sm text-slate-200">
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="w-5 h-5 text-[#00F5A0] mt-0.5" />
+                  <span>Metodologia Arte da Entrevista Clínica aplicada em todas as jornadas.</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="w-5 h-5 text-[#00F5A0] mt-0.5" />
+                  <span>IA Nôa Esperanza atuando 24h em pré-anamnese, monitoramento e relatórios.</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="w-5 h-5 text-[#00F5A0] mt-0.5" />
+                  <span>Integração clínica, ensino e pesquisa com dashboards personalizáveis.</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="w-5 h-5 text-[#00F5A0] mt-0.5" />
+                  <span>Suporte dedicado e transição assistida para equipes e famílias.</span>
+                </li>
+              </ul>
+              <div className="mt-6 p-4 rounded-xl" style={{ background: 'rgba(0,193,106,0.08)', border: '1px solid rgba(0,193,106,0.18)' }}>
+                <p className="text-sm text-slate-200">
+                  Precisa de um plano personalizado para sua clínica ou instituição? <button onClick={() => navigate('/app/chat?context=comercial')} className="underline text-[#00F5A0] hover:text-[#00F5A0]/80">Fale com nosso time</button> e organize uma proposta sob medida.
+                </p>
+              </div>
+            </div>
+
+            <div className="lg:col-span-3 grid md:grid-cols-2 gap-4">
+              {professionalPlans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="rounded-2xl p-6 flex flex-col h-full"
+                  style={{ background: 'rgba(15,36,60,0.78)', border: '1px solid rgba(0,193,106,0.12)', boxShadow: '0 16px 30px rgba(2,12,27,0.4)' }}
+                >
+                  {plan.highlight && (
+                    <span className="self-start text-xs font-semibold px-3 py-1 mb-4 rounded-full" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.25) 0%, rgba(14,165,233,0.25) 100%)', border: '1px solid rgba(59,130,246,0.35)', color: '#93C5FD' }}>
+                      {plan.highlight}
+                    </span>
+                  )}
+                  <h3 className="text-xl font-semibold text-white mb-1">{plan.name}</h3>
+                  <p className="text-slate-300 text-sm mb-4 flex-1">{plan.description}</p>
+                  <div className="mb-4">
+                    <span className="text-3xl font-bold text-white">R$ {plan.price.toFixed(0)}</span>
+                    <span className="text-slate-400 text-sm ml-1">/mês</span>
+                  </div>
+                  <ul className="space-y-2 mb-5">
+                    {plan.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-start space-x-2 text-sm text-slate-200">
+                        <CheckCircle className="w-4 h-4 text-[#00F5A0] mt-0.5" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => handlePlanSelect(plan.id)}
+                    className="w-full mt-auto py-3 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
+                    style={{ background: 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)', boxShadow: '0 12px 24px rgba(0,193,106,0.25)' }}
+                  >
+                    Assinar Plano Profissional
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {healthPlans.map((plan) => (
+              <div
+                key={plan.id}
+                className="rounded-2xl p-6"
+                style={{ background: 'rgba(12,34,54,0.82)', border: '1px solid rgba(0,193,106,0.14)', boxShadow: '0 18px 36px rgba(2,12,27,0.45)' }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">{plan.name}</h3>
+                    <p className="text-sm text-slate-300">{plan.tagline}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-3xl font-bold text-white">R$ {plan.price}</span>
+                    <span className="text-slate-400 text-xs block">por mês</span>
+                  </div>
+                </div>
+                <ul className="space-y-2 mb-6">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start space-x-2 text-sm text-slate-200">
+                      <CheckCircle className="w-4 h-4 text-[#FFD33D] mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => handlePlanSelect(plan.id)}
+                  className="w-full py-3 rounded-lg font-semibold text-slate-900 transition-transform transform hover:scale-[1.02]"
+                  style={{ background: 'linear-gradient(135deg, #FFD33D 0%, #FFAA00 100%)', boxShadow: '0 12px 24px rgba(255,211,61,0.25)' }}
+                >
+                  Assinar Plano Med Cann Saúde
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </section>

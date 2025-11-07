@@ -82,7 +82,7 @@ export class NoaTrainingSystem {
         'Chat com IA Residente Nôa Esperança',
         'Sistema de Gestão de Pacientes (Prontuário Eletrônico)',
         'Biblioteca Médica (500+ artigos científicos)',
-        'Gamificação e Certificações',
+        'Programa de Pontos e Certificações',
         'Chat Global para Profissionais',
         'Sistema Financeiro e Subscrições',
         'Preparação de Aulas a partir de casos clínicos'

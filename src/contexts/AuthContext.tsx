@@ -264,23 +264,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const logout = async () => {
+    setIsLoading(true)
     try {
-      setIsLoading(true)
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.error('Erro no logout:', error.message)
-        throw new Error(error.message)
       }
-      setUser(null)
-      // Limpar tipo visual do localStorage ao fazer logout
-      localStorage.removeItem('viewAsUserType')
-      localStorage.removeItem('selectedUserType')
-      console.log('✅ Logout realizado com sucesso')
     } catch (error) {
       console.error('Erro no logout:', error)
-      throw error
     } finally {
+      try {
+        // Remover tokens do Supabase armazenados localmente
+        const keys = Object.keys(localStorage)
+        keys.forEach(key => {
+          if (key.startsWith('sb-') && key.includes('auth-token')) {
+            localStorage.removeItem(key)
+          }
+        })
+      } catch (e) {
+        // Ignorar erros ao limpar tokens
+      }
+
+      // Limpar estados derivados
+      localStorage.removeItem('viewAsUserType')
+      localStorage.removeItem('selectedUserType')
+      localStorage.removeItem('test_user_type')
+      setUser(null)
       setIsLoading(false)
+      console.log('✅ Logout concluído (estado local limpo)')
     }
   }
 

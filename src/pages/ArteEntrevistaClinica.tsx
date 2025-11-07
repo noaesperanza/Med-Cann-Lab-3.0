@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import * as pdfjsLib from 'pdfjs-dist'
 import { 
@@ -14,7 +15,12 @@ import {
   User,
   Heart,
   Target,
-  Stethoscope
+  Stethoscope,
+  Brain,
+  Download,
+  BarChart3,
+  Play,
+  Zap
 } from 'lucide-react'
 
 // Configurar worker do pdfjs usando CDN (mais confiável)
@@ -995,6 +1001,167 @@ const ArteEntrevistaClinica: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* LabPEC & Projetos Integrados */}
+        <section className="space-y-8 mb-10">
+          <div className="rounded-2xl border border-[#00C16A]/20 bg-gradient-to-br from-[#0A192F] via-[#102C45] to-[#1F4B38] p-6 md:p-8 shadow-xl">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl flex items-center justify-center bg-gradient-to-r from-[#00C16A] to-[#1a365d] shadow-lg">
+                  <Brain className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.35em] text-[#00C16A] mb-2">LabPEC &amp; Arte da Entrevista Clínica</p>
+                  <h2 className="text-2xl md:text-3xl font-bold text-white">Laboratório de Performance em Entrevista Clínica</h2>
+                  <p className="text-sm md:text-base text-[#C8D6E5] mt-3 max-w-3xl">
+                    Projetos inovadores que aplicam a metodologia AEC em diferentes contextos, desde pesquisa aplicada até intervenções comunitárias globais.
+                    Integração de Deep Learning e NLP para saúde humanizada, com encontros práticos e supervisão direta do Dr. Ricardo Valença.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="self-start lg:self-center bg-gradient-to-r from-[#00C16A] to-[#1a365d] text-white px-5 md:px-6 py-2.5 md:py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+              >
+                Baixar eBook do Seminário
+              </button>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+              <div className="bg-[#0F243C]/70 border border-[#00C16A]/10 rounded-lg p-5">
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
+                  <Play className="w-5 h-5 text-[#FFD33D]" />
+                  <span>O que acontece no LabPEC?</span>
+                </h3>
+                <ul className="space-y-3 text-[#9FB3C6] text-sm">
+                  <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span><strong className="text-white">Role-playing clínico realista:</strong> consultas encenadas por duplas com base em casos clínicos reais.</span></li>
+                  <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span><strong className="text-white">Análise triaxial da consulta:</strong> diferentes perspectivas entre entrevistador, paciente e professor.</span></li>
+                  <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span><strong className="text-white">Gravação e revisão técnica:</strong> análise em grupo da comunicação clínica e não-verbal.</span></li>
+                </ul>
+              </div>
+              <div className="bg-[#0F243C]/70 border border-[#00C16A]/10 rounded-lg p-5">
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
+                  <Target className="w-5 h-5 text-[#FFD33D]" />
+                  <span>Por que participar?</span>
+                </h3>
+                <ul className="space-y-3 text-[#9FB3C6] text-sm">
+                  <li className="flex items-start space-x-2"><Star className="w-4 h-4 text-[#FFD33D] mt-1" /><span>Treinamento intensivo em habilidades comunicacionais</span></li>
+                  <li className="flex items-start space-x-2"><Star className="w-4 h-4 text-[#FFD33D] mt-1" /><span>Aplicação prática dos conceitos da AEC com supervisão</span></li>
+                  <li className="flex items-start space-x-2"><Star className="w-4 h-4 text-[#FFD33D] mt-1" /><span>Feedback direto e individualizado</span></li>
+                  <li className="flex items-start space-x-2"><Star className="w-4 h-4 text-[#FFD33D] mt-1" /><span>Prática segura, com supervisão ativa</span></li>
+                </ul>
+              </div>
+              <div className="bg-[#0F243C]/70 border border-[#00C16A]/10 rounded-lg p-5">
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
+                  <Users className="w-5 h-5 text-[#FFD33D]" />
+                  <span>Para quem?</span>
+                </h3>
+                <ul className="space-y-3 text-[#9FB3C6] text-sm">
+                  <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span>Estudantes de Medicina e áreas da Saúde</span></li>
+                  <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span>Profissionais em formação continuada</span></li>
+                  <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span>Equipes de pesquisa aplicando a metodologia AEC</span></li>
+                </ul>
+              </div>
+              <div className="bg-[#0F243C]/70 border border-[#00C16A]/10 rounded-lg p-5">
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
+                  <Zap className="w-5 h-5 text-[#FFD33D]" />
+                  <span>Como funciona?</span>
+                </h3>
+                <ul className="space-y-3 text-[#9FB3C6] text-sm">
+                  <li className="flex items-start space-x-2"><Video className="w-4 h-4 text-[#00C16A] mt-1" /><span><strong className="text-white">Aulas ao vivo</strong> via Zoom às 21h</span></li>
+                  <li className="flex items-start space-x-2"><FileText className="w-4 h-4 text-[#00C16A] mt-1" /><span><strong className="text-white">Casos clínicos</strong> alinhados ao tema da aula</span></li>
+                  <li className="flex items-start space-x-2"><Users className="w-4 h-4 text-[#00C16A] mt-1" /><span>Duplas de alunos selecionadas na hora</span></li>
+                  <li className="flex items-start space-x-2"><Clock className="w-4 h-4 text-[#00C16A] mt-1" /><span>Exercícios com até 3 rodadas por noite</span></li>
+                  <li className="flex items-start space-x-2"><BarChart3 className="w-4 h-4 text-[#00C16A] mt-1" /><span>Análise final orientada pelo Dr. Ricardo Valença</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="bg-[#0F243C]/70 border border-[#00C16A]/10 rounded-lg p-4 text-center text-sm text-[#9FB3C6]">
+              O LabPEC integra o eixo formativo da plataforma Nôa Esperanza, articulando ensino, clínica e pesquisa em torno da metodologia AEC.
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex items-center space-x-3">
+              <Target className="w-6 h-6 text-[#00C16A]" />
+              <h3 className="text-xl font-semibold text-white">Projetos de Aplicação AEC</h3>
+            </div>
+            <p className="text-sm md:text-base text-[#C8D6E5] max-w-3xl">
+              Aplicações da Arte da Entrevista Clínica em contextos acadêmicos, clínicos e comunitários — conectando ensino, pesquisa e cuidado humanizado.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+              <div className="bg-[#0F243C]/70 border border-cyan-500/20 rounded-xl p-5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Heart className="w-6 h-6 text-cyan-400" />
+                    <h4 className="text-lg font-semibold text-white">Cidade Amiga dos Rins</h4>
+                  </div>
+                  <p className="text-sm text-[#9FB3C6] mb-4">
+                    Programa pioneiro de saúde comunitária que integra tecnologia avançada e cuidado humanizado para identificar fatores de risco e implementar a metodologia AEC em nefrologia.
+                  </p>
+                  <ul className="space-y-2 text-sm text-[#9FB3C6]">
+                    <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span>35 anos de nefrologia aplicados ao desenvolvimento urbano</span></li>
+                    <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span>Abordagem preventiva com IA para fatores de risco</span></li>
+                    <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span>Onboarding de profissionais de saúde com AEC</span></li>
+                  </ul>
+                </div>
+                <Link
+                  to="/app/pesquisa/profissional/cidade-amiga-dos-rins"
+                  className="mt-6 inline-flex justify-center items-center bg-gradient-to-r from-[#00C16A] to-[#1a365d] text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all"
+                >
+                  Explorar Projeto
+                </Link>
+              </div>
+
+              <div className="bg-[#0F243C]/70 border border-emerald-500/20 rounded-xl p-5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <img src="/brain.png" alt="MedCann Lab" className="w-8 h-8" />
+                    <h4 className="text-lg font-semibold text-white">MedCann Lab</h4>
+                  </div>
+                  <p className="text-sm text-[#9FB3C6] mb-4">
+                    Integração Cannabis &amp; Nefrologia – avaliação contínua de biomarcadores com metodologia AEC, combinando dados clínicos, IA e dispositivos médicos conectados.
+                  </p>
+                  <ul className="space-y-2 text-sm text-[#9FB3C6]">
+                    <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span>Protocolos de prescrição estruturados pela AEC</span></li>
+                    <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span>Monitoramento de função renal em tempo real</span></li>
+                    <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span>Deep Learning aplicado a biomarcadores e evolução clínica</span></li>
+                  </ul>
+                </div>
+                <Link
+                  to="/app/pesquisa/profissional/cidade-amiga-dos-rins"
+                  className="mt-6 inline-flex justify-center items-center bg-gradient-to-r from-[#00C16A] to-[#1a365d] text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all"
+                >
+                  Explorar Projeto
+                </Link>
+              </div>
+
+              <div className="bg-[#0F243C]/70 border border-purple-500/20 rounded-xl p-5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Target className="w-6 h-6 text-purple-400" />
+                    <h4 className="text-lg font-semibold text-white">Jardins de Cura</h4>
+                  </div>
+                  <p className="text-sm text-[#9FB3C6] mb-4">
+                    Saúde Global &amp; Agência Crítica – implementação da AEC em comunidades vulneráveis, com formação de equipes locais e indicadores de impacto em saúde populacional.
+                  </p>
+                  <ul className="space-y-2 text-sm text-[#9FB3C6]">
+                    <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span>Formação de agentes comunitários</span></li>
+                    <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span>Triagem preventiva baseada em AEC</span></li>
+                    <li className="flex items-start space-x-2"><CheckCircle className="w-4 h-4 text-[#00C16A] mt-1" /><span>Parcerias com organizações internacionais</span></li>
+                  </ul>
+                </div>
+                <Link
+                  to="/app/pesquisa/profissional/jardins-de-cura"
+                  className="mt-6 inline-flex justify-center items-center bg-gradient-to-r from-purple-500 to-rose-500 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all"
+                >
+                  Explorar Projeto
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Course Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

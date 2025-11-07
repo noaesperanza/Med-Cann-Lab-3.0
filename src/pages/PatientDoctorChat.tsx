@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import PatientHealthHistory from '../components/PatientHealthHistory'
@@ -73,9 +73,13 @@ interface ChatMessage {
   created_at: string
 }
 
+const AUTHORIZED_PROFESSIONAL_EMAILS = ['rrvalenca@gmail.com', 'eduardoscfaveret@gmail.com']
+
 const PatientDoctorChat: React.FC = () => {
   const { patientId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const origin = new URLSearchParams(location.search).get('origin')
   const { user } = useAuth()
   const [message, setMessage] = useState('')
   const [isRecording, setIsRecording] = useState(false)
@@ -93,6 +97,7 @@ const PatientDoctorChat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const isPatientView = user?.type === 'patient' || origin === 'patient-dashboard'
   
   // Estados para dados reais do banco
   const [patientsList, setPatientsList] = useState<ChatUser[]>([])
@@ -111,112 +116,76 @@ const PatientDoctorChat: React.FC = () => {
 
     const fetchUsers = async () => {
       try {
-        // Se for profissional, buscar pacientes
-        if (user.type === 'professional' || user.type === 'admin') {
-          const { data: patients, error: patientsError } = await supabase
-            .from('users')
+        setLoading(true)
+
+        if (isPatientView) {
+          const { data, error } = await supabase
+            .from('users_compatible')
             .select('id, name, email, type')
-            .eq('type', 'patient')
-            .order('name')
+            .in('email', AUTHORIZED_PROFESSIONAL_EMAILS)
 
-          if (!patientsError && patients) {
-            setPatientsList(patients.map(p => ({
-              ...p,
-              avatar: p.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'P'
-            })))
+          if (error) {
+            console.error('Erro ao buscar profissionais autorizados:', error)
           }
-        }
 
-        // Se for paciente, buscar apenas os dois profissionais autorizados
-        if (user.type === 'patient') {
-          // Lista de profissionais autorizados (apenas dois médicos)
-          const authorizedEmails = ['rrvalenca@gmail.com', 'eduardoscfaveret@gmail.com']
-          
-          console.log('🔍 Buscando profissionais autorizados:', authorizedEmails)
-          
-          // Buscar profissionais um por um para evitar problemas de RLS
-          const professionalsArray: any[] = []
-          
-          for (const email of authorizedEmails) {
-            console.log(`🔎 Buscando profissional: ${email}...`)
-            const { data: professional, error: professionalError } = await supabase
+          const normalizedProfessionals = (data || []).map((p) => ({
+            ...p,
+            avatar: p.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'P'
+          }))
+
+          setProfessionalsList(normalizedProfessionals)
+
+          if (normalizedProfessionals.length > 0) {
+            const alreadySelected = normalizedProfessionals.find((pro) => pro.id === selectedPatientId)
+            const defaultProfessional = alreadySelected || normalizedProfessionals[0]
+            if (!alreadySelected) {
+              setSelectedPatientId(defaultProfessional.id)
+            }
+            setCurrentChatUser(defaultProfessional)
+          } else {
+            setCurrentChatUser(null)
+          }
+        } else {
+          if (user.type === 'professional' || user.type === 'admin') {
+            const { data: patients, error: patientsError } = await supabase
               .from('users')
               .select('id, name, email, type')
-              .eq('email', email)
-              .maybeSingle()
-            
-            if (professionalError) {
-              console.error(`❌ Erro ao buscar profissional ${email}:`, {
-                message: professionalError.message,
-                details: professionalError.details,
-                hint: professionalError.hint,
-                code: professionalError.code,
-                fullError: professionalError
-              })
-            } else if (professional) {
-              console.log(`✅ Profissional encontrado: ${professional.name} (${professional.email})`, professional)
-              professionalsArray.push(professional)
-            } else {
-              console.warn(`⚠️ Profissional não encontrado: ${email}`, {
-                note: 'Pode ser bloqueado por RLS ou não existe na tabela'
-              })
+              .eq('type', 'patient')
+              .order('name')
+
+            if (!patientsError && patients) {
+              setPatientsList(patients.map((p) => ({
+                ...p,
+                avatar: p.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'P'
+              })))
             }
           }
-          
-          if (professionalsArray.length > 0) {
-            console.log(`✅ Total de profissionais encontrados: ${professionalsArray.length}`)
-            setProfessionalsList(professionalsArray.map(p => ({
+
+          const { data: students, error: studentsError } = await supabase
+            .from('users')
+            .select('id, name, email, type')
+            .eq('type', 'student')
+            .order('name')
+
+          if (!studentsError && students) {
+            setStudentsList(students.map((s) => ({
+              ...s,
+              avatar: s.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'S'
+            })))
+          }
+
+          const { data: professionals, error: professionalsError } = await supabase
+            .from('users')
+            .select('id, name, email, type')
+            .eq('type', 'professional')
+            .order('name')
+
+          if (!professionalsError && professionals) {
+            setProfessionalsList(professionals.map((p) => ({
               ...p,
               avatar: p.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'P'
             })))
-            
-            // Se não houver patientId na URL, selecionar o primeiro profissional
-            if (!selectedPatientId && professionalsArray.length > 0) {
-              console.log('📌 Selecionando primeiro profissional automaticamente:', professionalsArray[0].name)
-              setSelectedPatientId(professionalsArray[0].id)
-              setCurrentChatUser(professionalsArray[0])
-            }
-          } else {
-            // Fallback: Criar profissionais básicos se não encontrados
-            console.warn('⚠️ Nenhum profissional encontrado. Usando fallback básico...')
-            const fallbackProfessionals: ChatUser[] = [
-              {
-                id: 'fallback-ricardo',
-                name: 'Dr. Ricardo Valença',
-                email: 'rrvalenca@gmail.com',
-                type: 'admin' as const,
-                avatar: 'RV'
-              },
-              {
-                id: 'fallback-eduardo',
-                name: 'Dr. Eduardo Faveret',
-                email: 'eduardoscfaveret@gmail.com',
-                type: 'professional' as const,
-                avatar: 'EF'
-              }
-            ]
-            
-            setProfessionalsList(fallbackProfessionals)
-            
-            if (!selectedPatientId && fallbackProfessionals.length > 0) {
-              setSelectedPatientId(fallbackProfessionals[0].id)
-              setCurrentChatUser(fallbackProfessionals[0])
-            }
           }
-        }
-
-        // Buscar alunos se necessário
-        const { data: students, error: studentsError } = await supabase
-          .from('users')
-          .select('id, name, email, type')
-          .eq('type', 'student')
-          .order('name')
-
-        if (!studentsError && students) {
-          setStudentsList(students.map(s => ({
-            ...s,
-            avatar: s.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'S'
-          })))
         }
       } catch (error) {
         console.error('Erro ao buscar usuários:', error)
@@ -226,7 +195,7 @@ const PatientDoctorChat: React.FC = () => {
     }
 
     fetchUsers()
-  }, [user?.id, user?.type])
+  }, [user?.id, user?.type, isPatientView])
 
   // Atualizar selectedPatientId quando patientId da URL mudar
   useEffect(() => {
@@ -243,7 +212,7 @@ const PatientDoctorChat: React.FC = () => {
     }
 
     // Resetar chatId quando o profissional mudar (para pacientes)
-    if (user.type === 'patient') {
+    if (isPatientView) {
       setChatId(null)
       setMessages([])
     }
@@ -251,8 +220,8 @@ const PatientDoctorChat: React.FC = () => {
     const setupChat = async () => {
       try {
         console.log('🔧 Configurando chat...')
-        const doctorId = user.type === 'professional' || user.type === 'admin' ? user.id : selectedPatientId
-        const patientIdForChat = user.type === 'patient' ? user.id : selectedPatientId
+        const doctorId = isPatientView ? selectedPatientId : user.id
+        const patientIdForChat = isPatientView ? (user?.id || '') : selectedPatientId
 
         console.log('👤 IDs do chat:', { doctorId, patientIdForChat, userType: user.type, selectedPatientId })
 
@@ -404,13 +373,8 @@ const PatientDoctorChat: React.FC = () => {
 
   // Obter lista atual baseada no tipo de usuário selecionado
   const getCurrentUserList = (): ChatUser[] => {
-    // Se for paciente, sempre retornar lista de profissionais autorizados
-    if (user?.type === 'patient') {
-      // Filtrar apenas os dois profissionais autorizados
-      const authorizedEmails = ['rrvalenca@gmail.com', 'eduardoscfaveret@gmail.com']
-      const filtered = professionalsList.filter(p => authorizedEmails.includes(p.email))
-      console.log('📋 getCurrentUserList - profissionaisList.length:', professionalsList.length, 'filtrados:', filtered.length)
-      return filtered
+    if (isPatientView) {
+      return professionalsList
     }
     
     switch (selectedUserType) {
@@ -729,7 +693,13 @@ const PatientDoctorChat: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3 flex-1">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => {
+                if (origin === 'patient-dashboard') {
+                  navigate('/app/patient-dashboard')
+                } else {
+                  navigate(-1)
+                }
+              }}
               className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -792,105 +762,22 @@ const PatientDoctorChat: React.FC = () => {
               </div>
             )}
 
-            {/* Seletor de Profissional - Dropdown Melhorado para Pacientes */}
-            {user?.type === 'patient' && (
-              <div className="relative flex-1 max-w-md" ref={dropdownRef}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setShowPatientSelect(!showPatientSelect)
-                  }}
-                  className="flex items-center space-x-3 bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg w-full"
-                >
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
-                    <span className="text-white font-bold text-xs">{currentChatUser?.avatar || currentSelectedUser?.avatar || 'U'}</span>
-                  </div>
-                  <div className="flex-1 text-left min-w-0">
-                    <h1 className="text-sm font-semibold text-white truncate">{currentChatUser?.name || currentSelectedUser?.name || 'Selecione um profissional'}</h1>
-                    <p className="text-xs text-white/80 truncate">
-                      {currentChatUser?.email === 'eduardoscfaveret@gmail.com' ? 'Dr. Eduardo Faveret • Profissional' :
-                       currentChatUser?.email === 'rrvalenca@gmail.com' ? 'Dr. Ricardo Valença • Administrador' :
-                       currentChatUser?.type === 'professional' ? 'Profissional da Plataforma' : 
-                       currentChatUser?.type === 'admin' ? 'Administrador' : 
-                       'Escolha um profissional'}
-                    </p>
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-white transition-transform flex-shrink-0 ${showPatientSelect ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Dropdown Melhorado */}
-                {showPatientSelect && (
-                  <div className="absolute left-0 top-full mt-2 w-full bg-slate-800 border-2 border-blue-600/50 rounded-lg shadow-2xl z-50 max-h-80 overflow-y-auto">
-                    <div className="p-2">
-                      <div className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase mb-2 border-b border-slate-700">Profissionais Disponíveis</div>
-                      {loading ? (
-                        <div className="p-4 text-center">
-                          <p className="text-slate-400 text-sm">Carregando profissionais...</p>
-                        </div>
-                      ) : currentUserList.length > 0 ? (
-                        currentUserList.map((u) => (
-                          <button
-                            key={u.id}
-                            onClick={async () => {
-                              console.log('👆 Selecionando profissional:', u.name, u.id, 'Email:', u.email)
-                              
-                              // Atualizar estados
-                              setSelectedPatientId(u.id)
-                              setCurrentChatUser({
-                                ...u,
-                                avatar: u.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'U'
-                              })
-                              setShowPatientSelect(false)
-                              
-                              // Forçar atualização do chat
-                              console.log('🔄 Forçando atualização do chat para:', u.name)
-                            }}
-                            className={`w-full p-3 rounded-lg transition-all flex items-center space-x-3 mb-1 ${
-                              selectedPatientId === u.id 
-                                ? 'bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/50' 
-                                : 'hover:bg-slate-700'
-                            }`}
-                          >
-                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                              <span className="text-white font-bold text-sm">{u.avatar || 'U'}</span>
-                            </div>
-                            <div className="flex-1 text-left">
-                              <p className="font-semibold text-white">{u.name}</p>
-                              <p className="text-xs text-slate-400">{u.email}</p>
-                              {u.email === 'eduardoscfaveret@gmail.com' && (
-                                <p className="text-xs text-blue-400 mt-0.5 font-medium">Dr. Eduardo Faveret • Profissional</p>
-                              )}
-                              {u.email === 'rrvalenca@gmail.com' && (
-                                <p className="text-xs text-purple-400 mt-0.5 font-medium">Dr. Ricardo Valença • Administrador</p>
-                              )}
-                              {u.type === 'professional' && u.email !== 'eduardoscfaveret@gmail.com' && (
-                                <p className="text-xs text-blue-400 mt-0.5 font-medium">Profissional da Plataforma</p>
-                              )}
-                              {u.type === 'admin' && u.email !== 'rrvalenca@gmail.com' && (
-                                <p className="text-xs text-purple-400 mt-0.5 font-medium">Administrador</p>
-                              )}
-                            </div>
-                            {selectedPatientId === u.id && (
-                              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-                            )}
-                          </button>
-                        ))
-                      ) : (
-                        <div className="p-4 text-center">
-                          <p className="text-slate-400 text-sm mb-2">Nenhum profissional encontrado</p>
-                          <p className="text-slate-500 text-xs">
-                            Verifique se os profissionais estão cadastrados na plataforma
-                          </p>
-                          {process.env.NODE_ENV === 'development' && (
-                            <p className="text-slate-600 text-xs mt-2">
-                              Debug: professionalsList.length = {professionalsList.length}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+            {/* Informações do profissional selecionado para pacientes */}
+            {isPatientView && currentChatUser && (
+              <div className="flex items-center space-x-3 bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-2 rounded-lg shadow-lg">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
+                  <span className="text-white font-bold text-xs">{currentChatUser.avatar || 'P'}</span>
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-sm font-semibold text-white truncate">{currentChatUser.name}</h1>
+                  <p className="text-xs text-white/80 truncate">
+                    {currentChatUser.email === 'eduardoscfaveret@gmail.com'
+                      ? 'Dr. Eduardo Faveret • Profissional'
+                      : currentChatUser.email === 'rrvalenca@gmail.com'
+                        ? 'Dr. Ricardo Valença • Administrador'
+                        : 'Profissional de referência'}
+                  </p>
+                </div>
               </div>
             )}
 
@@ -982,14 +869,6 @@ const PatientDoctorChat: React.FC = () => {
               </div>
             )}
             
-            {/* Debug: Mostrar informações */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="px-4 pt-2 text-xs text-slate-500">
-                Debug: chatId={chatId ? '✅' : '❌'}, currentChatUser={currentChatUser ? '✅' : '❌'}, 
-                professionalsList={professionalsList.length}, selectedPatientId={selectedPatientId}
-              </div>
-            )}
-
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 ? (

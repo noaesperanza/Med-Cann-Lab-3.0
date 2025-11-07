@@ -70,7 +70,6 @@ import { SubscriptionPlans } from './pages/SubscriptionPlans'
 import { PaymentCheckout } from './pages/PaymentCheckout'
 import { LessonPreparation } from './pages/LessonPreparation'
 import { ProfessionalFinancial } from './pages/ProfessionalFinancial'
-import EduardoFaveretDashboard from './pages/EduardoFaveretDashboard'
 import RicardoValencaDashboard from './pages/RicardoValencaDashboard'
 import PatientManagementAdvanced from './pages/PatientManagementAdvanced'
 
@@ -102,14 +101,21 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="home" element={<SmartDashboardRedirect />} />
           <Route path="test" element={<TestPage />} />
-          <Route path="eduardo-faveret-dashboard" element={<EduardoFaveretDashboard />} />
+          <Route path="eduardo-faveret-dashboard" element={<RicardoValencaDashboard />} />
           <Route path="ricardo-valenca-dashboard" element={<RicardoValencaDashboard />} />
           <Route path="patient-management-advanced" element={<PatientManagementAdvanced />} />
                 
                 {/* Rotas Individualizadas por Eixo e Tipo */}
                 {/* EIXO CLÍNICA */}
                 <Route path="clinica/profissional/dashboard" element={<ProtectedRoute requiredRole="profissional"><RicardoValencaDashboard /></ProtectedRoute>} />
-                <Route path="clinica/profissional/dashboard-eduardo" element={<EduardoFaveretDashboard />} />
+                <Route
+                  path="clinica/profissional/dashboard-eduardo"
+                  element={
+                    <ProtectedRoute requiredRole="profissional">
+                      <RicardoValencaDashboard />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="clinica/profissional/pacientes" element={<PatientsManagement />} />
                 <Route path="clinica/profissional/agendamentos" element={<ProfessionalScheduling />} />
                 <Route path="clinica/profissional/relatorios" element={<Reports />} />

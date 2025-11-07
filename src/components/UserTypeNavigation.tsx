@@ -82,7 +82,7 @@ const UserTypeNavigation: React.FC<UserTypeNavigationProps> = ({
           { name: 'Dashboard Clínica', icon: Stethoscope, href: '/app/clinica-dashboard' },
           { name: 'Meus Pacientes', icon: Users, href: '/app/clinica-patients' },
           { name: 'Avaliações', icon: Heart, href: '/app/clinica-assessments' },
-          { name: 'Fórum de Conselheiros em IA na Saúde', icon: MessageCircle, href: '/app/clinica-chat' },
+          { name: 'Fórum Cann Matrix', icon: MessageCircle, href: '/app/clinica-chat' },
           { name: 'Relatórios', icon: BookOpen, href: '/app/clinica-reports' }
         ]
       case 'ensino':
@@ -91,7 +91,7 @@ const UserTypeNavigation: React.FC<UserTypeNavigationProps> = ({
           { name: 'Biblioteca Médica', icon: BookOpen, href: '/app/ensino-library' },
           { name: 'Arte da Entrevista', icon: Heart, href: '/app/ensino-arte-entrevista' },
           { name: 'Cannabis Medicinal', icon: Brain, href: '/app/ensino-cannabis' },
-          { name: 'Fórum de Conselheiros em IA na Saúde', icon: MessageCircle, href: '/app/ensino-chat' },
+          { name: 'Fórum Cann Matrix', icon: MessageCircle, href: '/app/ensino-chat' },
           { name: 'Relatórios', icon: BookOpen, href: '/app/ensino-reports' }
         ]
       case 'pesquisa':
@@ -99,7 +99,7 @@ const UserTypeNavigation: React.FC<UserTypeNavigationProps> = ({
           { name: 'Dashboard Pesquisa', icon: FlaskConical, href: '/app/pesquisa-dashboard' },
           { name: 'Meus Pacientes', icon: Users, href: '/app/pesquisa-patients' },
           { name: 'Avaliações', icon: Heart, href: '/app/pesquisa-assessments' },
-          { name: 'Fórum de Conselheiros em IA na Saúde', icon: MessageCircle, href: '/app/pesquisa-chat' },
+          { name: 'Fórum Cann Matrix', icon: MessageCircle, href: '/app/pesquisa-chat' },
           { name: 'Relatórios', icon: BookOpen, href: '/app/pesquisa-reports' }
         ]
       default:

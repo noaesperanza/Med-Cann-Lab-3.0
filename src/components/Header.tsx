@@ -13,6 +13,9 @@ const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
 
+  const headerGradient = 'linear-gradient(135deg, rgba(10,25,47,0.96) 0%, rgba(26,54,93,0.92) 55%, rgba(45,90,61,0.9) 100%)'
+  const neutralSurface = 'rgba(7, 22, 41, 0.85)'
+
   const getNavigationByUserType = () => {
     if (!user) return []
     
@@ -31,7 +34,7 @@ const Header: React.FC = () => {
           { name: '🎓 Dashboard Estudante', href: '/app/ensino/aluno/dashboard' },
           { name: '📚 Meus Cursos', href: '/app/ensino/aluno/cursos' },
           { name: '📖 Biblioteca', href: '/app/ensino/aluno/biblioteca' },
-          { name: '🏆 Gamificação', href: '/app/ensino/aluno/gamificacao' },
+        { name: '🏆 Programa de Pontos', href: '/app/ensino/aluno/gamificacao' },
           { name: '👤 Meu Perfil', href: '/app/profile' },
         ]
       case 'admin':
@@ -46,13 +49,22 @@ const Header: React.FC = () => {
   const isActive = (path: string) => location.pathname === path
 
   return (
-    <header className="bg-slate-800 shadow-lg border-b border-slate-700 header-mobile">
+    <header
+      className="shadow-lg border-b header-mobile"
+      style={{ background: headerGradient, borderColor: 'rgba(0,193,106,0.15)' }}
+    >
       <div className="px-2 sm:px-4 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo e Título */}
           <div className="flex items-center space-x-2 md:space-x-3">
             <Link to="/" className="flex items-center space-x-2 md:space-x-3">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-primary-600 to-accent-500 rounded-lg flex items-center justify-center overflow-hidden">
+              <div
+                className="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center overflow-hidden"
+                style={{
+                  background: 'linear-gradient(135deg, #00C16A 0%, #1a365d 100%)',
+                  boxShadow: '0 6px 16px rgba(0, 193, 106, 0.25)'
+                }}
+              >
                 <img 
                   src="/brain.png" 
                   alt="MedCannLab Logo" 
@@ -76,11 +88,11 @@ const Header: React.FC = () => {
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                      isActive(item.href)
-                        ? 'text-primary-400 bg-primary-900/30'
-                        : 'text-slate-200 hover:text-primary-400 hover:bg-slate-700/50'
-                    }`}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                    isActive(item.href)
+                      ? 'text-[#FFD33D] bg-[#213553]'
+                      : 'text-[#C8D6E5] hover:text-[#FFD33D] hover:bg-[#1b314e]'
+                  }`}
                   >
                     {item.name}
                   </Link>
@@ -120,7 +132,7 @@ const Header: React.FC = () => {
                           icon: Shield, 
                           route: '/app/ricardo-valenca-dashboard',
                           description: 'Dashboard Administrativo',
-                          color: 'from-orange-500 to-red-500'
+                          color: 'from-[#FFD33D] to-[#F4B740]'
                         },
                         { 
                           id: 'profissional', 
@@ -128,7 +140,7 @@ const Header: React.FC = () => {
                           icon: Stethoscope, 
                           route: `/app/${currentEixo}/profissional/dashboard`,
                           description: 'Dashboard Profissional',
-                          color: 'from-blue-500 to-cyan-500'
+                          color: 'from-[#00C16A] to-[#00945B]'
                         },
                         { 
                           id: 'paciente', 
@@ -136,7 +148,7 @@ const Header: React.FC = () => {
                           icon: User, 
                           route: '/app/clinica/paciente/dashboard',
                           description: 'Dashboard do Paciente',
-                          color: 'from-pink-500 to-rose-500'
+                          color: 'from-[#1a365d] to-[#0d223b]'
                         },
                         { 
                           id: 'aluno', 
@@ -144,7 +156,7 @@ const Header: React.FC = () => {
                           icon: GraduationCap, 
                           route: currentEixo === 'pesquisa' ? '/app/pesquisa/aluno/dashboard' : '/app/ensino/aluno/dashboard',
                           description: 'Dashboard do Aluno',
-                          color: 'from-amber-500 to-orange-500'
+                          color: 'from-[#FFD33D] to-[#F4B740]'
                         },
                       ]
                     : isProfessional
@@ -155,7 +167,7 @@ const Header: React.FC = () => {
                           icon: Stethoscope, 
                           route: `/app/${currentEixo}/profissional/dashboard`,
                           description: 'Dashboard Profissional',
-                          color: 'from-blue-500 to-cyan-500'
+                          color: 'from-[#00C16A] to-[#00945B]'
                         },
                       ]
                     : isAluno
@@ -166,7 +178,7 @@ const Header: React.FC = () => {
                           icon: GraduationCap, 
                           route: currentEixo === 'pesquisa' ? '/app/pesquisa/aluno/dashboard' : '/app/ensino/aluno/dashboard',
                           description: 'Dashboard do Aluno',
-                          color: 'from-amber-500 to-orange-500'
+                          color: 'from-[#FFD33D] to-[#F4B740]'
                         },
                       ]
                     : []
@@ -179,7 +191,7 @@ const Header: React.FC = () => {
                       icon: Stethoscope,
                       route: '/app/ricardo-valenca-dashboard',
                       description: 'Consultório Dr. Ricardo Valença',
-                      color: 'from-blue-600 to-cyan-600'
+                      color: 'from-[#00C16A] to-[#1a365d]'
                     },
                     {
                       id: 'profissional-eduardo',
@@ -187,7 +199,7 @@ const Header: React.FC = () => {
                       icon: Stethoscope,
                       route: '/app/clinica/profissional/dashboard-eduardo',
                       description: 'Consultório Dr. Eduardo Faveret',
-                      color: 'from-emerald-600 to-teal-600',
+                      color: 'from-[#1a365d] to-[#2d5a3d]',
                       alternativeRoutes: ['/app/eduardo-faveret-dashboard']
                     }
                   ] : []
@@ -272,7 +284,7 @@ const Header: React.FC = () => {
                             className={`flex items-center space-x-1 md:space-x-2 px-2 md:px-3 py-1.5 md:py-2 rounded-lg transition-all duration-200 ${
                               isActive
                                 ? `bg-gradient-to-r ${type.color} text-white shadow-lg scale-105`
-                                : 'bg-slate-700 hover:bg-slate-600 text-slate-200 hover:text-white'
+                                : 'bg-[#102642] hover:bg-[#1b3552] text-[#C8D6E5] hover:text-white'
                             }`}
                             title={type.description}
                           >
@@ -293,24 +305,36 @@ const Header: React.FC = () => {
                 <div className="relative">
                   <button
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    className="flex items-center space-x-2 text-slate-200 hover:text-primary-400 transition-colors duration-200"
+                    className="flex items-center space-x-2 text-[#C8D6E5] hover:text-[#00C16A] transition-colors duration-200"
                   >
-                    <div className="w-6 h-6 md:w-8 md:h-8 bg-primary-600 rounded-full flex items-center justify-center">
+                    <div
+                      className="w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center"
+                      style={{
+                        background: 'linear-gradient(135deg, #00C16A 0%, #1a365d 100%)',
+                        boxShadow: '0 4px 12px rgba(0,193,106,0.25)'
+                      }}
+                    >
                       <User className="w-3 h-3 md:w-4 md:h-4 text-white" />
                     </div>
                     <span className="hidden sm:block text-xs md:text-sm font-medium">{user.name}</span>
                   </button>
 
                 {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-40 md:w-48 bg-slate-800 rounded-md shadow-lg py-1 z-50 border border-slate-700">
-                    <div className="px-3 md:px-4 py-2 border-b border-slate-700">
+                  <div
+                    className="absolute right-0 mt-2 w-40 md:w-48 rounded-md shadow-lg py-1 z-50"
+                    style={{
+                      background: neutralSurface,
+                      border: '1px solid rgba(0,193,106,0.18)'
+                    }}
+                  >
+                    <div className="px-3 md:px-4 py-2 border-b border-[#17324d]">
                       <p className="text-xs md:text-sm font-medium text-white">{user.name}</p>
-                      <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                      <p className="text-xs text-[#8FA7BF] truncate">{user.email}</p>
                     </div>
                     <Link
                       to={normalizeUserType(user?.type || 'paciente') === 'admin' ? '/app/admin-settings' : '/app/profile'}
                       onClick={() => setIsProfileOpen(false)}
-                      className="flex items-center px-3 md:px-4 py-2 text-xs md:text-sm text-slate-200 hover:bg-slate-700"
+                      className="flex items-center px-3 md:px-4 py-2 text-xs md:text-sm text-[#C8D6E5] hover:bg-[#1b314e]"
                     >
                       <Settings className="w-3 h-3 md:w-4 md:h-4 mr-2" />
                       Configurações
@@ -333,7 +357,7 @@ const Header: React.FC = () => {
                           window.location.href = '/'
                         }
                       }}
-                      className="flex items-center w-full px-3 md:px-4 py-2 text-xs md:text-sm text-slate-200 hover:bg-slate-700"
+                      className="flex items-center w-full px-3 md:px-4 py-2 text-xs md:text-sm text-[#C8D6E5] hover:bg-[#1b314e]"
                     >
                       <LogOut className="w-3 h-3 md:w-4 md:h-4 mr-2" />
                       Sair
@@ -355,7 +379,7 @@ const Header: React.FC = () => {
             {navigation.length > 0 && (
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="md:hidden p-2 rounded-md text-slate-200 hover:text-primary-400 hover:bg-slate-700"
+                className="md:hidden p-2 rounded-md text-[#C8D6E5] hover:text-[#00C16A] hover:bg-[#1b314e]"
               >
                 {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
@@ -367,15 +391,15 @@ const Header: React.FC = () => {
         {/* Mobile Navigation */}
         {isMenuOpen && (
           <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-slate-700">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-[#17324d]" style={{ background: neutralSurface }}>
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   to={item.href}
                   className={`block px-3 py-3 rounded-md text-sm font-medium transition-colors duration-200 ${
                     isActive(item.href)
-                      ? 'text-primary-400 bg-primary-900/30'
-                      : 'text-slate-200 hover:text-primary-400 hover:bg-slate-700/50'
+                      ? 'text-[#FFD33D] bg-[#213553]'
+                      : 'text-[#C8D6E5] hover:text-[#FFD33D] hover:bg-[#1b314e]'
                   }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
