@@ -331,16 +331,20 @@ const AlunoDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen text-white" style={{ background: backgroundGradient }}>
+    <div
+      className="min-h-screen text-white"
+      style={{ background: backgroundGradient }}
+      data-page="aluno-dashboard"
+    >
       {/* Header */}
       <div
         className="p-6"
         style={{ background: 'linear-gradient(135deg, rgba(10,25,47,0.95) 0%, rgba(26,54,93,0.9) 55%, rgba(45,90,61,0.85) 100%)', borderBottom: '1px solid rgba(0,193,106,0.18)' }}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+        <div className="flex items-center justify-between stack-tablet">
+          <div className="flex items-center space-x-4 stack-mobile">
             <button
-              className="flex items-center space-x-2 text-[#C8D6E5] hover:text-white transition-colors"
+              className="flex items-center space-x-2 text-[#C8D6E5] hover:text-white transition-colors w-full md:w-auto justify-center"
               style={{ background: 'rgba(12,34,54,0.45)', border: '1px solid rgba(0,193,106,0.1)', borderRadius: '10px', padding: '0.6rem 1rem' }}
             >
               <ArrowLeft className="w-5 h-5" />
@@ -353,7 +357,7 @@ const AlunoDashboard: React.FC = () => {
           </div>
           
           {/* Student Profile */}
-          <div className="flex items-center space-x-3 px-4 py-3 rounded-lg" style={{ background: 'rgba(12,34,54,0.7)', border: '1px solid rgba(0,193,106,0.12)' }}>
+          <div className="flex items-center space-x-3 px-4 py-3 rounded-lg stack-mobile" style={{ background: 'rgba(12,34,54,0.7)', border: '1px solid rgba(0,193,106,0.12)' }}>
             <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: accentGradient }}>
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
@@ -365,10 +369,10 @@ const AlunoDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex">
+      <div className="flex gap-6 stack-desktop">
         {/* Sidebar */}
-        <div className="w-64 min-h-screen" style={{ background: 'rgba(7,22,41,0.85)', borderRight: '1px solid rgba(0,193,106,0.12)' }}>
-          <div className="p-6 space-y-6">
+        <div className="responsive-sidebar-panel lg:min-h-screen" style={{ background: 'rgba(7,22,41,0.85)', borderRight: '1px solid rgba(0,193,106,0.12)' }}>
+          <div className="p-4 sm:p-6 space-y-6">
             <nav className="space-y-2">
               {(() => {
                 const styles = getSidebarButtonStyles(activeTab === 'dashboard')
@@ -471,7 +475,7 @@ const AlunoDashboard: React.FC = () => {
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
               <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24"></div>
               <div className="relative z-10">
-                <div className="flex items-center space-x-4 mb-4">
+                <div className="flex items-center space-x-4 mb-4 stack-mobile">
                   <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-4xl">
                     {mainCourse.logo || '🌿'}
                   </div>
@@ -483,7 +487,7 @@ const AlunoDashboard: React.FC = () => {
                 <p className="text-white/90 mb-4 text-lg">
                   {mainCourse.description}
                 </p>
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-4 inline-actions-responsive">
                   <button 
                     onClick={() => {
                       navigate('/app/ensino/profissional/pos-graduacao-cannabis')
@@ -493,7 +497,7 @@ const AlunoDashboard: React.FC = () => {
                     <Play className="w-5 h-5" />
                     <span>Acessar Curso</span>
                   </button>
-                  <div className="flex items-center space-x-4 text-white/80 text-sm">
+                  <div className="flex items-center space-x-4 text-white/80 text-sm inline-actions-responsive">
                     <span>⏱️ {mainCourse.duration}</span>
                     <span>👨‍🏫 {mainCourse.instructor}</span>
                     <span>📚 {mainCourse.modules.length} Módulos</span>
@@ -510,7 +514,7 @@ const AlunoDashboard: React.FC = () => {
               {/* Courses Section */}
               <div className="w-full overflow-x-hidden">
                 <div className="rounded-xl p-4 md:p-6 overflow-hidden w-full max-w-full" style={surfaceStyle}>
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between mb-6 stack-mobile">
                     <h3 className="text-xl font-semibold text-white">Meu Curso Principal</h3>
                     <button 
                       onClick={() => navigate('/app/ensino/profissional/pos-graduacao-cannabis')}

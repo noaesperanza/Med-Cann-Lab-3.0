@@ -508,6 +508,144 @@ body {
   }
 }
 
+.responsive-sidebar-panel {
+  width: 100%;
+}
+
+@media (max-width: 1023px) {
+  .responsive-sidebar-panel {
+    min-height: auto;
+    margin-bottom: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-sidebar-panel {
+    width: 18rem;
+  }
+}
+
+.stack-mobile,
+.stack-tablet,
+.stack-desktop,
+.stack-large {
+  display: flex;
+}
+
+@media (max-width: 767px) {
+  .stack-mobile {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .stack-mobile > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .stack-tablet {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.25rem;
+  }
+
+  .stack-tablet > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 1279px) {
+  .stack-desktop {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+  }
+
+  .stack-desktop > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 1535px) {
+  .stack-large {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+  }
+
+  .stack-large > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .inline-actions-responsive {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .inline-actions-responsive > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .flex.items-center.justify-between,
+  .flex.items-start.justify-between {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .flex.items-center.justify-between > :not([hidden]) ~ :not([hidden]),
+  .flex.items-start.justify-between > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .flex.items-center.space-x-2,
+  .flex.items-center.space-x-3,
+  .flex.items-center.space-x-4,
+  .flex.items-center.space-x-5,
+  .flex.items-center.space-x-6 {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .flex.items-center.space-x-2 > :not([hidden]) ~ :not([hidden]),
+  .flex.items-center.space-x-3 > :not([hidden]) ~ :not([hidden]),
+  .flex.items-center.space-x-4 > :not([hidden]) ~ :not([hidden]),
+  .flex.items-center.space-x-5 > :not([hidden]) ~ :not([hidden]),
+  .flex.items-center.space-x-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4,
+  .grid-cols-5,
+  .grid-cols-6 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .grid-cols-4,
+  .grid-cols-5,
+  .grid-cols-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
 .chat-mobile {
   height: calc(100vh - 8rem);
   padding: 1rem;

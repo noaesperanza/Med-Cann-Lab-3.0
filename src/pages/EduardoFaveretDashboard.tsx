@@ -480,7 +480,7 @@ const EduardoFaveretDashboard: React.FC = () => {
             </button>
 
             <button
-              onClick={() => navigate('/app/clinica/profissional/chat-pacientes')}
+              onClick={() => setActiveSection('chat-pacientes')}
               className="bg-gradient-to-r from-teal-600 to-cyan-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
               <div className="flex items-center justify-between mb-2">

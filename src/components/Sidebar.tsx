@@ -254,12 +254,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: BarChart3
     },
     {
-      id: 'chat-pacientes',
-      label: 'Chat Pacientes',
-      description: 'Acompanhamento contínuo com pacientes',
-      icon: MessageCircle
-    },
-    {
       id: 'chat-profissionais',
       label: 'Equipe Clínica',
       description: 'Discussões entre profissionais da plataforma',

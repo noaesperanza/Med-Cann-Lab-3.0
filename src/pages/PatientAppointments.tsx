@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -39,11 +39,23 @@ import {
   LineChart,
   Brain
 } from 'lucide-react'
+import {
+  SCHEDULING_CONFIG,
+  clampToSchedulingStartDate,
+  generateAppointmentSlots,
+  isSchedulingWorkingDay
+} from '../lib/schedulingConfig'
 
 const PatientAppointments: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const schedulingStartDate = useMemo(() => {
+    const date = new Date(SCHEDULING_CONFIG.startDateISO)
+    date.setHours(0, 0, 0, 0)
+    return date
+  }, [])
+
+  const [currentDate, setCurrentDate] = useState(() => clampToSchedulingStartDate(new Date()))
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [showAppointmentModal, setShowAppointmentModal] = useState(false)
@@ -51,9 +63,9 @@ const PatientAppointments: React.FC = () => {
   const [appointmentData, setAppointmentData] = useState({
     date: '',
     time: '',
-    type: 'presencial',
+    type: 'online',
     specialty: '',
-    service: '',
+    service: 'Primeira consulta',
     room: '',
     notes: '',
     duration: 60,
@@ -64,6 +76,26 @@ const PatientAppointments: React.FC = () => {
   const [appointments, setAppointments] = useState<any[]>([])
   const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([])
   const [carePlan, setCarePlan] = useState<any>(null)
+
+  const findNextWorkingDate = (base: Date): Date => {
+    const candidate = clampToSchedulingStartDate(new Date(base))
+    candidate.setHours(0, 0, 0, 0)
+
+    let guard = 0
+    while (!isSchedulingWorkingDay(candidate)) {
+      candidate.setDate(candidate.getDate() + 1)
+      guard += 1
+      if (guard > 21) break
+    }
+
+    return candidate
+  }
+
+  useEffect(() => {
+    if (!selectedDate) {
+      setSelectedDate(findNextWorkingDate(currentDate))
+    }
+  }, [selectedDate, currentDate])
 
   // Carregar agendamentos e plano de cuidado
   useEffect(() => {
@@ -139,20 +171,54 @@ const PatientAppointments: React.FC = () => {
   }
 
   // Horários disponíveis
-  const timeSlots = [
-    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-    '11:00', '11:30', '14:00', '14:30', '15:00', '15:30',
-    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30'
-  ]
+  const timeSlots = useMemo(
+    () =>
+      generateAppointmentSlots(
+        SCHEDULING_CONFIG.startTime,
+        SCHEDULING_CONFIG.endTime,
+        SCHEDULING_CONFIG.appointmentDurationMinutes,
+        SCHEDULING_CONFIG.bufferMinutes
+      ),
+    []
+  )
 
   // Especialidades disponíveis
   const specialties = [
+    'Neurologia',
     'Nefrologia',
-    'Neurologia'
+    'Homeopatia'
   ]
 
-  // Salas disponíveis (removido - será determinado automaticamente pelo tipo de consulta)
-  const rooms: string[] = []
+  const specialtyConsultorioMap: Record<string, string[]> = {
+    Neurologia: ['Consultório Escola Eduardo Faveret'],
+    Nefrologia: ['Consultório Escola Ricardo Valença'],
+    Homeopatia: ['Consultório Escola Ricardo Valença']
+  }
+
+  const specialtyProfessionalEmailMap: Record<string, string> = {
+    Neurologia: 'eduardo.faveret@medcannlab.com',
+    Nefrologia: 'ricardo.valenca@medcannlab.com',
+    Homeopatia: 'ricardo.valenca@medcannlab.com'
+  }
+
+  const rooms = useMemo(() => {
+    if (!appointmentData.specialty || !specialtyConsultorioMap[appointmentData.specialty]) {
+      return [
+        'Consultório Escola Ricardo Valença',
+        'Consultório Escola Eduardo Faveret'
+      ]
+    }
+    return specialtyConsultorioMap[appointmentData.specialty]
+  }, [appointmentData.specialty])
+
+  useEffect(() => {
+    if (rooms.length > 0 && !rooms.includes(appointmentData.room)) {
+      setAppointmentData(prev => ({
+        ...prev,
+        room: rooms[0]
+      }))
+    }
+  }, [rooms])
 
   // Função para gerar dias do mês
   const generateCalendarDays = () => {
@@ -168,38 +234,52 @@ const PatientAppointments: React.FC = () => {
     // Dias do mês anterior
     for (let i = startingDay - 1; i >= 0; i--) {
       const prevMonth = new Date(year, month - 1, 0)
+      prevMonth.setHours(0, 0, 0, 0)
+      const fullDate = new Date(year, month - 1, prevMonth.getDate() - i)
+      fullDate.setHours(0, 0, 0, 0)
       days.push({
-        date: prevMonth.getDate() - i,
+        date: fullDate.getDate(),
+        fullDate,
         isCurrentMonth: false,
         isToday: false,
-        appointments: []
+        appointments: [],
+        isDisabled: true
       })
     }
 
     // Dias do mês atual
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day)
+      date.setHours(0, 0, 0, 0)
       const isToday = date.toDateString() === new Date().toDateString()
       const dayAppointments = appointments.filter(apt => 
         apt.date === `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
       )
+      const isBeforeStart = date < schedulingStartDate
+      const isWorking = isSchedulingWorkingDay(date)
       
       days.push({
         date: day,
+        fullDate: date,
         isCurrentMonth: true,
         isToday,
-        appointments: dayAppointments
+        appointments: dayAppointments,
+        isDisabled: isBeforeStart || !isWorking
       })
     }
 
     // Dias do próximo mês
     const remainingDays = 42 - days.length
     for (let day = 1; day <= remainingDays; day++) {
+      const fullDate = new Date(year, month + 1, day)
+      fullDate.setHours(0, 0, 0, 0)
       days.push({
-        date: day,
+        date: fullDate.getDate(),
+        fullDate,
         isCurrentMonth: false,
         isToday: false,
-        appointments: []
+        appointments: [],
+        isDisabled: true
       })
     }
 
@@ -215,14 +295,19 @@ const PatientAppointments: React.FC = () => {
       } else {
         newDate.setMonth(newDate.getMonth() + 1)
       }
+      newDate.setDate(1)
+      newDate.setHours(0, 0, 0, 0)
+      if (newDate < schedulingStartDate) {
+        return new Date(schedulingStartDate)
+      }
       return newDate
     })
   }
 
   // Função para selecionar data
   const handleDateSelect = (day: any) => {
-    if (day.isCurrentMonth) {
-      setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date))
+    if (day.isCurrentMonth && !day.isDisabled) {
+      setSelectedDate(new Date(day.fullDate))
       setSelectedTime(null)
     }
   }
@@ -240,33 +325,55 @@ const PatientAppointments: React.FC = () => {
 
   // Função para salvar agendamento (vinculado à IA residente)
   const handleSaveAppointment = async () => {
-    if (!appointmentData.date || !appointmentData.time || !appointmentData.specialty || !appointmentData.service || !user?.id) {
+    if (!appointmentData.date || !appointmentData.time || !appointmentData.specialty || !appointmentData.service || !appointmentData.room || !user?.id) {
       alert('Por favor, preencha todos os campos obrigatórios.')
       return
     }
 
     try {
       // 1. Buscar profissional baseado na especialidade
-      const { data: professionals } = await supabase
-        .from('users')
-        .select('id, name, email')
-        .eq('type', 'profissional')
-        .ilike('specialty', `%${appointmentData.specialty}%`)
-        .limit(1)
-      
-      if (!professionals || professionals.length === 0) {
+      const professionalEmail = specialtyProfessionalEmailMap[appointmentData.specialty]
+
+      let professionalId: string | null = null
+      let professionalName: string | null = null
+
+      if (professionalEmail) {
+        const { data: professionalAuth } = await supabase
+          .from('auth.users')
+          .select('id, email, raw_user_meta_data')
+          .eq('email', professionalEmail)
+          .maybeSingle()
+
+        if (professionalAuth) {
+          professionalId = professionalAuth.id
+          professionalName = professionalAuth.raw_user_meta_data?.name || null
+        }
+      }
+
+      if (!professionalId) {
+        const { data: professionalRecord } = await supabase
+          .from('users_compatible')
+          .select('id, name, email')
+          .eq('email', professionalEmail)
+          .maybeSingle()
+
+        if (professionalRecord) {
+          professionalId = professionalRecord.id
+          professionalName = professionalRecord.name
+        }
+      }
+
+      if (!professionalId) {
         alert('Nenhum profissional disponível para esta especialidade. Por favor, escolha outra especialidade.')
         return
       }
-      
-      const professional = professionals[0]
       
       // 2. Verificar disponibilidade do horário
       const appointmentDateTime = new Date(`${appointmentData.date}T${appointmentData.time}`)
       const { data: conflicting } = await supabase
         .from('appointments')
         .select('id')
-        .eq('professional_id', professional.id)
+        .eq('professional_id', professionalId)
         .eq('appointment_date', appointmentDateTime.toISOString())
         .eq('status', 'scheduled')
         .maybeSingle()
@@ -281,18 +388,20 @@ const PatientAppointments: React.FC = () => {
         .from('appointments')
         .insert({
           patient_id: user.id,
-          professional_id: professional.id,
+          professional_id: professionalId,
           appointment_date: appointmentDateTime.toISOString(),
           appointment_time: appointmentData.time,
           appointment_type: appointmentData.service || 'Consulta',
           status: 'scheduled',
           specialty: appointmentData.specialty,
           type: appointmentData.type === 'online' ? 'consultation' : 'in-person',
-          is_remote: appointmentData.type === 'online',
+          is_remote: true,
           duration: appointmentData.duration || 60,
           description: appointmentData.notes || '',
-          location: appointmentData.room || (appointmentData.type === 'online' ? 'Plataforma digital' : 'Consultório'),
-          created_at: new Date().toISOString()
+          location: appointmentData.room || 'Consultório Escola Ricardo Valença',
+          created_at: new Date().toISOString(),
+          meeting_url: `https://meet.google.com/${Math.random().toString(36).substring(2, 10)}`,
+          professional_name: professionalName || null
         })
         .select()
         .single()
@@ -316,7 +425,7 @@ const PatientAppointments: React.FC = () => {
           .from('clinical_assessments')
           .insert({
             patient_id: user.id,
-            professional_id: professional.id,
+            professional_id: professionalId,
             appointment_id: appointment.id,
             assessment_type: 'INITIAL',
             status: 'pending',
@@ -406,8 +515,11 @@ const PatientAppointments: React.FC = () => {
                   ? 'bg-primary-600/20 border-primary-500 ring-1 ring-primary-500'
                   : ''
               } ${
-                selectedDate && day.isCurrentMonth && 
-                selectedDate.getDate() === day.date
+                day.isDisabled ? 'opacity-40 cursor-not-allowed hover:scale-100 hover:bg-transparent' : ''
+              } ${
+                selectedDate &&
+                day.isCurrentMonth &&
+                selectedDate.toDateString() === day.fullDate.toDateString()
                   ? 'bg-primary-600 border-primary-500 ring-2 ring-primary-400'
                   : ''
               }`}
@@ -841,14 +953,12 @@ const PatientAppointments: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm text-slate-400 mb-2">Tipo</label>
-                    <select
-                      value={appointmentData.type}
-                      onChange={(e) => setAppointmentData({...appointmentData, type: e.target.value})}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
-                    >
-                      <option value="presencial">Presencial</option>
-                      <option value="online">Online</option>
-                    </select>
+                    <input
+                      type="text"
+                      value="Online"
+                      readOnly
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white uppercase tracking-wide"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm text-slate-400 mb-2">Especialidade <span className="text-red-400">*</span></label>
@@ -864,21 +974,30 @@ const PatientAppointments: React.FC = () => {
                       ))}
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Consultório <span className="text-red-400">*</span></label>
+                    <select
+                      value={appointmentData.room}
+                      onChange={(e) => setAppointmentData({...appointmentData, room: e.target.value})}
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                      required
+                    >
+                      {rooms.map(room => (
+                        <option key={room} value={room}>{room}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm text-slate-400 mb-2">Tipo de Serviço <span className="text-red-400">*</span></label>
                   <select
                     value={appointmentData.service}
-                    onChange={(e) => setAppointmentData({...appointmentData, service: e.target.value})}
+                    onChange={(e) => setAppointmentData({ ...appointmentData, service: e.target.value })}
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                     required
                   >
-                    <option value="">Selecione o tipo de serviço</option>
-                    <option value="avaliacao-clinica-inicial-noa">Avaliação clínica inicial com Nôa Esperança</option>
-                    <option value="consulta-primeira-vez">Consulta de primeira vez</option>
-                    <option value="consulta-retorno">Consulta de retorno</option>
-                    <option value="pareceres-clinicas-hospitais">Pareceres em clínicas e hospitais</option>
-                    <option value="consultas-domiciliares">Consultas domiciliares</option>
+                    <option value="Primeira consulta">Primeira consulta</option>
+                    <option value="Retorno">Retorno</option>
                   </select>
                 </div>
                 <div>

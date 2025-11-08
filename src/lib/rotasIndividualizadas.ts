@@ -59,14 +59,6 @@ export const ROTAS_INDIVIDUALIZADAS: Record<string, UserRoute> = {
         title: 'Relatórios Clínicos',
         description: 'Visualizar relatórios gerados pela IA',
         icon: '📊'
-      },
-      {
-        path: '/app/clinica/profissional/chat-pacientes',
-        component: () => import('../pages/ProfessionalChat').then(m => m.default),
-        requiredRole: 'professional',
-        title: 'Chat com Pacientes',
-        description: 'Comunicação direta com pacientes',
-        icon: '💬'
       }
     ]
   },
@@ -280,7 +272,6 @@ export const getBreadcrumbs = (path: string): Array<{label: string, path: string
       'chat-profissional': 'Chat com Profissional',
       'pacientes': 'Pacientes',
       'agendamentos': 'Agendamentos',
-      'chat-pacientes': 'Chat com Pacientes',
       'cursos': 'Cursos',
       'biblioteca': 'Biblioteca',
       'gamificacao': 'Programa de Pontos',

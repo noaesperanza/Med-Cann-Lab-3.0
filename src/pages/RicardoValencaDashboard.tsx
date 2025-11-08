@@ -91,7 +91,6 @@ type SectionId =
   | 'agendamentos'
   | 'prescricoes'
   | 'relatorios-clinicos'
-  | 'chat-pacientes'
   | 'chat-profissionais'
   | 'aulas'
   | 'biblioteca'
@@ -113,6 +112,12 @@ const RicardoValencaDashboard: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
+
+  const landingGradient = 'linear-gradient(135deg, #0A192F 0%, #1a365d 55%, #2d5a3d 100%)'
+  const landingSurface = 'rgba(7, 22, 41, 0.88)'
+  const landingBorder = '1px solid rgba(0, 193, 106, 0.18)'
+  const landingShadow = '0 18px 42px rgba(2, 12, 27, 0.45)'
+  const landingAccentGradient = 'linear-gradient(135deg, #00C16A 0%, #1a365d 100%)'
   
   // Detectar eixo atual da URL
   const getCurrentEixo = (): 'clinica' | 'ensino' | 'pesquisa' | null => {
@@ -221,12 +226,6 @@ const RicardoValencaDashboard: React.FC = () => {
         label: 'Relatórios',
         description: 'Documentos e insights gerados pela IA',
         icon: BarChart3
-      },
-      {
-        id: 'chat-pacientes',
-        label: 'Chat Pacientes',
-        description: 'Acompanhamento contínuo com pacientes',
-        icon: MessageCircle
       },
       {
         id: 'chat-profissionais',
@@ -750,6 +749,74 @@ const RicardoValencaDashboard: React.FC = () => {
     },
     [handlePatientSelect, navigate]
   )
+
+  const handleCreateAppointment = useCallback(() => {
+    navigate('/app/clinica/profissional/agendamentos')
+  }, [navigate])
+
+  const handleOpenAgenda = useCallback(() => {
+    navigate('/app/clinica/profissional/agendamentos')
+  }, [navigate])
+
+  const handleExportAgenda = useCallback(() => {
+    if (appointments.length === 0) {
+      console.info('📅 Nenhum agendamento disponível para exportação no momento.')
+      return
+    }
+
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    try {
+      const headers = ['Data', 'Hora', 'Paciente', 'Título', 'Status', 'Tipo', 'Modalidade']
+      const rows = appointments.map(appointment => {
+        const date = new Date(appointment.appointment_date)
+        const dateStr = new Intl.DateTimeFormat('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        }).format(date)
+        const timeStr = new Intl.DateTimeFormat('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        }).format(date)
+        const statusKey = (appointment.status || '').toLowerCase()
+        return [
+          dateStr,
+          timeStr,
+          appointment.patient?.name ?? 'Paciente',
+          appointment.title ?? '',
+          statusKey || 'sem-status',
+          appointment.type ?? '',
+          appointment.is_remote ? 'Teleatendimento' : 'Presencial'
+        ]
+      })
+
+      const csvContent = [headers, ...rows]
+        .map(row =>
+          row
+            .map(value => {
+              const safeValue = `${value ?? ''}`.replace(/"/g, '""')
+              return `"${safeValue}"`
+            })
+            .join(';')
+        )
+        .join('\n')
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `agenda-medcannlab-${new Date().toISOString().slice(0, 10)}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('❌ Erro ao exportar agenda:', error)
+    }
+  }, [appointments])
 
   const renderDashboard = () => (
     <>
@@ -1409,133 +1476,327 @@ const RicardoValencaDashboard: React.FC = () => {
     </div>
   )
 
-  const renderAgendamentos = () => (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-purple-800 to-purple-700 rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
-          <Calendar className="w-6 h-6" />
-          <span>📅 Agendamentos</span>
-        </h2>
-        <p className="text-purple-200">
-          Gerencie seus agendamentos e visualize sua agenda completa
-        </p>
-      </div>
+  const renderAgendamentos = () => {
+    const todayCount = todaysAppointments.length
 
-      {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-slate-800/80 rounded-lg p-4 border border-slate-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-400 text-sm">Hoje</p>
-              <p className="text-2xl font-bold text-white">8</p>
-            </div>
-            <Calendar className="w-8 h-8 text-purple-400" />
-          </div>
-        </div>
-        <div className="bg-slate-800/80 rounded-lg p-4 border border-slate-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-400 text-sm">Esta Semana</p>
-              <p className="text-2xl font-bold text-white">24</p>
-            </div>
-            <Clock className="w-8 h-8 text-blue-400" />
-          </div>
-        </div>
-        <div className="bg-slate-800/80 rounded-lg p-4 border border-slate-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-400 text-sm">Confirmados</p>
-              <p className="text-2xl font-bold text-white">18</p>
-            </div>
-            <CheckCircle className="w-8 h-8 text-green-400" />
-          </div>
-        </div>
-        <div className="bg-slate-800/80 rounded-lg p-4 border border-slate-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-400 text-sm">Pendentes</p>
-              <p className="text-2xl font-bold text-white">6</p>
-            </div>
-            <AlertCircle className="w-8 h-8 text-orange-400" />
-          </div>
-        </div>
-      </div>
+    const startOfWeek = new Date()
+    startOfWeek.setHours(0, 0, 0, 0)
+    const weekday = startOfWeek.getDay()
+    const diff = weekday === 0 ? -6 : 1 - weekday
+    startOfWeek.setDate(startOfWeek.getDate() + diff)
 
-      {/* Agenda de Hoje */}
-      <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
-        <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-          <Calendar className="w-6 h-6 mr-2 text-purple-400" />
-          Agenda de Hoje
-        </h3>
-        <div className="space-y-3">
-          <div className="bg-slate-700 rounded-lg p-4 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">09</span>
-              </div>
-              <div>
-                <h4 className="font-semibold text-white">Maria Santos</h4>
-                <p className="text-slate-400 text-sm">Consulta de retorno - Epilepsia</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-white font-medium">09:00</p>
-              <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">Confirmado</span>
-            </div>
-          </div>
-          <div className="bg-slate-700 rounded-lg p-4 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">14</span>
-              </div>
-              <div>
-                <h4 className="font-semibold text-white">João Silva</h4>
-                <p className="text-slate-400 text-sm">Avaliação inicial - TEA</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-white font-medium">14:00</p>
-              <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full">Confirmado</span>
-            </div>
-          </div>
-          <div className="bg-slate-700 rounded-lg p-4 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">16</span>
-              </div>
-              <div>
-                <h4 className="font-semibold text-white">Ana Costa</h4>
-                <p className="text-slate-400 text-sm">Consulta de emergência</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-white font-medium">16:30</p>
-              <span className="px-2 py-1 bg-orange-500/20 text-orange-400 text-xs rounded-full">Pendente</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    const endOfWeek = new Date(startOfWeek)
+    endOfWeek.setDate(endOfWeek.getDate() + 7)
 
-      {/* Ações Rápidas */}
-      <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
-        <h3 className="text-xl font-semibold text-white mb-4">Ações Rápidas</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-lg transition-colors">
-            <Plus className="w-6 h-6 mx-auto mb-2" />
-            <span className="font-semibold">Novo Agendamento</span>
-          </button>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-lg transition-colors">
-            <Calendar className="w-6 h-6 mx-auto mb-2" />
-            <span className="font-semibold">Ver Agenda Completa</span>
-          </button>
-          <button className="bg-green-600 hover:bg-green-700 text-white p-4 rounded-lg transition-colors">
-            <Download className="w-6 h-6 mx-auto mb-2" />
-            <span className="font-semibold">Exportar Agenda</span>
-          </button>
+    const weeklyCount = appointments.filter(appointment => {
+      const apptDate = new Date(appointment.appointment_date)
+      return apptDate >= startOfWeek && apptDate < endOfWeek
+    }).length
+
+    const confirmedCount = appointments.filter(appointment => {
+      const status = (appointment.status || '').toLowerCase()
+      return status === 'confirmed' || status === 'confirmado'
+    }).length
+
+    const pendingCount = appointments.filter(appointment => {
+      const status = (appointment.status || '').toLowerCase()
+      return (
+        status === 'pending' ||
+        status === 'pendente' ||
+        status === 'scheduled' ||
+        status === 'agendado'
+      )
+    }).length
+
+    const agendaStats = [
+      {
+        id: 'today',
+        label: 'Hoje',
+        caption: 'Consultas programadas para hoje',
+        value: todayCount,
+        icon: Calendar,
+        iconBg: 'rgba(0, 193, 106, 0.18)',
+        iconClass: 'text-emerald-300'
+      },
+      {
+        id: 'week',
+        label: 'Esta Semana',
+        caption: 'Total de atendimentos desta semana',
+        value: weeklyCount,
+        icon: Clock,
+        iconBg: 'rgba(26, 54, 93, 0.28)',
+        iconClass: 'text-sky-300'
+      },
+      {
+        id: 'confirmed',
+        label: 'Confirmados',
+        caption: 'Atendimentos confirmados',
+        value: confirmedCount,
+        icon: CheckCircle,
+        iconBg: 'rgba(0, 193, 106, 0.22)',
+        iconClass: 'text-emerald-400'
+      },
+      {
+        id: 'pending',
+        label: 'Pendentes',
+        caption: 'Aguardando confirmação',
+        value: pendingCount,
+        icon: AlertCircle,
+        iconBg: 'rgba(255, 180, 0, 0.18)',
+        iconClass: 'text-amber-300'
+      }
+    ]
+
+    const todaysSorted = [...todaysAppointments].sort(
+      (a, b) =>
+        new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime()
+    )
+
+    const surfaceStyle: React.CSSProperties = {
+      background: landingSurface,
+      border: landingBorder,
+      boxShadow: landingShadow
+    }
+
+    const appointmentCardStyle: React.CSSProperties = {
+      background: 'rgba(10, 31, 54, 0.78)',
+      border: '1px solid rgba(0, 193, 106, 0.12)'
+    }
+
+    const quickActions = [
+      {
+        id: 'new',
+        label: 'Novo Agendamento',
+        description: 'Registre uma nova consulta ou teleatendimento',
+        icon: Plus,
+        onClick: handleCreateAppointment,
+        gradient: 'linear-gradient(135deg, rgba(0,193,106,0.32) 0%, rgba(26,54,93,0.85) 100%)'
+      },
+      {
+        id: 'full-agenda',
+        label: 'Ver Agenda Completa',
+        description: 'Abra a visão detalhada dos próximos dias',
+        icon: Calendar,
+        onClick: handleOpenAgenda,
+        gradient: 'linear-gradient(135deg, rgba(59,130,246,0.28) 0%, rgba(26,54,93,0.9) 100%)'
+      },
+      {
+        id: 'export',
+        label: 'Exportar Agenda',
+        description: 'Baixe a agenda em CSV para compartilhar com a equipe',
+        icon: Download,
+        onClick: handleExportAgenda,
+        gradient: 'linear-gradient(135deg, rgba(13,148,136,0.32) 0%, rgba(26,54,93,0.9) 100%)'
+      }
+    ]
+
+    return (
+      <div className="space-y-6 lg:space-y-8">
+        <div
+          className="rounded-2xl p-6 lg:p-8 border border-[#00C16A]/25 shadow-2xl"
+          style={{ background: landingGradient }}
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h2 className="text-2xl lg:text-3xl font-bold text-white flex items-center gap-3">
+                <Calendar className="w-6 h-6 lg:w-8 lg:h-8 text-emerald-300" />
+                <span>📅 Agendamentos em tempo real</span>
+              </h2>
+              <p className="text-sm lg:text-base text-slate-200/90 mt-2 max-w-3xl">
+                Sincronizado com o Supabase: acompanhe atendimentos confirmados, pendentes e
+                teleatendimentos com a paleta da landing page.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-xs lg:text-sm text-emerald-200/80">
+              <Loader2
+                className={`w-4 h-4 ${appointmentsLoading ? 'animate-spin' : 'opacity-60'}`}
+              />
+              {appointmentsLoading ? 'Atualizando agenda...' : 'Dados atualizados em tempo real'}
+            </div>
+          </div>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {agendaStats.map(stat => {
+            const StatIcon = stat.icon
+            return (
+              <div
+                key={stat.id}
+                className="rounded-2xl p-4 sm:p-5 transition-transform duration-200 hover:-translate-y-1 hover:shadow-emerald-500/10"
+                style={surfaceStyle}
+              >
+                <div className="flex items-center justify-between stack-mobile">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                      {stat.label}
+                    </p>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      {appointmentsLoading ? (
+                        <Loader2 className="w-6 h-6 text-emerald-300 animate-spin" />
+                      ) : (
+                        <span className="text-3xl font-bold text-white">{stat.value}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-300 mt-2">{stat.caption}</p>
+                  </div>
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ background: stat.iconBg }}
+                  >
+                    <StatIcon className={`w-6 h-6 ${stat.iconClass}`} />
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="rounded-2xl p-6 lg:p-8 space-y-6" style={surfaceStyle}>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h3 className="text-xl lg:text-2xl font-semibold text-white flex items-center gap-3">
+                <Calendar className="w-6 h-6 text-emerald-300" />
+                <span>Agenda de Hoje</span>
+              </h3>
+              <p className="text-sm text-slate-300 mt-1">
+                {appointmentsLoading
+                  ? 'Aguardando sincronização...'
+                  : todayCount > 0
+                  ? `Você tem ${todayCount} atendimento${todayCount > 1 ? 's' : ''} programado${todayCount > 1 ? 's' : ''} para hoje.`
+                  : 'Nenhum atendimento agendado para hoje.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-slate-400">
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                Agenda conectada
+              </span>
+            </div>
+          </div>
+
+          {appointmentsLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={`agenda-skeleton-${index}`}
+                  className="rounded-2xl p-4 animate-pulse"
+                  style={appointmentCardStyle}
+                >
+                  <div className="h-4 bg-slate-600/40 rounded w-1/3 mb-2" />
+                  <div className="h-3 bg-slate-600/30 rounded w-1/4" />
+                </div>
+              ))}
+            </div>
+          ) : todaysSorted.length === 0 ? (
+            <div
+              className="rounded-2xl border border-dashed border-emerald-300/40 p-6 text-center bg-emerald-500/5"
+            >
+              <p className="text-sm text-slate-200 mb-4">
+                Nenhum agendamento para hoje. Que tal registrar um novo atendimento?
+              </p>
+              <button
+                onClick={handleCreateAppointment}
+                className="px-4 py-2 rounded-lg font-semibold text-white transition-transform hover:-translate-y-0.5"
+                style={{ background: landingAccentGradient }}
+              >
+                Criar novo agendamento
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {todaysSorted.map(appointment => {
+                const statusBadge = getStatusBadge(appointment.status)
+                const appointmentTime = new Intl.DateTimeFormat('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }).format(new Date(appointment.appointment_date))
+
+                return (
+                  <div
+                    key={appointment.id}
+                    className="rounded-2xl p-4 lg:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg"
+                    style={appointmentCardStyle}
+                  >
+                    <div className="flex items-start gap-4 flex-1">
+                      <div
+                        className="w-14 h-14 rounded-xl flex items-center justify-center text-lg font-bold text-white"
+                        style={{ background: 'rgba(0, 193, 106, 0.22)' }}
+                      >
+                        {appointmentTime}
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-white font-semibold text-base lg:text-lg">
+                          {appointment.patient?.name ?? appointment.title ?? 'Paciente não identificado'}
+                        </h4>
+                        {appointment.title && (
+                          <p className="text-sm text-slate-300">{appointment.title}</p>
+                        )}
+                        {appointment.description && (
+                          <p className="text-xs text-slate-400">
+                            {appointment.description}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-2 text-xs text-slate-400 mt-2">
+                          <span>{appointment.is_remote ? 'Teleatendimento' : 'Atendimento presencial'}</span>
+                          {appointment.type && <span>• {appointment.type}</span>}
+                          {appointment.patient?.email && <span>• {appointment.patient.email}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-start lg:items-end gap-3 min-w-[160px]">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-[0.15em] ${statusBadge.className}`}
+                      >
+                        {statusBadge.label}
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleStartAppointment(appointment)}
+                          className="px-3 py-2 rounded-lg text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+                          style={{ background: landingAccentGradient }}
+                        >
+                          Iniciar
+                        </button>
+                        <button
+                          onClick={() => handleStartAppointment(appointment, { navigateToChat: true })}
+                          className="px-3 py-2 rounded-lg text-sm font-semibold text-slate-200 border border-slate-600/60 hover:border-emerald-300/60 transition-transform hover:-translate-y-0.5"
+                        >
+                          Abrir Chat
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl p-6 lg:p-8" style={surfaceStyle}>
+          <h3 className="text-xl font-semibold text-white mb-4">Ações Rápidas</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {quickActions.map(action => {
+              const ActionIcon = action.icon
+              return (
+                <button
+                  key={action.id}
+                  onClick={action.onClick}
+                  className="rounded-2xl p-4 text-left transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                  style={{ background: action.gradient }}
+                >
+                  <ActionIcon className="w-6 h-6 text-white mb-3" />
+                  <span className="block text-white font-semibold text-base">{action.label}</span>
+                  <span className="block text-sm text-slate-100/80 mt-1">{action.description}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {renderChatPacientes()}
       </div>
-    </div>
-  )
+    )
+  }
 
   const renderPacientes = () => (
     <div className="space-y-6">
@@ -2037,7 +2298,7 @@ const RicardoValencaDashboard: React.FC = () => {
       description: string
       icon: React.ComponentType<{ className?: string }>
       gradient: string
-      iconColor: string
+    iconClass: string
     }
 
     const headerStyle: React.CSSProperties = {
@@ -2065,7 +2326,7 @@ const RicardoValencaDashboard: React.FC = () => {
         description: 'Consultas confirmadas neste momento',
         icon: Activity,
         gradient: 'linear-gradient(135deg, rgba(255,107,107,0.28) 0%, rgba(249,115,22,0.22) 100%)',
-        iconColor: '#FF896B'
+        iconClass: 'text-rose-300'
       },
       {
         id: 'waiting',
@@ -2074,7 +2335,7 @@ const RicardoValencaDashboard: React.FC = () => {
         description: 'Pacientes na sala de espera para hoje',
         icon: Clock,
         gradient: 'linear-gradient(135deg, rgba(255,211,61,0.28) 0%, rgba(255,161,22,0.22) 100%)',
-        iconColor: '#FFC44D'
+        iconClass: 'text-amber-300'
       },
       {
         id: 'completed',
@@ -2083,7 +2344,7 @@ const RicardoValencaDashboard: React.FC = () => {
         description: 'Consultas concluídas hoje',
         icon: CheckCircle,
         gradient: 'linear-gradient(135deg, rgba(16,185,129,0.28) 0%, rgba(34,197,94,0.2) 100%)',
-        iconColor: '#34D399'
+        iconClass: 'text-emerald-300'
       },
       {
         id: 'next-24h',
@@ -2092,7 +2353,7 @@ const RicardoValencaDashboard: React.FC = () => {
         description: 'Consultas programadas até amanhã',
         icon: Calendar,
         gradient: 'linear-gradient(135deg, rgba(59,130,246,0.28) 0%, rgba(14,165,233,0.22) 100%)',
-        iconColor: '#60A5FA'
+        iconClass: 'text-sky-300'
       }
     ]
 
@@ -2138,7 +2399,7 @@ const RicardoValencaDashboard: React.FC = () => {
                     className="w-10 h-10 rounded-lg flex items-center justify-center"
                     style={{ background: 'rgba(255,255,255,0.12)' }}
                   >
-                    <SummaryIcon className="w-5 h-5" style={{ color: card.iconColor }} />
+                    <SummaryIcon className={`w-5 h-5 ${card.iconClass}`} />
                   </div>
                 </div>
                 <p className="text-xs text-white/70 leading-relaxed">{card.description}</p>
@@ -3005,8 +3266,6 @@ const RicardoValencaDashboard: React.FC = () => {
         return renderPrescricoes()
       case 'relatorios-clinicos':
         return renderRelatoriosClinicos()
-      case 'chat-pacientes':
-        return renderChatPacientes()
       case 'chat-profissionais':
         return renderChatProfissionais()
       case 'aulas':
@@ -3123,7 +3382,10 @@ const RicardoValencaDashboard: React.FC = () => {
   }, [appointments, selectedAppointmentId])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-x-hidden w-full">
+    <div
+      className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-x-hidden w-full"
+      data-page="ricardo-valenca-dashboard"
+    >
       <div className="max-w-7xl mx-auto px-2 md:px-4 lg:px-6 py-4 md:py-6 lg:py-8 w-full overflow-x-hidden">
         {renderActiveSection(resolvedSection)}
 

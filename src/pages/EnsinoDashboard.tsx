@@ -362,14 +362,18 @@ const EnsinoDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen text-white" style={{ background: backgroundGradient }}>
+    <div
+      className="min-h-screen text-white"
+      style={{ background: backgroundGradient }}
+      data-page="ensino-dashboard"
+    >
       {/* Header */}
       <div
         className="p-3 md:p-4 lg:p-6"
         style={{ background: 'linear-gradient(135deg, rgba(10,25,47,0.96) 0%, rgba(26,54,93,0.92) 55%, rgba(45,90,61,0.9) 100%)', borderBottom: '1px solid rgba(0,193,106,0.18)' }}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 md:space-x-4 min-w-0 flex-1">
+        <div className="flex items-center justify-between stack-tablet">
+          <div className="flex items-center space-x-2 md:space-x-4 min-w-0 flex-1 stack-mobile">
             <button 
               onClick={() => handleNavigate('/app/dashboard')}
               className="flex items-center space-x-1 md:space-x-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"
@@ -464,7 +468,7 @@ const EnsinoDashboard: React.FC = () => {
               onClick={() => handleJoinClass('Pós-Graduação Cannabis Medicinal')}
               className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-4 md:p-5 lg:p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all overflow-hidden w-full max-w-full"
             >
-              <div className="flex items-center justify-between mb-3 md:mb-4 gap-2">
+              <div className="flex items-center justify-between mb-3 md:mb-4 gap-2 stack-mobile">
                 <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white break-words flex-1 min-w-0">🌿 Pós-Graduação Cannabis Medicinal</h3>
                 <GraduationCap className="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 text-white flex-shrink-0" />
               </div>
@@ -494,7 +498,7 @@ const EnsinoDashboard: React.FC = () => {
               onClick={() => handleJoinClass('Arte da Entrevista Clínica')}
               className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-4 md:p-5 lg:p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all overflow-hidden w-full max-w-full"
             >
-              <div className="flex items-center justify-between mb-3 md:mb-4 gap-2">
+              <div className="flex items-center justify-between mb-3 md:mb-4 gap-2 stack-mobile">
                 <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white break-words flex-1 min-w-0">🎭 Arte da Entrevista Clínica</h3>
                 <Heart className="w-8 h-8 text-white flex-shrink-0" />
               </div>
@@ -609,7 +613,7 @@ const EnsinoDashboard: React.FC = () => {
                   >
                     <h4 className="text-lg font-semibold text-white mb-2">{tool.title}</h4>
                     <p className="text-sm text-slate-300 mb-4">{tool.description}</p>
-                    <div className="flex items-center justify-between text-xs text-slate-300">
+                    <div className="flex items-center justify-between text-xs text-slate-300 stack-mobile">
                       <span>Status: <strong className="text-white">{tool.status}</strong></span>
                       <span>{tool.participants} participantes</span>
                     </div>
@@ -648,7 +652,7 @@ const EnsinoDashboard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {newsletterUpdates.map(update => (
                   <div key={update.id} className="rounded-xl p-4" style={cardStyle}>
-                    <div className="flex items-center justify-between mb-2 text-xs text-slate-300">
+                    <div className="flex items-center justify-between mb-2 text-xs text-slate-300 stack-mobile">
                       <span className="uppercase tracking-wide text-[#FFD33D]">{update.category}</span>
                       <span>{update.date}</span>
                     </div>
@@ -739,7 +743,7 @@ const EnsinoDashboard: React.FC = () => {
           >
             {/* Chat Header */}
             <div className="p-4" style={{ borderBottom: '1px solid rgba(0,193,106,0.12)' }}>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between stack-mobile">
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: accentGradient }}>
                     <GraduationCap className="w-4 h-4 text-white" />

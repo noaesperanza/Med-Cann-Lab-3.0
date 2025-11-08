@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   Calendar as CalendarIcon,
@@ -13,6 +13,13 @@ import {
   Settings
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import {
+  SCHEDULING_CONFIG,
+  clampToSchedulingStartDate,
+  generateAppointmentSlots,
+  getSchedulingStartDate,
+  isSchedulingWorkingDay
+} from '../lib/schedulingConfig'
 
 interface WorkingHours {
   day: string
@@ -32,7 +39,13 @@ interface Professional {
 
 const Scheduling: React.FC = () => {
   const navigate = useNavigate()
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const initialDate = useMemo(() => {
+    const startDate = getSchedulingStartDate()
+    startDate.setHours(0, 0, 0, 0)
+    return startDate
+  }, [])
+
+  const [selectedDate, setSelectedDate] = useState<Date>(initialDate)
   const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
 
@@ -42,42 +55,19 @@ const Scheduling: React.FC = () => {
       id: 'ricardo-valenca',
       name: 'Dr. Ricardo Valença',
       specialty: 'Coordenador Científico',
-      workingDays: ['Terça', 'Quinta'],
-      workingHours: { start: '14:00', end: '22:00' },
+      workingDays: [...SCHEDULING_CONFIG.workingDays],
+      workingHours: { start: SCHEDULING_CONFIG.startTime, end: SCHEDULING_CONFIG.endTime },
       avatar: '👨‍⚕️'
     },
     {
       id: 'eduardo-faveret',
       name: 'Dr. Eduardo Faveret',
       specialty: 'Diretor Médico',
-      workingDays: ['Segunda', 'Quarta', 'Sexta'],
-      workingHours: { start: '14:00', end: '22:00' },
+      workingDays: [...SCHEDULING_CONFIG.workingDays],
+      workingHours: { start: SCHEDULING_CONFIG.startTime, end: SCHEDULING_CONFIG.endTime },
       avatar: '👨‍⚕️'
     }
   ]
-
-  // Gerar horários disponíveis
-  const generateTimeSlots = (startHour: string, endHour: string): string[] => {
-    const slots: string[] = []
-    const [startH, startM] = startHour.split(':').map(Number)
-    const [endH, endM] = endHour.split(':').map(Number)
-    
-    let currentHour = startH
-    let currentMinute = startM
-    
-    while (currentHour < endH || (currentHour === endH && currentMinute < endM)) {
-      slots.push(
-        `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
-      )
-      currentMinute += 30
-      if (currentMinute >= 60) {
-        currentMinute = 0
-        currentHour += 1
-      }
-    }
-    
-    return slots
-  }
 
   // Obter nome do dia da semana em português
   const getDayName = (date: Date): string => {
@@ -93,12 +83,16 @@ const Scheduling: React.FC = () => {
   }
 
   // Obter próximo dia de trabalho
-  const getNextWorkingDay = (professionalId: string): Date => {
-    const date = new Date()
+  const getNextWorkingDay = (professionalId: string, baseDate?: Date): Date => {
+    const date = clampToSchedulingStartDate(baseDate ? new Date(baseDate) : new Date())
+    date.setHours(0, 0, 0, 0)
     const professional = professionals.find(p => p.id === professionalId)
     
-    while (!professional?.workingDays.includes(getDayName(date))) {
+    let guard = 0
+    while (professional && !professional.workingDays.includes(getDayName(date))) {
       date.setDate(date.getDate() + 1)
+      guard += 1
+      if (guard > 14) break
     }
     
     return date
@@ -113,35 +107,49 @@ const Scheduling: React.FC = () => {
     const year = selectedDate.getFullYear()
     const month = selectedDate.getMonth()
     const firstDay = new Date(year, month, 1)
+    firstDay.setHours(0, 0, 0, 0)
     const lastDay = new Date(year, month + 1, 0)
+    lastDay.setHours(0, 0, 0, 0)
     const daysInMonth = lastDay.getDate()
     const startingDayOfWeek = firstDay.getDay()
 
     const days = []
+    const schedulingStart = new Date(SCHEDULING_CONFIG.startDateISO)
+    schedulingStart.setHours(0, 0, 0, 0)
     
     // Dias do mês anterior
     const prevMonth = new Date(year, month, 0)
+    prevMonth.setHours(0, 0, 0, 0)
     for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+      const dateValue = new Date(year, month - 1, prevMonth.getDate() - i)
+      dateValue.setHours(0, 0, 0, 0)
       days.push({
-        date: new Date(year, month - 1, prevMonth.getDate() - i),
-        isCurrentMonth: false
-      })
+        date: dateValue,
+        isCurrentMonth: false,
+        isDisabled: dateValue < schedulingStart
+      } as const)
     }
 
     // Dias do mês atual
     for (let i = 1; i <= daysInMonth; i++) {
+      const dateValue = new Date(year, month, i)
+      dateValue.setHours(0, 0, 0, 0)
       days.push({
-        date: new Date(year, month, i),
-        isCurrentMonth: true
+        date: dateValue,
+        isCurrentMonth: true,
+        isDisabled: dateValue < schedulingStart
       })
     }
 
     // Dias do mês seguinte
     const remainingDays = 42 - days.length
     for (let i = 1; i <= remainingDays; i++) {
+      const dateValue = new Date(year, month + 1, i)
+      dateValue.setHours(0, 0, 0, 0)
       days.push({
-        date: new Date(year, month + 1, i),
-        isCurrentMonth: false
+        date: dateValue,
+        isCurrentMonth: false,
+        isDisabled: dateValue < schedulingStart
       })
     }
 
@@ -149,7 +157,13 @@ const Scheduling: React.FC = () => {
   }
 
   const handlePreviousMonth = () => {
-    setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1))
+    const previous = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1)
+    previous.setHours(0, 0, 0, 0)
+    if (previous < new Date(SCHEDULING_CONFIG.startDateISO)) {
+      setSelectedDate(new Date(SCHEDULING_CONFIG.startDateISO))
+      return
+    }
+    setSelectedDate(previous)
   }
 
   const handleNextMonth = () => {
@@ -267,21 +281,29 @@ const Scheduling: React.FC = () => {
                 {getCalendarDays().map((day, index) => {
                   const isToday = day.date.toDateString() === new Date().toDateString()
                   const isSelected = day.date.toDateString() === selectedDate.toDateString()
-                  const dayName = getDayName(day.date)
+                  const isDisabled =
+                    day.isDisabled ||
+                    day.date < new Date(SCHEDULING_CONFIG.startDateISO) ||
+                    (selectedProfessional ? !isWorkingDay(selectedProfessional, day.date) : false)
 
                   return (
                     <button
                       key={index}
-                      onClick={() => setSelectedDate(day.date)}
+                      onClick={() => {
+                        if (isDisabled) return
+                        setSelectedDate(day.date)
+                      }}
+                      disabled={isDisabled}
                       className={`
                         aspect-square rounded-lg transition-all
                         ${!day.isCurrentMonth ? 'opacity-30' : ''}
                         ${isSelected ? 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-white'}
+                        ${isDisabled ? 'cursor-not-allowed opacity-30 hover:bg-slate-700/50' : ''}
                         ${isToday && !isSelected ? 'ring-2 ring-blue-500' : ''}
                       `}
                     >
                       <div className="text-sm font-semibold">{day.date.getDate()}</div>
-                      {selectedProfessional && isWorkingDay(selectedProfessional, day.date) && (
+                      {selectedProfessional && !isDisabled && isWorkingDay(selectedProfessional, day.date) && (
                         <div className="w-1 h-1 bg-green-400 rounded-full mx-auto mt-1" />
                       )}
                     </button>
@@ -297,11 +319,17 @@ const Scheduling: React.FC = () => {
                   Horários Disponíveis - {getDayName(selectedDate)}
                 </h3>
                 <div className="grid grid-cols-4 gap-3">
-                  {generateTimeSlots('14:00', '22:00').map((time) => {
+                  {generateAppointmentSlots(
+                    SCHEDULING_CONFIG.startTime,
+                    SCHEDULING_CONFIG.endTime,
+                    SCHEDULING_CONFIG.appointmentDurationMinutes,
+                    SCHEDULING_CONFIG.bufferMinutes
+                  ).map((time) => {
                     const professional = professionals.find(p => p.id === selectedProfessional)
                     const isWorkingDay = professional?.workingDays.includes(getDayName(selectedDate))
+                    const isPastStartDate = selectedDate >= clampToSchedulingStartDate(new Date(selectedDate))
                     
-                    if (!isWorkingDay) return null
+                    if (!isWorkingDay || !isPastStartDate) return null
 
                     return (
                       <button
@@ -336,7 +364,8 @@ const Scheduling: React.FC = () => {
                     key={professional.id}
                     onClick={() => {
                       setSelectedProfessional(professional.id)
-                      setSelectedDate(getNextWorkingDay(professional.id))
+                      setSelectedTime(null)
+                      setSelectedDate(getNextWorkingDay(professional.id, selectedDate))
                     }}
                     className={`
                       w-full p-4 rounded-lg border-2 transition-all text-left
