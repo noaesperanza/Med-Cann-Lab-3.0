@@ -39,6 +39,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { getAllPatients, isAdmin } from '../lib/adminPermissions'
+import { KnowledgeBaseIntegration, KnowledgeDocument, KnowledgeStats } from '../services/knowledgeBaseIntegration'
 
 interface Patient {
   id: string
@@ -188,6 +189,21 @@ const RicardoValencaDashboard: React.FC = () => {
   const [isAudioCallOpen, setIsAudioCallOpen] = useState(false)
   const [callType, setCallType] = useState<'video' | 'audio'>('video')
   const [showProfessionalModal, setShowProfessionalModal] = useState(false)
+
+  const [knowledgeDocuments, setKnowledgeDocuments] = useState<KnowledgeDocument[]>([])
+  const [knowledgeFilteredDocuments, setKnowledgeFilteredDocuments] = useState<KnowledgeDocument[]>([])
+  const [knowledgeCategories, setKnowledgeCategories] = useState<string[]>([])
+  const [knowledgeStats, setKnowledgeStats] = useState<KnowledgeStats | null>(null)
+  const [knowledgeCategory, setKnowledgeCategory] = useState<string>('all')
+  const [knowledgeSearch, setKnowledgeSearch] = useState('')
+  const [knowledgeDebouncedSearch, setKnowledgeDebouncedSearch] = useState('')
+  const [knowledgeLoading, setKnowledgeLoading] = useState(false)
+  const [knowledgeError, setKnowledgeError] = useState<string | null>(null)
+  const [knowledgeShowStats, setKnowledgeShowStats] = useState(false)
+  const [knowledgeSelectedDocument, setKnowledgeSelectedDocument] = useState<KnowledgeDocument | null>(null)
+  const [knowledgeDocumentContent, setKnowledgeDocumentContent] = useState<string | null>(null)
+  const [knowledgeDocumentLoading, setKnowledgeDocumentLoading] = useState(false)
+  const [knowledgeViewerMode, setKnowledgeViewerMode] = useState<'preview' | 'raw'>('preview')
 
   const normalizedEffectiveType = normalizeUserType(effectiveType)
   const isProfessionalDashboard =
@@ -3194,21 +3210,223 @@ const RicardoValencaDashboard: React.FC = () => {
   }
 
   const renderAdminUpload = (): React.ReactNode => {
+    const totalDocs = knowledgeStats?.totalDocuments ?? knowledgeDocuments.length
+    const aiLinkedDocs = knowledgeStats?.aiLinkedDocuments ?? knowledgeDocuments.filter(doc => doc.isLinkedToAI).length
+    const averageRelevanceValue = knowledgeStats?.averageRelevance ?? (
+      knowledgeDocuments.length
+        ? knowledgeDocuments.reduce((sum, doc) => sum + (doc.aiRelevance || 0), 0) / knowledgeDocuments.length
+        : 0
+    )
+    const averageRelevance = Number.isFinite(averageRelevanceValue) ? averageRelevanceValue : 0
+
+    const latestTimestamp = knowledgeDocuments.reduce<string | null>((latest, doc) => {
+      if (!doc.updated_at) return latest
+      if (!latest) return doc.updated_at
+      return new Date(doc.updated_at).getTime() > new Date(latest).getTime() ? doc.updated_at : latest
+    }, null)
+    const latestUpdateLabel = formatKnowledgeRelativeTime(latestTimestamp)
+
+    const documentsToDisplay = knowledgeFilteredDocuments.slice(0, 6)
+    const isSearching = knowledgeDebouncedSearch.trim().length > 0
+    const showLoader = knowledgeLoading && (isSearching || !knowledgeDocuments.length)
+
     return (
       <div className="space-y-6">
-        <div className="bg-gradient-to-r from-indigo-800 to-purple-700 rounded-lg p-6">
-          <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
-            <Upload className="w-6 h-6" />
-            <span>📁 Upload de Documentos</span>
-          </h2>
-          <p className="text-slate-200">Faça upload e gerencie documentos e arquivos do sistema</p>
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-900 rounded-2xl p-6 border border-emerald-700/30 shadow-lg shadow-emerald-900/30">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-emerald-300" />
+              </div>
+              <div>
+                <p className="text-sm text-emerald-200/80">Nôa Esperança IA • Educação • Pesquisa</p>
+                <h2 className="text-2xl font-bold text-white">Base de Conhecimento</h2>
+              </div>
+            </div>
+            <button
+              onClick={handleKnowledgeStatsToggle}
+              className="px-4 py-2 rounded-lg bg-emerald-500/90 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors"
+            >
+              {knowledgeShowStats ? 'Ocultar Estatísticas' : 'Ver Estatísticas'}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+            <div className="bg-slate-900/60 rounded-xl p-4 border border-emerald-400/20">
+              <p className="text-xs text-emerald-200/80 uppercase tracking-widest">Vinculados à IA Residente</p>
+              <p className="text-3xl font-bold text-white mt-2">{aiLinkedDocs}</p>
+            </div>
+            <div className="bg-slate-900/60 rounded-xl p-4 border border-emerald-400/20">
+              <p className="text-xs text-emerald-200/80 uppercase tracking-widest">Relevância Média IA</p>
+              <p className="text-3xl font-bold text-white mt-2">{averageRelevance.toFixed(2)}</p>
+            </div>
+            <div className="bg-slate-900/60 rounded-xl p-4 border border-emerald-400/20">
+              <p className="text-xs text-emerald-200/80 uppercase tracking-widest">Último Treinamento</p>
+              <p className="text-lg font-semibold text-white mt-2">{latestUpdateLabel}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 mt-6 text-sm text-emerald-200/80">
+            <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30">Treinamento da IA Residente</span>
+            <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30">Recursos educacionais</span>
+            <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30">Referências científicas</span>
+            <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30">Protocolos clínicos</span>
+          </div>
         </div>
-        <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
-          <p className="text-slate-300 text-center py-8">
-            Área de desenvolvimento: Sistema de upload de documentos será implementado aqui.
-            <br />
-            <span className="text-sm text-slate-400">Funcionalidades: Upload, organização, categorização, busca, compartilhamento, etc.</span>
-          </p>
+
+        {knowledgeShowStats && knowledgeStats && (
+          <div className="bg-slate-900/70 rounded-2xl p-6 border border-emerald-500/20 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <p className="text-3xl font-bold text-[#00F5A0]">{knowledgeStats.totalDocuments}</p>
+                <p className="text-sm text-slate-300">Total de Documentos</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-[#4FE0C1]">{knowledgeStats.aiLinkedDocuments}</p>
+                <p className="text-sm text-slate-300">Documentos vinculados à IA</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-[#4FE0C1]">{knowledgeStats.averageRelevance.toFixed(2)}</p>
+                <p className="text-sm text-slate-300">Relevância Média</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-[#FFD33D]">{knowledgeStats.topCategories.length}</p>
+                <p className="text-sm text-slate-300">Categorias ativas</p>
+              </div>
+            </div>
+
+            {knowledgeStats.topCategories.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-emerald-300" />
+                  Top categorias
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {knowledgeStats.topCategories.map(category => (
+                    <span
+                      key={category.category}
+                      className="px-3 py-1 rounded-full bg-slate-800 border border-emerald-500/20 text-sm text-slate-200"
+                    >
+                      {category.category} • {category.count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {knowledgeStats.topAuthors.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-emerald-300" />
+                  Principais autores
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {knowledgeStats.topAuthors.map(author => (
+                    <span
+                      key={author.author}
+                      className="px-3 py-1 rounded-full bg-slate-800 border border-emerald-500/20 text-sm text-slate-200"
+                    >
+                      {author.author} • {author.count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="bg-slate-900/70 rounded-2xl p-6 border border-slate-700/60">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div className="flex-1">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={knowledgeSearch}
+                  onChange={event => setKnowledgeSearch(event.target.value)}
+                  placeholder="Buscar documentos por título, conteúdo, autor..."
+                  className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-700/70 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/40"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">⌘K</span>
+              </div>
+            </div>
+            <div className="flex-shrink-0 flex items-center gap-2">
+              <button
+                onClick={handleKnowledgeCategories}
+                className="px-4 py-2 rounded-lg bg-slate-800 border border-slate-600 text-slate-200 text-sm font-medium hover:bg-slate-750 transition-colors"
+              >
+                Gerenciar Categorias
+              </button>
+              <button
+                onClick={handleKnowledgeUpload}
+                className="px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-400 transition-colors"
+              >
+                Fazer Upload
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span className="text-slate-300">Categoria:</span>
+            <button
+              onClick={() => setKnowledgeCategory('all')}
+              className={`px-3 py-1 rounded-full border text-sm font-medium ${
+                knowledgeCategory === 'all'
+                  ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200'
+                  : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-750'
+              }`}
+            >
+              Todos ({totalDocs})
+            </button>
+            {knowledgeCategoryOptions.map(category => {
+              const count = knowledgeDocuments.filter(doc => doc.category === category).length
+              return (
+                <button
+                  key={category}
+                  onClick={() => setKnowledgeCategory(category)}
+                  className={`px-3 py-1 rounded-full border text-sm font-medium ${
+                    knowledgeCategory === category
+                      ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200'
+                      : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-750'
+                  }`}
+                >
+                  {category} ({count})
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="mt-6">
+            {showLoader ? (
+              <div className="flex items-center justify-center py-10 text-slate-400">
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Carregando documentos...
+              </div>
+            ) : knowledgeError ? (
+              <div className="text-center py-10 text-slate-400">{knowledgeError}</div>
+            ) : documentsToDisplay.length === 0 ? (
+              <div className="text-center py-10 text-slate-400">
+                Nenhum documento disponível no momento.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {documentsToDisplay.map(doc => (
+                  <button
+                    key={doc.id}
+                    onClick={() => openKnowledgeDocument(doc)}
+                    className="p-4 rounded-xl border border-slate-700/70 bg-slate-950/60 hover:border-emerald-500/30 transition-colors text-left"
+                  >
+                    <p className="text-xs text-emerald-200/70 uppercase tracking-widest flex items-center gap-2">
+                      <span>{doc.category || 'Sem categoria'}</span>
+                      {doc.isLinkedToAI && <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 border border-emerald-400/30 rounded-full">IA</span>}
+                    </p>
+                    <h4 className="text-lg font-semibold text-white mt-2">{doc.title}</h4>
+                    <p className="text-sm text-slate-400 mt-2 line-clamp-3">{doc.summary || 'Resumo indisponível no momento.'}</p>
+                    <div className="flex items-center justify-between text-xs text-slate-500 mt-4">
+                      <span>{formatKnowledgeRelativeTime(doc.updated_at)}</span>
+                      <span>IA Score {(doc.aiRelevance ?? 0).toFixed(2)}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -3381,6 +3599,283 @@ const RicardoValencaDashboard: React.FC = () => {
     return appointments.find(appointment => appointment.id === selectedAppointmentId) || null
   }, [appointments, selectedAppointmentId])
 
+  const knowledgeCategoryOptions = useMemo(() => {
+    return [...knowledgeCategories]
+      .filter(category => Boolean(category))
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [knowledgeCategories])
+
+  const formatKnowledgeRelativeTime = useCallback((timestamp?: string | null) => {
+    if (!timestamp) return 'Sem registros'
+    const date = new Date(timestamp)
+    if (Number.isNaN(date.getTime())) return 'Sem registros'
+
+    const diffMs = Date.now() - date.getTime()
+    if (diffMs < 0) return 'Recém atualizado'
+
+    const minutes = Math.round(diffMs / 60000)
+    if (minutes < 60) {
+      if (minutes <= 1) return 'Atualizado há 1 minuto'
+      return `Atualizado há ${minutes} minutos`
+    }
+
+    const hours = Math.round(diffMs / 3600000)
+    if (hours < 24) {
+      if (hours === 1) return 'Atualizado há 1 hora'
+      return `Atualizado há ${hours} horas`
+    }
+
+    const days = Math.round(diffMs / 86400000)
+    if (days < 30) {
+      if (days === 1) return 'Atualizado há 1 dia'
+      return `Atualizado há ${days} dias`
+    }
+
+    const months = Math.round(days / 30)
+    if (months < 12) {
+      if (months === 1) return 'Atualizado há 1 mês'
+      return `Atualizado há ${months} meses`
+    }
+
+    const years = Math.round(days / 365)
+    if (years <= 1) return 'Atualizado há 1 ano'
+    return `Atualizado há ${years} anos`
+  }, [])
+
+  const downloadKnowledgeDocumentContent = useCallback(async (doc: KnowledgeDocument) => {
+    if (!doc || !(doc as any).file_url) {
+      return null
+    }
+
+    try {
+      const targetUrl = (doc as any).file_url as string
+      const response = await fetch(targetUrl)
+      const contentType = response.headers.get('content-type') || ''
+
+      if (!response.ok) {
+        throw new Error(`Falha ao baixar o documento: ${response.status}`)
+      }
+
+      if (contentType.includes('text') || targetUrl.endsWith('.md') || targetUrl.endsWith('.txt')) {
+        return await response.text()
+      }
+
+      if (contentType.includes('application/json')) {
+        const json = await response.json()
+        return JSON.stringify(json, null, 2)
+      }
+
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      return objectUrl
+    } catch (error) {
+      console.warn('⚠️ Erro ao baixar conteúdo do documento:', error)
+      return null
+    }
+  }, [])
+
+  const openKnowledgeDocument = useCallback(async (doc: KnowledgeDocument) => {
+    if (!doc) return
+
+    setKnowledgeSelectedDocument(doc)
+    setKnowledgeViewerMode('preview')
+
+    if (!(doc as any).file_url) {
+      setKnowledgeDocumentContent(null)
+      return
+    }
+
+    setKnowledgeDocumentLoading(true)
+    const content = await downloadKnowledgeDocumentContent(doc)
+    setKnowledgeDocumentContent(content)
+    setKnowledgeDocumentLoading(false)
+  }, [downloadKnowledgeDocumentContent])
+
+  const closeKnowledgeDocument = useCallback(() => {
+    setKnowledgeSelectedDocument(null)
+    setKnowledgeDocumentContent(null)
+    setKnowledgeViewerMode('preview')
+  }, [])
+
+  const loadKnowledgeBase = useCallback(async () => {
+    if (normalizedEffectiveType !== 'admin') return
+
+    setKnowledgeLoading(true)
+    try {
+      const [stats, docs] = await Promise.all([
+        KnowledgeBaseIntegration.getKnowledgeStats(),
+        KnowledgeBaseIntegration.getAllDocuments()
+      ])
+
+      const normalizedDocs = (docs || [])
+        .map((doc: any) => ({
+          ...doc,
+          category: doc.category ?? doc.categoria ?? 'Sem categoria',
+          aiRelevance: doc.aiRelevance ?? doc.ai_relevance ?? 0,
+          isLinkedToAI: doc.isLinkedToAI ?? doc.is_linked_to_ai ?? false,
+          file_url: doc.file_url ?? doc.fileUrl ?? doc.url ?? undefined,
+          summary: doc.summary ?? doc.resumo ?? '',
+          updated_at: doc.updated_at ?? doc.updatedAt ?? doc.created_at,
+          created_at: doc.created_at ?? doc.createdAt ?? new Date().toISOString(),
+          author: doc.author ?? doc.autor ?? 'Equipe MedCannLab'
+        }))
+        .sort((a, b) => {
+          const aDateValue = new Date(a.updated_at ?? a.created_at ?? '').getTime()
+          const bDateValue = new Date(b.updated_at ?? b.created_at ?? '').getTime()
+          const safeADate = Number.isFinite(aDateValue) ? aDateValue : 0
+          const safeBDate = Number.isFinite(bDateValue) ? bDateValue : 0
+          return safeBDate - safeADate
+        })
+
+      const sanitizedStats = stats
+        ? {
+            ...stats,
+            averageRelevance: Number.isFinite(stats.averageRelevance) ? stats.averageRelevance : 0
+          }
+        : null
+
+      setKnowledgeStats(sanitizedStats)
+      setKnowledgeDocuments(normalizedDocs)
+      setKnowledgeFilteredDocuments(normalizedDocs)
+      const categories = Array.from(new Set(normalizedDocs.map(doc => doc.category).filter(Boolean)))
+      setKnowledgeCategories(categories)
+      setKnowledgeError(null)
+    } catch (error) {
+      console.error('❌ Erro ao carregar base de conhecimento:', error)
+      setKnowledgeDocuments([])
+      setKnowledgeCategories([])
+      setKnowledgeStats(null)
+      setKnowledgeError('Erro ao carregar a base de conhecimento.')
+    } finally {
+      setKnowledgeLoading(false)
+    }
+  }, [normalizedEffectiveType])
+
+  const handleKnowledgeStatsToggle = useCallback(() => {
+    setKnowledgeShowStats(prev => !prev)
+  }, [])
+
+  const handleKnowledgeCategories = useCallback(() => {
+    navigate('/app/library', { state: { source: 'admin-base', focus: 'categories' } })
+  }, [navigate])
+
+  const handleKnowledgeUpload = useCallback(() => {
+    navigate('/app/library', { state: { source: 'admin-base', action: 'upload' } })
+  }, [navigate])
+
+  const handleOpenKnowledgeDocument = useCallback(async (doc: KnowledgeDocument) => {
+    try {
+      await KnowledgeBaseIntegration.registerDocumentUsage(doc.id, 'admin-dashboard-open', user?.id)
+    } catch (error) {
+      console.warn('⚠️ Erro ao registrar uso do documento:', error)
+    }
+
+    const fileUrl = (doc as any).file_url ?? doc.file_url
+    if (!fileUrl) {
+      console.warn('⚠️ Documento sem URL disponível para download.', doc.id)
+      return
+    }
+
+    window.open(fileUrl, '_blank', 'noopener,noreferrer')
+  }, [user?.id])
+
+  useEffect(() => {
+    if (normalizedEffectiveType === 'admin') {
+      loadKnowledgeBase()
+    }
+  }, [normalizedEffectiveType, loadKnowledgeBase])
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setKnowledgeDebouncedSearch(knowledgeSearch)
+    }, 300)
+
+    return () => clearTimeout(handler)
+  }, [knowledgeSearch])
+
+  useEffect(() => {
+    if (knowledgeCategory !== 'all' && !knowledgeCategoryOptions.includes(knowledgeCategory)) {
+      setKnowledgeCategory('all')
+    }
+  }, [knowledgeCategoryOptions, knowledgeCategory])
+
+  useEffect(() => {
+    if (normalizedEffectiveType !== 'admin') {
+      return
+    }
+
+    let isActive = true
+
+    const applyKnowledgeFilters = async () => {
+      const trimmedSearch = knowledgeDebouncedSearch.trim()
+
+      if (trimmedSearch.length > 0) {
+        setKnowledgeLoading(true)
+        try {
+          const docs = await KnowledgeBaseIntegration.semanticSearch(trimmedSearch, {
+            category: knowledgeCategory === 'all' ? undefined : knowledgeCategory,
+            limit: 12
+          })
+
+          const normalizedResults = (docs || [])
+            .map((doc: any) => ({
+              ...doc,
+              category: doc.category ?? doc.categoria ?? 'Sem categoria',
+              aiRelevance: doc.aiRelevance ?? doc.ai_relevance ?? 0,
+              isLinkedToAI: doc.isLinkedToAI ?? doc.is_linked_to_ai ?? false,
+              file_url: doc.file_url ?? doc.fileUrl ?? doc.url ?? undefined,
+              summary: doc.summary ?? doc.resumo ?? '',
+              updated_at: doc.updated_at ?? doc.updatedAt ?? doc.created_at,
+              created_at: doc.created_at ?? doc.createdAt ?? new Date().toISOString(),
+              author: doc.author ?? doc.autor ?? 'Equipe MedCannLab'
+            }))
+            .sort((a, b) => {
+              const aDateValue = new Date(a.updated_at ?? a.created_at ?? '').getTime()
+              const bDateValue = new Date(b.updated_at ?? b.created_at ?? '').getTime()
+              const safeADate = Number.isFinite(aDateValue) ? aDateValue : 0
+              const safeBDate = Number.isFinite(bDateValue) ? bDateValue : 0
+              return safeBDate - safeADate
+            })
+
+          if (isActive) {
+            setKnowledgeFilteredDocuments(normalizedResults)
+            setKnowledgeError(normalizedResults.length ? null : 'Nenhum documento encontrado para a busca atual.')
+          }
+        } catch (error) {
+          console.error('❌ Erro ao pesquisar base de conhecimento:', error)
+          if (isActive) {
+            setKnowledgeFilteredDocuments([])
+            setKnowledgeError('Erro ao pesquisar a base de conhecimento.')
+          }
+        } finally {
+          if (isActive) {
+            setKnowledgeLoading(false)
+          }
+        }
+        return
+      }
+
+      if (!knowledgeDocuments.length) {
+        if (isActive) {
+          setKnowledgeFilteredDocuments([])
+        }
+        return
+      }
+
+      const docs = knowledgeDocuments.filter(doc => knowledgeCategory === 'all' || doc.category === knowledgeCategory)
+      if (isActive) {
+        setKnowledgeFilteredDocuments(docs)
+        setKnowledgeError(docs.length ? null : 'Nenhum documento disponível nesta categoria.')
+      }
+    }
+
+    applyKnowledgeFilters()
+
+    return () => {
+      isActive = false
+    }
+  }, [knowledgeDebouncedSearch, knowledgeCategory, knowledgeDocuments, normalizedEffectiveType])
+
   return (
     <div
       className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-x-hidden w-full"
@@ -3489,6 +3984,104 @@ const RicardoValencaDashboard: React.FC = () => {
         patientId={selectedPatient || undefined}
         isAudioOnly={callType === 'audio'}
       />
+
+      {knowledgeSelectedDocument && (
+        <div className="fixed inset-0 bg-black/70 z-[120] flex items-center justify-center p-4">
+          <div className="bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+              <div>
+                <p className="text-xs text-emerald-200/70 uppercase tracking-widest flex items-center gap-2">
+                  <span>{knowledgeSelectedDocument.category || 'Sem categoria'}</span>
+                  {knowledgeSelectedDocument.isLinkedToAI && (
+                    <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 border border-emerald-400/30 rounded-full">IA</span>
+                  )}
+                </p>
+                <h3 className="text-xl font-semibold text-white mt-1">{knowledgeSelectedDocument.title}</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  {formatKnowledgeRelativeTime(knowledgeSelectedDocument.updated_at)} • IA Score {(knowledgeSelectedDocument.aiRelevance ?? 0).toFixed(2)}
+                </p>
+              </div>
+              <button
+                onClick={closeKnowledgeDocument}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                ×
+              </button>
+            </div>
+
+            {(knowledgeSelectedDocument as any).file_url && (
+              <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 bg-slate-900/70">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setKnowledgeViewerMode('preview')}
+                    className={`px-3 py-1 rounded-lg text-sm ${knowledgeViewerMode === 'preview' ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40' : 'bg-slate-800 text-slate-400 hover:bg-slate-750'}`}
+                  >
+                    Visualização
+                  </button>
+                  <button
+                    onClick={() => setKnowledgeViewerMode('raw')}
+                    className={`px-3 py-1 rounded-lg text-sm ${knowledgeViewerMode === 'raw' ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40' : 'bg-slate-800 text-slate-400 hover:bg-slate-750'}`}
+                  >
+                    Texto bruto
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const fileUrl = (knowledgeSelectedDocument as any).file_url
+                      if (fileUrl) {
+                        const link = document.createElement('a')
+                        link.href = fileUrl
+                        link.download = knowledgeSelectedDocument.title || 'documento'
+                        link.rel = 'noopener noreferrer'
+                        document.body.appendChild(link)
+                        link.click()
+                        document.body.removeChild(link)
+                      }
+                    }}
+                    className="px-3 py-1 rounded-lg text-sm bg-slate-800 text-slate-300 hover:bg-slate-750"
+                  >
+                    Baixar
+                  </button>
+                  <button
+                    onClick={() => {
+                      const fileUrl = (knowledgeSelectedDocument as any).file_url
+                      if (fileUrl) {
+                        window.open(fileUrl, '_blank', 'noopener,noreferrer')
+                      }
+                    }}
+                    className="px-3 py-1 rounded-lg text-sm bg-emerald-500 text-white hover:bg-emerald-400"
+                  >
+                    Abrir em nova aba
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto px-4 py-6 bg-slate-950/80">
+              {knowledgeDocumentLoading ? (
+                <div className="flex items-center justify-center text-slate-400 gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" /> Carregando conteúdo...
+                </div>
+              ) : knowledgeDocumentContent ? (
+                knowledgeViewerMode === 'preview' ? (
+                  <div className="prose prose-invert max-w-none">
+                    <pre className="whitespace-pre-wrap text-sm">{knowledgeDocumentContent}</pre>
+                  </div>
+                ) : (
+                  <pre className="whitespace-pre-wrap text-xs bg-slate-900/90 p-4 rounded-lg border border-slate-800 overflow-x-auto">
+                    {knowledgeDocumentContent}
+                  </pre>
+                )
+              ) : (
+                <div className="text-slate-400 text-sm text-center">
+                  {knowledgeSelectedDocument.summary || 'Sem conteúdo disponível para visualização.'}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

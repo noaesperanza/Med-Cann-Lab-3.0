@@ -210,9 +210,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'admin-upload',
-      label: 'Biblioteca Compartilhada',
-      description: 'Uploads e organização de documentos',
-      icon: Upload
+      label: 'Base de Conhecimento',
+      description: 'Protocolos, manuais e arquivos estratégicos',
+      icon: BookOpen
     },
     {
       id: 'admin-renal',
