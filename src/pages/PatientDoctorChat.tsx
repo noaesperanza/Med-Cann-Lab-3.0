@@ -12,6 +12,12 @@ interface ParticipantSummary {
   email: string | null
 }
 
+interface ChatParticipantProfile {
+  user_id: string
+  name: string | null
+  email: string | null
+}
+
 const PatientDoctorChat: React.FC = () => {
   const { user } = useAuth()
   const location = useLocation()
@@ -96,8 +102,10 @@ const PatientDoctorChat: React.FC = () => {
           return
         }
 
+        const profiles = profileRows as ChatParticipantProfile[]
+
         setParticipants(
-          profileRows.map(profile => ({
+          profiles.map(profile => ({
             id: profile.user_id,
             name: profile.name ?? null,
             email: profile.email ?? null
