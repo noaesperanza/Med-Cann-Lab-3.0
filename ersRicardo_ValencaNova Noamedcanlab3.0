@@ -1,0 +1,161 @@
+[1mdiff --git a/database/hardening_2025_11/06_fix_chat_policies.sql b/database/hardening_2025_11/06_fix_chat_policies.sql[m
+[1mnew file mode 100644[m
+[1mindex 0000000..60721d0[m
+[1m--- /dev/null[m
+[1m+++ b/database/hardening_2025_11/06_fix_chat_policies.sql[m
+[36m@@ -0,0 +1,50 @@[m
+[32m+[m[32mset search_path = public;[m
+[32m+[m
+[32m+[m[32mdrop policy if exists chat_participants_select on public.chat_participants;[m
+[32m+[m[32mcreate policy chat_participants_select on public.chat_participants[m
+[32m+[m[32m  for select[m
+[32m+[m[32m  to authenticated[m
+[32m+[m[32m  using ([m
+[32m+[m[32m    user_id = auth.uid()[m
+[32m+[m[32m    or coalesce(public.current_user_role(), 'patient') = 'admin'[m
+[32m+[m[32m  );[m
+[32m+[m
+[32m+[m[32mdrop policy if exists chat_participants_insert on public.chat_participants;[m
+[32m+[m[32mcreate policy chat_participants_insert on public.chat_participants[m
+[32m+[m[32m  for insert[m
+[32m+[m[32m  to authenticated[m
+[32m+[m[32m  with check ([m
+[32m+[m[32m    auth.uid() = chat_participants.user_id[m
+[32m+[m[32m    or coalesce(public.current_user_role(), 'patient') = 'admin'[m
+[32m+[m[32m    or exists ([m
+[32m+[m[32m      select 1[m
+[32m+[m[32m      from public.chat_rooms r[m
+[32m+[m[32m      where r.id = chat_participants.room_id[m
+[32m+[m[32m        and r.created_by = auth.uid()[m
+[32m+[m[32m    )[m
+[32m+[m[32m  );[m
+[32m+[m
+[32m+[m[32mdrop policy if exists chat_participants_update on public.chat_participants;[m
+[32m+[m[32mcreate policy chat_participants_update on public.chat_participants[m
+[32m+[m[32m  for update[m
+[32m+[m[32m  to authenticated[m
+[32m+[m[32m  using ([m
+[32m+[m[32m    user_id = auth.uid()[m
+[32m+[m[32m    or coalesce(public.current_user_role(), 'patient') = 'admin'[m
+[32m+[m[32m  )[m
+[32m+[m[32m  with check (true);[m
+[32m+[m
+[32m+[m[32mdrop policy if exists chat_participants_delete on public.chat_participants;[m
+[32m+[m[32mcreate policy chat_participants_delete on public.chat_participants[m
+[32m+[m[32m  for delete[m
+[32m+[m[32m  to authenticated[m
+[32m+[m[32m  using ([m
+[32m+[m[32m    user_id = auth.uid()[m
+[32m+[m[32m    or coalesce(public.current_user_role(), 'patient') = 'admin'[m
+[32m+[m[32m    or exists ([m
+[32m+[m[32m      select 1[m
+[32m+[m[32m      from public.chat_rooms r[m
+[32m+[m[32m      where r.id = chat_participants.room_id[m
+[32m+[m[32m        and r.created_by = auth.uid()[m
+[32m+[m[32m    )[m
+[32m+[m[32m  );[m
+[1mdiff --git a/database/hardening_2025_11/07_fix_user_profiles_policies.sql b/database/hardening_2025_11/07_fix_user_profiles_policies.sql[m
+[1mnew file mode 100644[m
+[1mindex 0000000..afc21d3[m
+[1m--- /dev/null[m
+[1m+++ b/database/hardening_2025_11/07_fix_user_profiles_policies.sql[m
+[36m@@ -0,0 +1,25 @@[m
+[32m+[m[32mset search_path = public, auth;[m
+[32m+[m
+[32m+[m[32mcreate or replace function public.get_chat_user_profiles(p_user_ids uuid[])[m
+[32m+[m[32mreturns table (user_id uuid, name text, email text)[m
+[32m+[m[32mlanguage sql[m
+[32m+[m[32msecurity definer[m
+[32m+[m[32mstable[m
+[32m+[m[32mas $$[m
+[32m+[m[32m  select[m
+[32m+[m[32m    p.user_id,[m
+[32m+[m[32m    p.name,[m
+[32m+[m[32m    p.email[m
+[32m+[m[32m  from public.user_profiles p[m
+[32m+[m[32m  where p.user_id = any(p_user_ids)[m
+[32m+[m[32m    and exists ([m
+[32m+[m[32m      select 1[m
+[32m+[m[32m      from public.chat_participants cp_self[m
+[32m+[m[32m      where cp_self.user_id = auth.uid()[m
+[32m+[m[32m        and cp_self.room_id in ([m
+[32m+[m[32m          select cp.room_id[m
+[32m+[m[32m          from public.chat_participants cp[m
+[32m+[m[32m          where cp.user_id = p.user_id[m
+[32m+[m[32m        )[m
+[32m+[m[32m    );[m
+[32m+[m[32m$$;[m
+[1mdiff --git "a/ersRicardo_ValencaNova Noamedcanlab3.0\357\200\242" "b/ersRicardo_ValencaNova Noamedcanlab3.0\357\200\242"[m
+[1mnew file mode 100644[m
+[1mindex 0000000..676edc3[m
+[1m--- /dev/null[m
+[1m+++ "b/ersRicardo_ValencaNova Noamedcanlab3.0\357\200\242"[m	
+[36m@@ -0,0 +1,487 @@[m
+[32m+[m[32m[1mdiff --git a/src/hooks/useChatSystem.ts b/src/hooks/useChatSystem.ts[m[m
+[32m+[m[32m[1mindex 962230d..79b2cf8 100644[m[m
+[32m+[m[32m[1m--- a/src/hooks/useChatSystem.ts[m[m
+[32m+[m[32m[1m+++ b/src/hooks/useChatSystem.ts[m[m
+[32m+[m[32m[36m@@ -33,6 +33,10 @@[m [mexport interface ChatSystemState {[m[m
+[32m+[m[32m   reloadInbox: () => Promise<void>[m[m
+[32m+[m[32m }[m[m
+[32m+[m[32m [m[m
+[32m+[m[32m[32m+[m[32minterface UseChatSystemOptions {[m[m
+[32m+[m[32m[32m+[m[32m  enabled?: boolean[m[m
+[32m+[m[32m[32m+[m[32m}[m[m
+[32m+[m[32m[32m+[m[m
+[32m+[m[32m const mapRoomSummary = (entry: any): ChatRoomSummary => ({[m[m
+[32m+[m[32m   id: entry.id,[m[m
+[32m+[m[32m   name: entry.name,[m[m
+[32m+[m[32m[36m@@ -41,7 +45,9 @@[m [mconst mapRoomSummary = (entry: any): ChatRoomSummary => ({[m[m
+[32m+[m[32m   unreadCount: entry.unread_count ?? 0[m[m
+[32m+[m[32m })[m[m
+[32m+[m[32m [m[m
+[32m+[m[32m[31m-export const useChatSystem = (activeRoomId?: string): ChatSystemState => {[m[m
+[32m+[m[32m[32m+[m[32mexport const useChatSystem = (activeRoomId?: string, options?: UseChatSystemOptions): ChatSystemState => {[m[m
+[32m+[m[32m[32m+[m[32m  const enabled = options?.enabled ?? true[m[m
+[32m+[m[32m[32m+[m[m
+[32m+[m[32m   const [inbox, setInbox] = useState<ChatRoomSummary[]>([])[m[m
+[32m+[m[32m   const [inboxLoading, setInboxLoading] = useState(true)[m[m
+[32m+[m[32m   const [messages, setMessages] = useState<RoomMessage[]>([])[m[m
+[32m+[m[32m[36m@@ -51,15 +57,22 @@[m [mexport const useChatSystem = (activeRoomId?: string): ChatSystemState => {[m[m
+[32m+[m[32m   )[m[m
+[32m+[m[32m [m[m
+[32m+[m[32m   const loadInbox = useCallback(async () => {[m[m
+[32m+[m[32m[32m+[m[32m    if (!enabled) return[m[m
+[32m+[m[32m[32m+[m[m
+[32m+[m[32m     setInboxLoading(true)[m[m
+[32m+[m[32m     const { data, error } = await supabase.from('v_chat_inbox').select('*')[m[m
+[32m+[m[32m     if (!error && data) {[m[m
+[32m+[m[32m       setInbox(data.map(mapRoomSummary))[m[m
+[32m+[m[32m[32m+[m[32m    } else if (error) {[m[m
+[32m+[m[32m[32m+[m[32m      console.warn('Falha ao carregar inbox:', error)[m[m
+[32m+[m[32m[32m+[m[32m      setInbox([])[m[m
+[32m+[m[32m     }[m[m
+[32m+[m[32m     setInboxLoading(false)[m[m
+[32m+[m[32m[31m-  }, [])[m[m
+[32m+[m[32m[32m+[m[32m  }, [enabled])[m[m
+[32m+[m[32m [m[m
+[32m+[m[32m   const loadMessages = useCallback(async (roomId: string) => {[m[m
+[32m+[m[32m[32m+[m[32m    if (!enabled) return[m[m
+[32m+[m[32m[32m+[m[m
+[32m+[m[32m     setMessagesLoading(true)[m[m
+[32m+[m[32m     const { data, error } = await supabase[m[m
+[32m+[m[32m       .from('chat_messages')[m[m
+[32m+[m[32m[36m@@ -69,6 +82,9 @@[m [mexport const useChatSystem = (activeRoomId?: string): ChatSystemState => {[m[m
+[32m+[m[32m       .limit(500)[m[m
+[32m+[m[32m [m[m
+[32m+[m[32m     if (error || !data) {[m[m
+[32m+[m[32m[32m+[m[32m      if (error) {[m[m
+[32m+[m[32m[32m+[m[32m        console.warn('Falha ao carregar mensagens:', error)[m[m
+[32m+[m[32m[32m+[m[32m      }[m[m
+[32m+[m[32m       setMessages([])[m[m
+[32m+[m[32m       setMessagesLoading(false)[m[m
+[32m+[m[32m       return[m[m
+[32m+[m[32m[36m@@ -78,12 +94,16 @@[m [mexport const useChatSystem = (activeRoomId?: string): ChatSystemState => {[m[m
+[32m+[m[32m     let profileMap = new Map<string, { name: string; email: string | null }>()[m[m
+[32m+[m[32m [m[m
+[32m+[m[32m     if (senderIds.length > 0) {[m[m
+[32m+[m[32m[31m-      const { data: profiles } = await supabase[m[m
+[32m+[m[32m[31m-        .from('user_profiles')[m[m
+[32m+[m[32m[31m-        .select('user_id, name, email')[m[m
+[32m+[m[3

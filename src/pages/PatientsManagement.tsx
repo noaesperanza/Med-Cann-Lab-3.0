@@ -81,6 +81,7 @@ const PatientsManagement: React.FC = () => {
   const [evolutions, setEvolutions] = useState<Evolution[]>([])
   const [loadingEvolutions, setLoadingEvolutions] = useState(false)
   const [showNewPatientMenu, setShowNewPatientMenu] = useState(false)
+  const [openingChat, setOpeningChat] = useState(false)
 
   // Fechar menu ao clicar fora
   useEffect(() => {
@@ -138,17 +139,17 @@ const PatientsManagement: React.FC = () => {
       // Isso garante que pacientes criados pelo profissional apareçam mesmo sem avaliações
       let usersData: any[] = []
       try {
-        const { data: users, error: usersError } = await supabase
-          .from('users')
-          .select('id, name, email, phone, type, address, created_at')
+        const { data, error } = await supabase
+          .from('users_compatible')
+          .select('id, name, email, phone, type, created_at')
           .eq('type', 'patient')
           .order('created_at', { ascending: false })
 
-        if (!usersError && users) {
+        if (!error && data) {
           // Excluir o próprio usuário da lista de pacientes
-          usersData = users.filter(u => u.id !== user?.id)
-        } else if (usersError) {
-          console.error('Erro ao buscar usuários:', usersError)
+          usersData = data.filter(u => u.id !== user?.id)
+        } else if (error) {
+          console.error('Erro ao buscar usuários:', error)
         }
       } catch (err) {
         console.log('Tabela users não encontrada ou erro ao buscar:', err)
@@ -330,6 +331,70 @@ const PatientsManagement: React.FC = () => {
   const handleSelectPatient = (patient: Patient) => {
     setSelectedPatient(patient)
     setActiveTab('overview')
+  }
+
+  const handleOpenPatientChat = async () => {
+    if (!user?.id || !selectedPatient?.id) return
+
+    setOpeningChat(true)
+    try {
+      let targetRoomId: string | undefined
+
+      const { data: patientRooms, error: roomsError } = await supabase
+        .from('chat_participants')
+        .select('room_id, chat_rooms!inner(id, type)')
+        .eq('user_id', selectedPatient.id)
+        .eq('chat_rooms.type', 'patient')
+        .limit(1)
+
+      if (!roomsError && patientRooms?.length) {
+        targetRoomId = patientRooms[0].room_id
+      } else {
+        const { data: newRoom, error: roomError } = await supabase
+          .from('chat_rooms')
+          .insert({
+            name: `Canal de cuidado • ${selectedPatient.name}`,
+            type: 'patient',
+            created_by: user.id
+          })
+          .select('id')
+          .single()
+
+        if (roomError || !newRoom) {
+          throw roomError ?? new Error('Não foi possível criar a sala clínica do paciente')
+        }
+
+        targetRoomId = newRoom.id
+
+        await supabase
+          .from('chat_participants')
+          .upsert(
+            [
+              { room_id: newRoom.id, user_id: selectedPatient.id, role: 'patient' },
+              { room_id: newRoom.id, user_id: user.id, role: 'professional' }
+            ],
+            { onConflict: 'room_id,user_id' }
+          )
+      }
+
+      if (!targetRoomId) {
+        throw new Error('Canal do paciente não encontrado')
+      }
+
+      await supabase
+        .from('chat_participants')
+        .upsert(
+          [{ room_id: targetRoomId, user_id: user.id, role: 'professional' }],
+          { onConflict: 'room_id,user_id' }
+        )
+
+      navigate(`/app/clinica/paciente/chat-profissional?origin=professional-dashboard&roomId=${targetRoomId}`)
+    } catch (error) {
+      console.error('Erro ao abrir chat clínico do paciente:', error)
+      navigate('/app/clinica/paciente/chat-profissional?origin=professional-dashboard')
+    } finally {
+      setOpeningChat(false)
+    }
   }
 
   const handleSaveEvolution = async () => {
@@ -714,12 +779,25 @@ const PatientsManagement: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => setShowNewEvolution(true)}
-                      className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-colors"
-                    >
-                      Nova Evolução
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => setShowNewEvolution(true)}
+                        className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-colors"
+                      >
+                        Nova Evolução
+                      </button>
+                      <button
+                        onClick={handleOpenPatientChat}
+                        disabled={openingChat}
+                        className={`px-4 py-2 rounded-lg transition-colors ${
+                          openingChat
+                            ? 'bg-primary-500/60 text-white cursor-wait'
+                            : 'bg-primary-500 text-white hover:bg-primary-400'
+                        }`}
+                      >
+                        {openingChat ? 'Abrindo chat...' : 'Chat Clínico'}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Stats */}

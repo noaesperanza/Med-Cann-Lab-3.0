@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Calendar, 
-  TrendingUp, 
-  Heart, 
-  MessageCircle, 
-  FileText, 
-  Share2, 
-  Shield, 
+import {
+  Calendar,
+  TrendingUp,
+  Heart,
+  MessageCircle,
+  FileText,
+  Share2,
+  Shield,
   Clock,
   Stethoscope,
   CheckCircle,
@@ -45,21 +45,24 @@ interface TherapeuticPlan {
   nextReview: string
 }
 
+const DEFAULT_PROFESSIONAL_EMAILS = ['rrvalenca@gmail.com', 'eduardoscfaveret@gmail.com']
+
 const PatientDashboard: React.FC = () => {
   const { user } = useAuth()
   const { getEffectiveUserType, isAdminViewingAs } = useUserView()
   const navigate = useNavigate()
-  
+
   // Se admin está visualizando como paciente, mostrar aviso
   const effectiveType = getEffectiveUserType(user?.type)
   const isViewingAsPatient = isAdminViewingAs && effectiveType === 'paciente'
-  
+
   // Estados
   const [reports, setReports] = useState<ClinicalReport[]>([])
   const [loadingReports, setLoadingReports] = useState(true)
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [therapeuticPlan, setTherapeuticPlan] = useState<TherapeuticPlan | null>(null)
   const [activeTab, setActiveTab] = useState<'dashboard' | 'agendamento' | 'plano' | 'conteudo'>('dashboard')
+  const [chatLoading, setChatLoading] = useState(false)
 
   // Carregar dados do paciente
   useEffect(() => {
@@ -73,7 +76,7 @@ const PatientDashboard: React.FC = () => {
       // Carregar relatórios
       const patientReports = await clinicalReportService.getPatientReports(user!.id)
       setReports(patientReports)
-      
+
       // Carregar agendamentos
       const { data: appointmentsData, error: appointmentsError } = await supabase
         .from('appointments')
@@ -191,6 +194,82 @@ const PatientDashboard: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const handleOpenChat = async () => {
+    if (!user?.id) return
+
+    if (isViewingAsPatient) {
+      navigate('/app/clinica/paciente/chat-profissional?origin=patient-dashboard')
+      return
+    }
+
+    setChatLoading(true)
+    try {
+      let targetRoomId: string | undefined
+
+      const { data: existingRooms, error: existingError } = await supabase
+        .from('chat_participants')
+        .select('room_id, chat_rooms!inner(id, type)')
+        .eq('user_id', user.id)
+        .eq('chat_rooms.type', 'patient')
+        .limit(1)
+
+      if (!existingError && existingRooms?.length) {
+        targetRoomId = existingRooms[0].room_id
+      } else {
+        const { data: newRoom, error: roomError } = await supabase
+          .from('chat_rooms')
+          .insert({
+            name: user.name ? `Canal de cuidado • ${user.name}` : 'Canal do paciente',
+            type: 'patient',
+            created_by: user.id
+          })
+          .select('id')
+          .single()
+
+        if (roomError || !newRoom) {
+          throw roomError ?? new Error('Não foi possível criar o canal do paciente')
+        }
+
+        targetRoomId = newRoom.id
+
+        const { data: professionals } = await supabase
+          .from('users_compatible')
+          .select('id')
+          .in('email', DEFAULT_PROFESSIONAL_EMAILS)
+
+        const professionalIds = (professionals ?? [])
+          .map(profile => profile.id)
+          .filter((id): id is string => Boolean(id))
+
+        const participantsPayload = [
+          { room_id: newRoom.id, user_id: user.id, role: 'patient' },
+          ...professionalIds.map(proId => ({
+            room_id: newRoom.id,
+            user_id: proId,
+            role: 'professional'
+          }))
+        ]
+
+        if (participantsPayload.length) {
+          await supabase
+            .from('chat_participants')
+            .upsert(participantsPayload, { onConflict: 'room_id,user_id' })
+        }
+      }
+
+      const targetUrl = targetRoomId
+        ? `/app/clinica/paciente/chat-profissional?origin=patient-dashboard&roomId=${targetRoomId}`
+        : '/app/clinica/paciente/chat-profissional?origin=patient-dashboard'
+
+      navigate(targetUrl)
+    } catch (error) {
+      console.error('Erro ao preparar canal de chat do paciente:', error)
+      navigate('/app/clinica/paciente/chat-profissional?origin=patient-dashboard')
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
   // Renderizar Dashboard Principal
   const renderDashboard = () => (
     <div className="space-y-6">
@@ -201,7 +280,7 @@ const PatientDashboard: React.FC = () => {
             <h2 className="text-xl font-semibold text-white">Bem-vindo, {user?.name || 'Paciente'}!</h2>
             <p className="text-slate-400">Seu centro de acompanhamento personalizado para cuidado renal e cannabis medicinal</p>
           </div>
-          
+
           {/* User Profile */}
           <div className="flex items-center space-x-3 bg-slate-700 p-3 rounded-lg">
             <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
@@ -236,15 +315,20 @@ const PatientDashboard: React.FC = () => {
 
         {/* Chat com Médico */}
         <button
-          onClick={() => navigate('/app/clinica/paciente/chat-profissional?origin=patient-dashboard')}
-          className="rounded-xl p-4 text-left transition-transform transform hover:scale-[1.01]"
+          onClick={handleOpenChat}
+          disabled={chatLoading}
+          className={`rounded-xl p-4 text-left transition-transform transform hover:scale-[1.01] ${
+            chatLoading ? 'opacity-80 cursor-not-allowed' : ''
+          }`}
           style={{ background: 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)', boxShadow: '0 10px 24px rgba(0,193,106,0.35)' }}
         >
           <div className="flex items-center space-x-3 mb-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
               <MessageCircle className="w-5 h-5 text-white" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">💬 Chat com Médico</h3>
+            <h3 className="text-lg font-semibold mb-2">
+              {chatLoading ? '🔄 Abrindo chat...' : '💬 Chat com Médico'}
+            </h3>
             <p className="text-sm text-white/80">Comunicação direta com seu profissional</p>
           </div>
         </button>
@@ -261,7 +345,7 @@ const PatientDashboard: React.FC = () => {
             </div>
             <h3 className="text-lg font-semibold mb-2">💊 Plano Terapêutico</h3>
             <p className="text-sm text-white/80">
-              {therapeuticPlan 
+              {therapeuticPlan
                 ? `Progresso: ${therapeuticPlan.progress}% • ${therapeuticPlan.medications.length} medicações`
                 : 'Acesse suas prescrições integrativas'}
             </p>
@@ -618,9 +702,9 @@ const PatientDashboard: React.FC = () => {
       <div className="bg-slate-800 rounded-xl p-6">
         <div className="flex items-center space-x-3 mb-4">
           <div className="w-8 h-8 flex items-center justify-center">
-            <img 
-              src="/brain.png" 
-              alt="MedCannLab Logo" 
+            <img
+              src="/brain.png"
+              alt="MedCannLab Logo"
               className="w-full h-full object-contain"
               style={{
                 filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.4)) brightness(1.1)'
@@ -697,14 +781,14 @@ const PatientDashboard: React.FC = () => {
             <div className="flex items-center space-x-2">
               <span className="text-yellow-400">👁️</span>
               <p className="text-yellow-200 text-sm">
-                <strong>Modo Admin:</strong> Você está visualizando como <strong>Paciente</strong>. 
+                <strong>Modo Admin:</strong> Você está visualizando como <strong>Paciente</strong>.
                 Todas as funcionalidades estão disponíveis com permissões de administrador.
               </p>
             </div>
           </div>
         </div>
       )}
-      
+
       {/* Header */}
       <div className="p-6" style={{ background: headerGradient, borderBottom: '1px solid rgba(0,193,106,0.18)' }}>
         <div className="flex items-center justify-between">
@@ -712,7 +796,7 @@ const PatientDashboard: React.FC = () => {
             <h1 className="text-2xl font-bold text-white">Meu Dashboard de Saúde</h1>
             <p className="text-slate-400">Programa de Cuidado Renal • Cannabis Medicinal</p>
           </div>
-          
+
           {/* User Profile */}
           <div className="flex items-center space-x-3 bg-slate-700 p-3 rounded-lg">
             <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">

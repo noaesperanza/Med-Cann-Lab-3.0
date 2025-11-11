@@ -33,6 +33,10 @@ export interface ChatSystemState {
   reloadInbox: () => Promise<void>
 }
 
+interface UseChatSystemOptions {
+  enabled?: boolean
+}
+
 const mapRoomSummary = (entry: any): ChatRoomSummary => ({
   id: entry.id,
   name: entry.name,
@@ -41,7 +45,9 @@ const mapRoomSummary = (entry: any): ChatRoomSummary => ({
   unreadCount: entry.unread_count ?? 0
 })
 
-export const useChatSystem = (activeRoomId?: string): ChatSystemState => {
+export const useChatSystem = (activeRoomId?: string, options?: UseChatSystemOptions): ChatSystemState => {
+  const enabled = options?.enabled ?? true
+
   const [inbox, setInbox] = useState<ChatRoomSummary[]>([])
   const [inboxLoading, setInboxLoading] = useState(true)
   const [messages, setMessages] = useState<RoomMessage[]>([])
@@ -51,15 +57,22 @@ export const useChatSystem = (activeRoomId?: string): ChatSystemState => {
   )
 
   const loadInbox = useCallback(async () => {
+    if (!enabled) return
+
     setInboxLoading(true)
     const { data, error } = await supabase.from('v_chat_inbox').select('*')
     if (!error && data) {
       setInbox(data.map(mapRoomSummary))
+    } else if (error) {
+      console.warn('Falha ao carregar inbox:', error)
+      setInbox([])
     }
     setInboxLoading(false)
-  }, [])
+  }, [enabled])
 
   const loadMessages = useCallback(async (roomId: string) => {
+    if (!enabled) return
+
     setMessagesLoading(true)
     const { data, error } = await supabase
       .from('chat_messages')
@@ -69,6 +82,9 @@ export const useChatSystem = (activeRoomId?: string): ChatSystemState => {
       .limit(500)
 
     if (error || !data) {
+      if (error) {
+        console.warn('Falha ao carregar mensagens:', error)
+      }
       setMessages([])
       setMessagesLoading(false)
       return
@@ -78,12 +94,16 @@ export const useChatSystem = (activeRoomId?: string): ChatSystemState => {
     let profileMap = new Map<string, { name: string; email: string | null }>()
 
     if (senderIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('user_profiles')
-        .select('user_id, name, email')
-        .in('user_id', senderIds)
+      const { data: profiles, error: profileError } = await supabase.rpc(
+        'get_chat_user_profiles',
+        { p_user_ids: senderIds }
+      )
 
-      if (profiles) {
+      if (profileError || !profiles) {
+        if (profileError) {
+          console.warn('Falha ao carregar perfis de remetentes:', profileError)
+        }
+      } else {
         profileMap = new Map(
           profiles.map(profile => [
             profile.user_id,
@@ -111,18 +131,27 @@ export const useChatSystem = (activeRoomId?: string): ChatSystemState => {
 
     setMessages(normalized)
     setMessagesLoading(false)
-  }, [])
+  }, [enabled])
 
   const markRoomAsRead = useCallback(
     async (roomId: string) => {
-      await supabase.rpc('mark_room_read', { p_room_id: roomId })
-      await loadInbox()
+      if (!enabled) return
+
+      try {
+        await supabase.rpc('mark_room_read', { p_room_id: roomId })
+      } catch (error) {
+        console.warn('Não foi possível marcar mensagens como lidas:', error)
+      } finally {
+        await loadInbox()
+      }
     },
-    [loadInbox]
+    [enabled, loadInbox]
   )
 
   const sendMessage = useCallback(
     async (roomId: string, senderId: string, content: string) => {
+      if (!enabled) return
+
       const trimmed = content.trim()
       if (!trimmed) return
       await supabase.from('chat_messages').insert({
@@ -132,14 +161,17 @@ export const useChatSystem = (activeRoomId?: string): ChatSystemState => {
         message_type: 'text'
       })
     },
-    []
+    [enabled]
   )
 
   useEffect(() => {
+    if (!enabled) return
     loadInbox()
-  }, [loadInbox])
+  }, [loadInbox, enabled])
 
   useEffect(() => {
+    if (!enabled) return
+
     const handleOnline = () => setIsOnline(true)
     const handleOffline = () => setIsOnline(false)
 
@@ -150,9 +182,11 @@ export const useChatSystem = (activeRoomId?: string): ChatSystemState => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
-  }, [])
+  }, [enabled])
 
   useEffect(() => {
+    if (!enabled) return
+
     const channel = supabase
       .channel('chat-inbox-watch')
       .on(
@@ -167,9 +201,14 @@ export const useChatSystem = (activeRoomId?: string): ChatSystemState => {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [loadInbox])
+  }, [loadInbox, enabled])
 
   useEffect(() => {
+    if (!enabled) {
+      setMessages([])
+      return
+    }
+
     if (!activeRoomId) {
       setMessages([])
       return
@@ -198,7 +237,7 @@ export const useChatSystem = (activeRoomId?: string): ChatSystemState => {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [activeRoomId, loadInbox, loadMessages, markRoomAsRead])
+  }, [activeRoomId, loadInbox, loadMessages, markRoomAsRead, enabled])
 
   return useMemo(
     () => ({
