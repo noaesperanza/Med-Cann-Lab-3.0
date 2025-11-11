@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -31,7 +31,10 @@ import {
   Star,
   Activity,
   Bell,
-  AlertCircle
+  AlertCircle,
+  ClipboardList,
+  MessageSquarePlus,
+  Layers
 } from 'lucide-react'
 
 interface ImplementationPhase {
@@ -227,6 +230,7 @@ const CidadeAmigaDosRins: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [activePillar, setActivePillar] = useState<string>('introducao')
+  const [protocolTab, setProtocolTab] = useState<'ativos' | 'novos'>('ativos')
   const [loading, setLoading] = useState(true)
   const [implementationPhases, setImplementationPhases] = useState<ImplementationPhase[]>([])
   const [stats, setStats] = useState({
@@ -310,6 +314,114 @@ const CidadeAmigaDosRins: React.FC = () => {
     { id: 'impacto', label: 'Impacto em Saúde Pública', icon: Globe }
   ]
 
+  const activeProtocols = useMemo(
+    () => [
+      {
+        id: 'cidade-amiga',
+        title: 'Cidade Amiga dos Rins • Onboarding Comunitário',
+        status: 'Ativo',
+        axes: ['Clínica', 'Pesquisa', 'Ensino'],
+        summary:
+          'Fluxo comunitário que conecta avaliação IMRE renal, estratificação de risco KDIGO e planos terapêuticos individualizados supervisionados pela pós-graduação.',
+        highlights: [
+          'Triagem renal guiada pela IA residente e fichas IMRE adaptadas.',
+          'Integração com os módulos da pós-graduação e supervisão docente.',
+          'Planos terapêuticos individualizados com monitoramento contínuo.'
+        ],
+        knowledgeRoute: '/app/pesquisa/profissional/cidade-amiga-dos-rins',
+        iaPrompt:
+          'Nôa, aplicar o protocolo Cidade Amiga dos Rins para uma triagem comunitária e gerar o plano terapêutico correspondente.'
+      },
+      {
+        id: 'avaliacao-cannabis',
+        title: 'Avaliação Clínica Inicial IMRE • Cannabis Medicinal',
+        status: 'Ativo',
+        axes: ['Clínica', 'Ensino'],
+        summary:
+          'Roteiro completo conduzido pela IA Residente para investigação IMRE com foco em cannabis medicinal, alimentando a base educacional e planos terapêuticos.',
+        highlights: [
+          'Roteiro estruturado com abertura exponencial, desenvolvimento e fechamento consensual.',
+          'Geração automática do relatório clínico e NFT após validação do paciente.',
+          'Base de conhecimento alinhada às diretrizes MedCannLab para cannabis medicinal.'
+        ],
+        knowledgeRoute: '/app/clinica/paciente/avaliacao-clinica',
+        iaPrompt:
+          'Nôa, iniciar a avaliação clínica inicial IMRE focada em cannabis medicinal e preparar o relatório para revisão.'
+      },
+      {
+        id: 'drcteza',
+        title: 'Estratificação DRC + TEZ Integrada',
+        status: 'Beta Controlado',
+        axes: ['Clínica', 'Pesquisa'],
+        summary:
+          'Ferramenta de estratificação que cruza estágios de Doença Renal Crônica e o espectro TEZ, suportando decisões clínicas e estudos observacionais.',
+        highlights: [
+          'Classificação automática de DRC (estágios 1-5) com parâmetros laboratoriais.',
+          'Mapa de suporte TEZ para comorbidades neuropsiquiátricas associadas.',
+          'Exportação de insights para protocolos de pesquisa e preceptoria.'
+        ],
+        knowledgeRoute: '/app/library?collection=protocolos&protocol=drcteza',
+        iaPrompt:
+          'Nôa, gerar a estratificação combinada DRC + TEZ para o paciente atual com base nos dados clínicos.'
+      }
+    ],
+    []
+  )
+
+  const upcomingProtocols = useMemo(
+    () => [
+      {
+        id: 'renal-medcannlab',
+        title: 'Protocolo MedCannLab de Saúde Renal com Cannabis Medicinal',
+        stage: 'Consulta Pública',
+        owner: 'MedCannLab Research Hub',
+        axes: ['Clínica', 'Pesquisa', 'Ensino'],
+        description:
+          'Evolução do Cidade Amiga dos Rins com foco em terapias canabinoides. Inclui avaliação IMRE renal, bibliografia selecionada, processos de diagnóstico DRC e TEZ, além de roteiro de plano terapêutico individualizado.',
+        milestones: [
+          { label: 'Revisão bibliográfica colaborativa', due: 'Novembro/2025' },
+          { label: 'Oficina com preceptores e consultores', due: 'Dezembro/2025' },
+          { label: 'Publicação da versão 1.0 no diretório de protocolos', due: 'Janeiro/2026' }
+        ],
+        knowledgeDraft: '/app/library?draft=protocolo-renal-medcannlab',
+        forumTopic: 'Protocolo MedCannLab de saúde renal com cannabis medicinal',
+        iaPrompt:
+          'Nôa, registrar minha contribuição no protocolo de saúde renal com cannabis medicinal do MedCannLab e listar os pontos em aberto.'
+      },
+      {
+        id: 'onboarding-profissionais',
+        title: 'Onboarding de Profissionais para Cannabis Medicinal',
+        stage: 'Em elaboração',
+        owner: 'Comissão Clínica • Pós-graduação Cannabis',
+        axes: ['Ensino', 'Clínica'],
+        description:
+          'Adaptação da estrutura Cidade Amiga dos Rins para credenciar novos profissionais na plataforma, com trilhas de estudo, supervisão clínica e protocolos de segurança.',
+        milestones: [
+          { label: 'Mapeamento de competências e pré-requisitos', due: 'Dezembro/2025' },
+          { label: 'Integração com avaliações IMRE e chat clínico', due: 'Fevereiro/2026' }
+        ],
+        knowledgeDraft: '/app/library?draft=onboarding-cannabis-profissionais',
+        forumTopic: 'Criação de protocolo de onboarding de profissionais em cannabis medicinal',
+        iaPrompt:
+          'Nôa, anotar minha sugestão para o protocolo de onboarding de profissionais em cannabis medicinal e direcionar para revisão do conselho clínico.'
+      }
+    ],
+    []
+  )
+
+  const handleViewProtocol = (route: string) => {
+    if (!route) return
+    navigate(route)
+  }
+
+  const handleParticipateForum = (topic: string) => {
+    const params = new URLSearchParams({ tab: 'forum' })
+    if (topic) {
+      params.set('topic', topic)
+    }
+    navigate(`/app/chat?${params.toString()}`)
+  }
+
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       {/* Header */}
@@ -334,6 +446,156 @@ const CidadeAmigaDosRins: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto p-6">
+        {/* Protocolos Clínicos Integrados */}
+        <div className="bg-slate-800 rounded-xl p-6 mb-8 border border-slate-700 shadow-lg">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <ClipboardList className="w-6 h-6 text-blue-300" />
+                Protocolos Clínicos Integrados
+              </h2>
+              <p className="text-slate-300 text-sm md:text-base max-w-3xl">
+                Conectamos os eixos clínica, ensino e pesquisa por meio de protocolos que geram avaliações IMRE, relatórios da IA residente e planos
+                terapêuticos individualizados. Explore os protocolos ativos e acompanhe os que estão em construção colaborativa.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-900/40 border border-slate-700 rounded-lg p-1">
+              <button
+                onClick={() => setProtocolTab('ativos')}
+                className={`px-3 py-2 text-sm font-semibold rounded-md transition-colors ${
+                  protocolTab === 'ativos' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                Protocolos ativos
+              </button>
+              <button
+                onClick={() => setProtocolTab('novos')}
+                className={`px-3 py-2 text-sm font-semibold rounded-md transition-colors ${
+                  protocolTab === 'novos' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                Novos protocolos
+              </button>
+            </div>
+          </div>
+
+          {protocolTab === 'ativos' ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {activeProtocols.map(protocol => (
+                <article
+                  key={protocol.id}
+                  className="rounded-xl border border-blue-500/20 bg-slate-900/60 p-5 flex flex-col gap-4 shadow-md hover:border-blue-400/40 transition-colors"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-lg font-semibold text-white">{protocol.title}</h3>
+                      <span className="px-2 py-1 text-[11px] font-semibold rounded-md bg-blue-500/15 border border-blue-500/30 text-blue-200">
+                        {protocol.status}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {protocol.axes.map(axis => (
+                        <span
+                          key={`${protocol.id}-${axis}`}
+                          className="px-2 py-1 text-[11px] font-semibold rounded-full border border-slate-700 bg-slate-800/80 text-slate-300"
+                        >
+                          {axis}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-sm text-slate-300 leading-relaxed">{protocol.summary}</p>
+                  </div>
+
+                  <ul className="space-y-2 text-sm text-slate-300/90">
+                    {protocol.highlights.map((item, index) => (
+                      <li key={`${protocol.id}-feature-${index}`} className="flex items-start gap-2">
+                        <Layers className="w-4 h-4 text-blue-300 flex-shrink-0 mt-0.5" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="flex flex-wrap gap-2 mt-auto">
+                    <button
+                      onClick={() => handleViewProtocol(protocol.knowledgeRoute)}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      Visualizar protocolo
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {upcomingProtocols.map(protocol => (
+                <article
+                  key={protocol.id}
+                  className="rounded-xl border border-slate-700 bg-slate-900/60 p-6 shadow-md hover:border-blue-400/30 transition-colors"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-1 text-[11px] font-semibold rounded-md bg-purple-500/20 border border-purple-400/40 text-purple-200">
+                          {protocol.stage}
+                        </span>
+                        <span className="px-2 py-1 text-[11px] font-semibold rounded-md bg-slate-800 border border-slate-700 text-slate-300">
+                          {protocol.owner}
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-semibold text-white">{protocol.title}</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {protocol.axes.map(axis => (
+                          <span
+                            key={`${protocol.id}-axis-${axis}`}
+                            className="px-2 py-1 text-[11px] font-semibold rounded-full border border-slate-700 bg-slate-800/80 text-slate-300"
+                          >
+                            {axis}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-sm text-slate-300 leading-relaxed">{protocol.description}</p>
+                    </div>
+                    <div className="min-w-[220px] bg-slate-800/70 border border-slate-700 rounded-lg p-4 space-y-2">
+                      <h4 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                        <Target className="w-4 h-4 text-blue-300" />
+                        Próximas entregas
+                      </h4>
+                      <ul className="space-y-1 text-xs text-slate-400">
+                        {protocol.milestones.map((milestone, index) => (
+                          <li key={`${protocol.id}-milestone-${index}`} className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-blue-300/70" />
+                            <span>{milestone.label}</span>
+                            <span className="ml-auto text-slate-500">{milestone.due}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => handleViewProtocol(protocol.knowledgeDraft)}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors"
+                    >
+                      <ClipboardList className="w-4 h-4" />
+                      Abrir documento base
+                    </button>
+                    <button
+                      onClick={() => handleParticipateForum(protocol.forumTopic)}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-blue-100 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
+                    >
+                      <MessageSquarePlus className="w-4 h-4" />
+                      Participar da construção no fórum
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Hero Section */}
         <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 rounded-xl p-8 mb-8 border border-blue-500/20">
           <div className="flex items-start space-x-6 mb-6">

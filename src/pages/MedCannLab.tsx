@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  ArrowLeft, 
-  FlaskConical, 
-  Heart, 
-  Brain, 
-  TrendingUp, 
-  CheckCircle, 
+import {
+  ArrowLeft,
+  FlaskConical,
+  Heart,
+  Brain,
+  TrendingUp,
+  CheckCircle,
   Calendar,
   Clock,
   Users,
@@ -29,12 +29,26 @@ import {
   Cpu,
   Activity as DeviceIcon,
   DollarSign,
-  Gift
+  Gift,
+  ClipboardList,
+  MessageSquarePlus
 } from 'lucide-react'
 
 const MedCannLab: React.FC = () => {
   const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState<string>('sobre')
+
+  const handleOpenIA = (prompt: string) => {
+    if (!prompt) return
+    const params = new URLSearchParams({ prompt })
+    navigate(`/app/chat?${params.toString()}`)
+  }
+
+  const handleOpenForum = (topic: string) => {
+    const params = new URLSearchParams({ tab: 'forum' })
+    if (topic) params.set('topic', topic)
+    navigate(`/app/chat?${params.toString()}`)
+  }
 
   const sections = [
     { id: 'sobre', label: 'Sobre o Projeto', icon: FlaskConical },
@@ -43,6 +57,49 @@ const MedCannLab: React.FC = () => {
     { id: 'deeplearning', label: 'Deep Learning', icon: Brain },
     { id: 'dispositivos', label: 'Dispositivos Médicos', icon: DeviceIcon },
     { id: 'impacto', label: 'Impacto Clínico', icon: Heart }
+  ]
+
+  const researchStudies = [
+    {
+      id: 'estudo-cbd-irc',
+      title: 'Eficácia do CBD na Insuficiência Renal',
+      status: 'Em Andamento',
+      description: 'Estudo longitudinal sobre os efeitos do CBD em pacientes com IRC',
+      participants: 24,
+      start: '2024-01-15',
+      end: '2024-12-31',
+      progress: 65
+    },
+    {
+      id: 'qualidade-vida',
+      title: 'Qualidade de Vida e Cannabis Medicinal',
+      status: 'Análise',
+      description: 'Avaliação do impacto na qualidade de vida de pacientes em tratamento',
+      participants: 48,
+      start: '2024-03-01',
+      end: '2024-11-30',
+      progress: 85
+    },
+    {
+      id: 'dosagem-personalizada',
+      title: 'Protocolos de Dosagem Personalizados',
+      status: 'Em Andamento',
+      description: 'Desenvolvimento de protocolos individualizados baseados em dados clínicos',
+      participants: 32,
+      start: '2024-06-01',
+      end: '2025-05-31',
+      progress: 45
+    },
+    {
+      id: 'metodologia-imre-resultados',
+      title: 'Impacto da Metodologia IMRE em Resultados',
+      status: 'Análise',
+      description: 'Análise dos resultados clínicos utilizando avaliação triaxial',
+      participants: 67,
+      start: '2024-02-15',
+      end: '2024-11-30',
+      progress: 75
+    }
   ]
 
   return (
@@ -123,6 +180,136 @@ const MedCannLab: React.FC = () => {
                 </button>
               )
             })}
+          </div>
+        </div>
+
+        {/* Protocolos Integrados */}
+        <div className="bg-slate-800 rounded-xl p-6 mb-8 border border-slate-700">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                <ClipboardList className="w-6 h-6 text-green-300" />
+                Protocolos Clínicos Integrados
+              </h3>
+              <p className="text-slate-300 text-sm md:text-base max-w-3xl">
+                Cada protocolo conecta os eixos clínica, ensino e pesquisa para gerar avaliações IMRE completas, relatórios da IA residente e planos
+                terapêuticos individualizados. Explore a integração com o programa Cidade Amiga dos Rins e acompanhe os novos protocolos em co-criação.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/app/pesquisa/profissional/cidade-amiga-dos-rins')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.03]"
+              style={{ background: 'linear-gradient(135deg, #2563eb 0%, #00c1a0 100%)' }}
+            >
+              🌍 Ver Cidade Amiga dos Rins
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <article className="rounded-xl border border-green-500/30 bg-slate-900/60 p-5 flex flex-col gap-4 shadow-lg">
+              <div className="space-y-2">
+                <h4 className="text-xl font-semibold text-white">Integração Cannabis & Nefrologia</h4>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Núcleo principal do MedCann Lab. Protocolos de prescrição AEC combinam a avaliação clínica IMRE renal, bibliografia validada e o
+                  monitoramento contínuo da função renal para gerar planos terapêuticos individualizados.
+                </p>
+              </div>
+              <ul className="space-y-2 text-sm text-slate-300/90">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-300 mt-0.5" />
+                  <span>ACP completa pela IA residente + validação clínica supervisionada.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-300 mt-0.5" />
+                  <span>Estratificação KDIGO + espectro TEZ para correlacionar DRC e neurociências.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-300 mt-0.5" />
+                  <span>Planos terapêuticos alimentam a pós-graduação e o prontuário clínico.</span>
+                </li>
+              </ul>
+              <div className="flex flex-wrap gap-2 mt-auto">
+                <button
+                  onClick={() => navigate('/app/library?collection=protocolos&protocol=medcannlab-nefro')}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-green-600 hover:bg-green-500 transition-colors"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Abrir documentação
+                </button>
+                <button
+                  onClick={() =>
+                    handleOpenIA(
+                      'Nôa, aplicar o protocolo MedCann Lab de integração cannabis e nefrologia e gerar o plano terapêutico individualizado correspondente.'
+                    )
+                  }
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-green-100 border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 transition-colors"
+                >
+                  <Brain className="w-4 h-4" />
+                  Aplicar com IA residente
+                </button>
+              </div>
+            </article>
+
+            <article className="rounded-xl border border-blue-500/30 bg-slate-900/60 p-5 flex flex-col gap-4 shadow-lg">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-1 text-[11px] font-semibold rounded-md bg-purple-500/20 border border-purple-400/40 text-purple-200">
+                    Consulta pública
+                  </span>
+                  <span className="px-2 py-1 text-[11px] font-semibold rounded-md bg-slate-800 border border-slate-700 text-slate-300">
+                    MedCannLab Research Hub
+                  </span>
+                </div>
+                <h4 className="text-xl font-semibold text-white">Protocolo de Saúde Renal com Cannabis Medicinal</h4>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Evolução do Cidade Amiga dos Rins. Consolida bibliografia renal, avaliação clínica inicial dedicada, fluxos de diagnóstico DRC/TEZ e
+                  diretrizes para planos terapêuticos personalizados utilizando cannabis medicinal.
+                </p>
+              </div>
+              <ul className="space-y-2 text-sm text-slate-300/90">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-300 mt-0.5" />
+                  <span>Bibliografia curada na base de conhecimento + pads didáticos da pós-graduação.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-300 mt-0.5" />
+                  <span>Fluxo unificado para gerar relatórios IMRE e sugerir planos individualizados.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-300 mt-0.5" />
+                  <span>Discussão colaborativa com consultores, preceptores e alunos.</span>
+                </li>
+              </ul>
+              <div className="flex flex-wrap gap-2 mt-auto">
+                <button
+                  onClick={() => navigate('/app/library?draft=protocolo-renal-medcannlab')}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Abrir documento base
+                </button>
+                <button
+                  onClick={() =>
+                    handleOpenForum('Protocolo MedCannLab de saúde renal com cannabis medicinal')
+                  }
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-blue-100 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
+                >
+                  <MessageSquarePlus className="w-4 h-4" />
+                  Debater no fórum
+                </button>
+                <button
+                  onClick={() =>
+                    handleOpenIA(
+                      'Nôa, registrar minha contribuição para o protocolo MedCannLab de saúde renal com cannabis medicinal.'
+                    )
+                  }
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-purple-100 border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 transition-colors"
+                >
+                  <Brain className="w-4 h-4" />
+                  Registrar com IA residente
+                </button>
+              </div>
+            </article>
           </div>
         </div>
 
@@ -380,6 +567,130 @@ const MedCannLab: React.FC = () => {
                 </li>
               </ul>
             </div>
+          </div>
+        </div>
+
+        {/* Integrações e Conexões */}
+        <div className="bg-slate-800 rounded-xl p-6 mb-8 border border-slate-700">
+          <h3 className="text-2xl font-bold text-white mb-6">Integrações e Conexões</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <article className="rounded-xl border border-teal-500/30 bg-teal-500/5 p-5 flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h4 className="text-xl font-semibold text-white">Pós-Graduação Cannabis Medicinal</h4>
+                  <p className="text-sm text-teal-100 mt-2">
+                    Conteúdo do Dr. Eduardo Faveret alimenta os protocolos clínicos e a construção colaborativa dos planos terapêuticos individualizados.
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-teal-500/20 border border-teal-400/30 flex items-center justify-center">
+                  <GraduationCap className="w-6 h-6 text-teal-300" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-center text-xs text-teal-100">
+                <div className="bg-slate-900/40 rounded-lg p-3 border border-teal-400/20">
+                  <p className="text-2xl font-bold text-white">124</p>
+                  <p className="mt-1 uppercase tracking-[0.2em]">Pacientes</p>
+                </div>
+                <div className="bg-slate-900/40 rounded-lg p-3 border border-teal-400/20">
+                  <p className="text-2xl font-bold text-white">856</p>
+                  <p className="mt-1 uppercase tracking-[0.2em]">Alunos</p>
+                </div>
+                <div className="bg-slate-900/40 rounded-lg p-3 border border-teal-400/20">
+                  <p className="text-2xl font-bold text-white">3</p>
+                  <p className="mt-1 uppercase tracking-[0.2em]">Estudos</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/app/ensino/profissional/pos-graduacao-cannabis')}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-teal-600 hover:bg-teal-500 transition-colors self-start"
+              >
+                Acessar curso
+              </button>
+            </article>
+          </div>
+        </div>
+
+        {/* Meus Estudos */}
+        <div className="bg-slate-800 rounded-xl p-6 mb-8 border border-slate-700">
+          <div className="flex items-start justify-between gap-3 mb-6">
+            <div>
+              <h3 className="text-2xl font-bold text-white">🔬 Meus Estudos</h3>
+              <p className="text-slate-300 text-sm md:text-base">
+                Acompanhe os estudos em andamento no MedCann Lab. Os achados retroalimentam os planos terapêuticos e a base de conhecimento da IA residente.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/app/pesquisa/profissional/dashboard')}
+              className="px-4 py-2 rounded-lg font-semibold text-white bg-primary-600 hover:bg-primary-500 transition-colors"
+            >
+              Ver todos (6)
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {researchStudies.map(study => (
+              <article key={study.id} className="rounded-xl border border-slate-700 bg-slate-900/60 p-5 shadow-md">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div>
+                    <h4 className="text-lg font-semibold text-white">{study.title}</h4>
+                    <span className="text-xs px-2 py-1 rounded-md bg-blue-500/20 border border-blue-400/30 text-blue-200">
+                      {study.status}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-300 leading-relaxed mb-4">{study.description}</p>
+                <div className="grid grid-cols-2 gap-3 text-xs text-slate-400 mb-4">
+                  <div>
+                    <span className="block text-slate-500 uppercase tracking-[0.2em] mb-1">Participantes</span>
+                    <span className="text-white font-semibold">{study.participants}</span>
+                  </div>
+                  <div>
+                    <span className="block text-slate-500 uppercase tracking-[0.2em] mb-1">Período</span>
+                    <span className="text-white font-semibold">
+                      {new Date(study.start).toLocaleDateString('pt-BR')} – {new Date(study.end).toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+                    <span>Progresso</span>
+                    <span className="text-white font-semibold">{study.progress}%</span>
+                  </div>
+                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                    <div
+                      className="h-full bg-gradient-to-r from-primary-500 to-green-500"
+                      style={{ width: `${study.progress}%` }}
+                    />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="mt-4 text-right">
+            <button
+              onClick={() => navigate('/app/pesquisa/profissional/dashboard?filter=concluidos')}
+              className="text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors underline"
+            >
+              Ver estudos concluídos
+            </button>
+          </div>
+        </div>
+
+        {/* CTA final */}
+        <div className="bg-gradient-to-r from-blue-600/20 via-cyan-600/20 to-emerald-500/20 border border-blue-500/30 rounded-xl p-6 mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-2">Cidade Amiga dos Rins & MedCann Lab</h3>
+              <p className="text-slate-200 text-sm md:text-base max-w-3xl">
+                A integração entre a pesquisa MedCann Lab e o programa Cidade Amiga dos Rins conecta clínica, ensino e pesquisa em um ciclo contínuo de
+                aprendizado. Acesse o programa para acompanhar cronogramas, indicadores e debates sobre novos protocolos.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/app/pesquisa/profissional/cidade-amiga-dos-rins')}
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors"
+            >
+              🌍 Explorar Cidade Amiga dos Rins
+            </button>
           </div>
         </div>
 

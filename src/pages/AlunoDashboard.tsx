@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
-import { 
-  ArrowLeft, 
-  GraduationCap, 
-  BookOpen, 
-  Heart, 
-  Brain, 
-  MessageCircle, 
+import {
+  ArrowLeft,
+  GraduationCap,
+  BookOpen,
+  Heart,
+  Brain,
+  MessageCircle,
   Calendar,
   TrendingUp,
   Clock,
@@ -31,6 +31,8 @@ import {
   Trash2,
   Link as ExternalLink,
   Menu as LayoutDashboard,
+  Database,
+  Lightbulb
 } from 'lucide-react'
 import { useNoaPlatform } from '../contexts/NoaPlatformContext'
 import NoaConversationalInterface from '../components/NoaConversationalInterface'
@@ -95,18 +97,19 @@ const secondaryGradient = 'linear-gradient(135deg, #1a365d 0%, #274a78 100%)'
 const goldenGradient = 'linear-gradient(135deg, #FFD33D 0%, #FFAA00 100%)'
 const dangerGradient = 'linear-gradient(135deg, #FF5F6D 0%, #FFC371 100%)'
 
-const sidebarBaseButton = 'flex items-center space-x-3 p-3 rounded-lg w-full text-left transition-all font-medium'
+const tabBaseButton =
+  'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap'
 
-const getSidebarButtonStyles = (active: boolean, gradient?: string) => {
+const getTabButtonStyles = (active: boolean, gradient?: string) => {
   if (gradient) {
     return {
-      className: `${sidebarBaseButton} text-white shadow-md`,
+      className: `${tabBaseButton} text-white shadow-md`,
       style: { background: gradient, border: '1px solid rgba(0,0,0,0.05)' }
     }
   }
 
   return {
-    className: `${sidebarBaseButton} ${active ? 'text-white shadow-lg' : 'text-[#C8D6E5]'}`,
+    className: `${tabBaseButton} ${active ? 'text-white shadow-lg' : 'text-[#C8D6E5]'}`,
     style: active
       ? { background: accentGradient, border: '1px solid rgba(0,193,106,0.35)' }
       : { background: 'rgba(12, 34, 54, 0.6)', border: '1px solid rgba(0,193,106,0.08)' }
@@ -133,6 +136,24 @@ const AlunoDashboard: React.FC = () => {
   const [selectedSlideId, setSelectedSlideId] = useState<string | undefined>(undefined)
   const [mainCourse, setMainCourse] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+
+  const navItems: Array<{
+    id: StudentTab
+    label: string
+    icon: React.ComponentType<{ className?: string }>
+    gradient?: string
+  }> = useMemo(
+    () => [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'redes-sociais', label: 'Redes Sociais', icon: Share2 },
+      { id: 'noticias', label: 'Notícias', icon: FileText },
+      { id: 'simulacoes', label: 'Simulações', icon: Stethoscope },
+      { id: 'teste', label: 'Teste de Nivelamento', icon: Activity },
+      { id: 'biblioteca', label: 'Biblioteca', icon: BookOpen },
+      { id: 'forum', label: 'Fórum Cann Matrix', icon: MessageCircle }
+    ],
+    []
+  )
 
   const validTabs = useMemo<StudentTab[]>(
     () => ['dashboard', 'redes-sociais', 'noticias', 'simulacoes', 'teste', 'biblioteca', 'forum'],
@@ -338,135 +359,52 @@ const AlunoDashboard: React.FC = () => {
     >
       {/* Header */}
       <div
-        className="p-6"
-        style={{ background: 'linear-gradient(135deg, rgba(10,25,47,0.95) 0%, rgba(26,54,93,0.9) 55%, rgba(45,90,61,0.85) 100%)', borderBottom: '1px solid rgba(0,193,106,0.18)' }}
+        className="px-6 py-8"
+        style={{
+          background:
+            'linear-gradient(135deg, rgba(10,25,47,0.95) 0%, rgba(26,54,93,0.9) 55%, rgba(45,90,61,0.85) 100%)',
+          borderBottom: '1px solid rgba(0,193,106,0.18)'
+        }}
       >
-        <div className="flex items-center justify-between stack-tablet">
-          <div className="flex items-center space-x-4 stack-mobile">
-            <button
-              className="flex items-center space-x-2 text-[#C8D6E5] hover:text-white transition-colors w-full md:w-auto justify-center"
-              style={{ background: 'rgba(12,34,54,0.45)', border: '1px solid rgba(0,193,106,0.1)', borderRadius: '10px', padding: '0.6rem 1rem' }}
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Voltar</span>
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Dashboard do Aluno</h1>
-              <p className="text-slate-200/80">Área de Ensino - {mainCourse.title}</p>
-            </div>
-          </div>
-          
-          {/* Student Profile */}
-          <div className="flex items-center space-x-3 px-4 py-3 rounded-lg stack-mobile" style={{ background: 'rgba(12,34,54,0.7)', border: '1px solid rgba(0,193,106,0.12)' }}>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: accentGradient }}>
-              <GraduationCap className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-white">Aluno</p>
-              <p className="text-sm text-slate-200/80">Pós-Graduação</p>
-            </div>
-          </div>
+        <div className="max-w-7xl mx-auto space-y-3">
+          <h1 className="text-2xl md:text-3xl font-bold text-white">Dashboard do Aluno</h1>
+          <p className="text-slate-200/80 text-sm md:text-base">
+            Área de Ensino • {mainCourse?.title ?? 'Pós-Graduação em Cannabis Medicinal'}
+          </p>
         </div>
       </div>
 
-      <div className="flex gap-6 stack-desktop">
-        {/* Sidebar */}
-        <div className="responsive-sidebar-panel lg:min-h-screen" style={{ background: 'rgba(7,22,41,0.85)', borderRight: '1px solid rgba(0,193,106,0.12)' }}>
-          <div className="p-4 sm:p-6 space-y-6">
-            <nav className="space-y-2">
-              {(() => {
-                const styles = getSidebarButtonStyles(activeTab === 'dashboard')
+      <div className="px-4 py-6 md:px-6 md:py-8">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {navItems.map(item => {
+                const styles = getTabButtonStyles(activeTab === item.id, item.gradient)
+                const Icon = item.icon
                 return (
-                  <button onClick={() => handleTabChange('dashboard')} className={styles.className} style={styles.style}>
-                    <LayoutDashboard className="w-5 h-5" />
-                    <span>Dashboard</span>
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabChange(item.id)}
+                    className={styles.className}
+                    style={styles.style}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{item.label}</span>
                   </button>
                 )
-              })()}
-              {(() => {
-                const styles = getSidebarButtonStyles(activeTab === 'redes-sociais')
-                return (
-                  <button onClick={() => handleTabChange('redes-sociais')} className={styles.className} style={styles.style}>
-                    <Share2 className="w-5 h-5" />
-                    <span>Redes Sociais</span>
-                  </button>
-                )
-              })()}
-              {(() => {
-                const styles = getSidebarButtonStyles(activeTab === 'noticias')
-                return (
-                  <button onClick={() => handleTabChange('noticias')} className={styles.className} style={styles.style}>
-                    <FileText className="w-5 h-5" />
-                    <span>Notícias</span>
-                  </button>
-                )
-              })()}
-              {(() => {
-                const styles = getSidebarButtonStyles(activeTab === 'simulacoes')
-                return (
-                  <button onClick={() => handleTabChange('simulacoes')} className={styles.className} style={styles.style}>
-                    <Stethoscope className="w-5 h-5" />
-                    <span>Simulações</span>
-                  </button>
-                )
-              })()}
-              {(() => {
-                const styles = getSidebarButtonStyles(activeTab === 'teste')
-                return (
-                  <button onClick={() => handleTabChange('teste')} className={styles.className} style={styles.style}>
-                    <Activity className="w-5 h-5" />
-                    <span>Teste de Nivelamento</span>
-                  </button>
-                )
-              })()}
-              {(() => {
-                const styles = getSidebarButtonStyles(activeTab === 'biblioteca')
-                return (
-                  <button onClick={() => handleTabChange('biblioteca')} className={styles.className} style={styles.style}>
-                    <BookOpen className="w-5 h-5" />
-                    <span>Biblioteca</span>
-                  </button>
-                )
-              })()}
-              {(() => {
-                const styles = getSidebarButtonStyles(activeTab === 'forum')
-                return (
-                  <button onClick={() => handleTabChange('forum')} className={styles.className} style={styles.style}>
-                    <MessageCircle className="w-5 h-5" />
-                    <span>Fórum Cann Matrix</span>
-                  </button>
-                )
-              })()}
-            </nav>
-
-            {/* IA Residente Mentora */}
-            <div className="p-4 rounded-lg" style={{ background: 'rgba(0,193,106,0.12)', border: '1px solid rgba(0,193,106,0.35)', boxShadow: '0 12px 28px rgba(0,193,106,0.15)' }}>
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: accentGradient }}>
-                  <Brain className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-white text-sm">Nôa Esperança</h4>
-                  <p className="text-xs text-slate-300">Mentora Individualizada</p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  openChat()
-                }}
-                className="w-full text-white px-4 py-2 rounded-lg font-medium transition-transform transform hover:scale-[1.02] text-sm flex items-center justify-center space-x-2"
-                style={{ background: accentGradient }}
-              >
-                <Zap className="w-4 h-4" />
-                <span>Conversar com Nôa</span>
-              </button>
+              })}
             </div>
+            <button
+              onClick={() => openChat()}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white shadow-lg transition-transform transform hover:scale-[1.02]"
+              style={{ background: accentGradient }}
+            >
+              <Brain className="w-4 h-4" />
+              <span>Conversar com Nôa</span>
+            </button>
           </div>
-        </div>
 
-        {/* Main Content */}
-        <div className="flex-1 p-4 md:p-6 overflow-x-hidden w-full">
-          <div className="max-w-6xl mx-auto w-full overflow-x-hidden">
+          <div className="max-w-6xl mx-auto w-full overflow-x-hidden space-y-8">
             {/* Dashboard Principal */}
             {activeTab === 'dashboard' && (
               <>
@@ -1044,126 +982,135 @@ const AlunoDashboard: React.FC = () => {
             {/* Biblioteca */}
             {activeTab === 'biblioteca' && (
               <div className="space-y-6">
-                <div className="rounded-xl p-6" style={surfaceStyle}>
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <section className="rounded-xl p-6" style={{ ...surfaceStyle, border: '1px solid rgba(0,193,106,0.18)' }}>
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div>
                       <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
                         <BookOpen className="w-6 h-6 text-[#00F5A0]" />
                         <span>Biblioteca Acadêmica</span>
                       </h2>
-                      <p className="text-slate-200/85 text-sm md:text-base">
-                        Consulte artigos, protocolos clínicos, roteiros de aula e materiais complementares que sustentam a pós-graduação. Todo o acervo está integrado à base de conhecimento utilizada pela IA residente.
+                      <p className="text-slate-200/85 text-sm md:text-base leading-relaxed">
+                        Consulte artigos, protocolos clínicos, roteiros de aula e materiais complementares que sustentam a pós-graduação. Todo o acervo está
+                        integrado à base de conhecimento utilizada pela IA residente.
                       </p>
                     </div>
                     <button
                       onClick={() => navigate('/app/library')}
-                      className="px-5 py-3 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.03]"
+                      className="inline-flex items-center gap-2 px-5 py-3 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.03]"
                       style={{ background: accentGradient }}
                     >
+                      <BookOpen className="w-4 h-4" />
                       Abrir Biblioteca
                     </button>
                   </div>
-                </div>
+                </section>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="rounded-xl p-6 space-y-3" style={{ ...cardStyle, border: '1px solid rgba(0,193,106,0.18)' }}>
-                    <div className="flex items-center space-x-3">
+                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <article className="rounded-xl p-6 space-y-3" style={{ ...cardStyle, border: '1px solid rgba(0,193,106,0.18)' }}>
+                    <div className="flex items-center gap-3">
                       <div className="p-2 rounded-lg" style={{ background: secondaryGradient }}>
-                        <Brain className="w-5 h-5 text-white" />
+                        <Database className="w-5 h-5 text-white" />
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-white">Base de Conhecimento</h3>
-                        <p className="text-xs text-slate-300/80">Documentos vinculados à IA</p>
+                        <p className="text-xs text-slate-300/80 uppercase tracking-[0.28em]">Documentos vinculados à IA</p>
                       </div>
                     </div>
-                    <p className="text-sm text-slate-200/85">
-                      Explore relatórios clínicos, white papers e normas técnicas que alimentam a inteligência residente. Ideal para preparar aulas ou fundamentar estudos de caso.
+                    <p className="text-sm text-slate-200/85 leading-relaxed">
+                      Explore relatórios clínicos, white papers e normas técnicas que alimentam a inteligência residente. Ideal para fundamentar estudos de caso e
+                      preparar aulas alinhadas à pós-graduação.
                     </p>
                     <button
-                      onClick={() => navigate('/app/library?filter=ai-linked')}
-                      className="w-full px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
+                      onClick={() => navigate('/app/library?filter=knowledge-base')}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
                       style={{ background: 'linear-gradient(135deg, #1a365d 0%, #274a78 100%)' }}
                     >
                       Ver Documentos Vinculados
+                      <ExternalLink className="w-4 h-4" />
                     </button>
-                  </div>
+                  </article>
 
-                  <div className="rounded-xl p-6 space-y-3" style={{ ...cardStyle, border: '1px solid rgba(0,193,106,0.18)' }}>
-                    <div className="flex items-center space-x-3">
+                  <article className="rounded-xl p-6 space-y-3" style={{ ...cardStyle, border: '1px solid rgba(0,193,106,0.18)' }}>
+                    <div className="flex items-center gap-3">
                       <div className="p-2 rounded-lg" style={{ background: accentGradient }}>
-                        <GraduationCap className="w-5 h-5 text-white" />
+                        <Lightbulb className="w-5 h-5 text-white" />
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-white">Leituras Sugeridas</h3>
-                        <p className="text-xs text-slate-300/80">Curadoria por módulo</p>
+                        <p className="text-xs text-slate-300/80 uppercase tracking-[0.28em]">Curadoria por módulo</p>
                       </div>
                     </div>
-                    <p className="text-sm text-slate-200/85">
-                      Receba recomendações alinhadas ao seu progresso no curso. A IA identifica lacunas e aponta artigos, vídeos e podcasts relevantes.
+                    <p className="text-sm text-slate-200/85 leading-relaxed">
+                      Receba recomendações alinhadas ao seu progresso no curso. A IA identifica lacunas e aponta artigos, vídeos e podcasts relevantes para cada módulo.
                     </p>
                     <button
-                      onClick={() => openChat()}
-                      className="w-full px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
+                      onClick={() => {
+                        openChat()
+                        sendInitialMessage?.('Nôa, pode me indicar leituras sugeridas para o módulo atual da pós-graduação?')
+                      }}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
                       style={{ background: 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)' }}
                     >
                       Pedir Sugestões à IA
+                      <MessageCircle className="w-4 h-4" />
                     </button>
-                  </div>
+                  </article>
 
-                  <div className="rounded-xl p-6 space-y-3" style={{ ...cardStyle, border: '1px solid rgba(0,193,106,0.18)' }}>
-                    <div className="flex items-center space-x-3">
+                  <article className="rounded-xl p-6 space-y-3" style={{ ...cardStyle, border: '1px solid rgba(0,193,106,0.18)' }}>
+                    <div className="flex items-center gap-3">
                       <div className="p-2 rounded-lg" style={{ background: dangerGradient }}>
-                        <FileText className="w-5 h-5 text-white" />
+                        <Download className="w-5 h-5 text-white" />
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-white">Materiais Complementares</h3>
-                        <p className="text-xs text-slate-300/80">Planilhas, roteiros e slides</p>
+                        <p className="text-xs text-slate-300/80 uppercase tracking-[0.28em]">Planilhas, roteiros e slides</p>
                       </div>
                     </div>
-                    <p className="text-sm text-slate-200/85">
-                      Faça download de checklists clínicos, roteiros de entrevista, simulados e slides base que auxiliam nas práticas supervisionadas.
+                    <p className="text-sm text-slate-200/85 leading-relaxed">
+                      Faça download de checklists clínicos, roteiros de entrevista, simulados e slides base que auxiliam nas práticas supervisionadas e atividades de sala invertida.
                     </p>
                     <button
                       onClick={() => navigate('/app/library?filter=downloads')}
-                      className="w-full px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition-transform transform hover:scale-[1.02]"
                       style={{ background: 'linear-gradient(135deg, #FF5F6D 0%, #FFC371 100%)', color: '#10243D' }}
                     >
                       Acessar Downloads
+                      <ExternalLink className="w-4 h-4" />
                     </button>
-                  </div>
-                </div>
+                  </article>
+                </section>
 
-                <div className="rounded-xl p-6" style={{ ...cardStyle, border: '1px solid rgba(0,193,106,0.18)' }}>
+                <section className="rounded-xl p-6" style={{ ...cardStyle, border: '1px solid rgba(0,193,106,0.18)' }}>
                   <h3 className="text-xl font-semibold text-white mb-4">Coleções em Destaque</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg" style={{ background: 'rgba(12,34,54,0.72)', border: '1px solid rgba(0,193,106,0.14)' }}>
-                      <h4 className="text-lg font-semibold text-white mb-2">Arte da Entrevista Clínica</h4>
-                      <p className="text-sm text-slate-300/85 mb-3">
-                        Casos, transcrições comentadas, fichas IMRE e mapas de aprendizagem para cada eixo da metodologia.
+                  <div className="space-y-4 text-sm text-slate-300/85">
+                    <div>
+                      <p className="font-semibold text-white">Arte da Entrevista Clínica</p>
+                      <p className="mt-1 leading-relaxed">
+                        Casos, transcrições comentadas, fichas IMRE e mapas de aprendizagem para cada eixo da metodologia desenvolvida pelo Dr. Ricardo Valença.
                       </p>
                       <button
                         onClick={() => navigate('/app/library?collection=aec')}
-                        className="px-4 py-2 rounded-lg font-semibold text-white"
-                        style={{ background: secondaryGradient }}
+                        className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-rose-200 hover:text-rose-100 transition-colors"
                       >
                         Ver Coleção AEC
+                        <ExternalLink className="w-3 h-3" />
                       </button>
                     </div>
-                    <div className="p-4 rounded-lg" style={{ background: 'rgba(12,34,54,0.72)', border: '1px solid rgba(0,193,106,0.14)' }}>
-                      <h4 className="text-lg font-semibold text-white mb-2">Cannabis & Função Renal</h4>
-                      <p className="text-sm text-slate-300/85 mb-3">
-                        Estudos clínicos, revisões sistemáticas e protocolos correlacionados à pesquisa MedCannLab.
+                    <div>
+                      <p className="font-semibold text-white">Cannabis & Função Renal</p>
+                      <p className="mt-1 leading-relaxed">
+                        Estudos clínicos, revisões sistemáticas e protocolos correlacionados à pesquisa MedCannLab sobre nefrologia e terapia canabinoide.
                       </p>
                       <button
                         onClick={() => navigate('/app/library?collection=medcannlab')}
-                        className="px-4 py-2 rounded-lg font-semibold text-white"
-                        style={{ background: accentGradient }}
+                        className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-emerald-200 hover:text-emerald-100 transition-colors"
                       >
                         Explorar Material
+                        <ExternalLink className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
-                </div>
+                </section>
               </div>
             )}
 

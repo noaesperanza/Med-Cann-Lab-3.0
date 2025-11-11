@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronRight, Loader2, MessageCircle, Send, Users } from 'lucide-react'
 
@@ -23,7 +23,9 @@ const PatientDoctorChat: React.FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const roomIdParam = new URLSearchParams(location.search).get('roomId')
-  const origin = new URLSearchParams(location.search).get('origin')
+  const searchParams = new URLSearchParams(location.search)
+  const origin = searchParams.get('origin')
+  const startParam = searchParams.get('start')
 
   const isImpersonatingPatient = user?.type === 'admin' && origin === 'patient-dashboard'
 
@@ -31,6 +33,7 @@ const PatientDoctorChat: React.FC = () => {
   const [participants, setParticipants] = useState<ParticipantSummary[]>([])
   const [participantsLoading, setParticipantsLoading] = useState(false)
   const [messageInput, setMessageInput] = useState('')
+  const hasTriggeredStartRef = useRef(false)
 
   const {
     inbox,
@@ -124,6 +127,33 @@ const PatientDoctorChat: React.FC = () => {
       void markRoomAsRead(activeRoomId)
     }
   }, [activeRoomId, markRoomAsRead, isImpersonatingPatient])
+
+  useEffect(() => {
+    if (hasTriggeredStartRef.current) return
+    if (!user || !activeRoomId || isImpersonatingPatient) return
+    if (startParam !== 'avaliacao-inicial') return
+
+    const triggerAssessment = async () => {
+      try {
+        await sendMessage(activeRoomId, user.id, 'Iniciar avaliação clínica inicial IMRE')
+        hasTriggeredStartRef.current = true
+        const params = new URLSearchParams(location.search)
+        params.delete('start')
+        const searchString = params.toString()
+        navigate(
+          {
+            pathname: location.pathname,
+            search: searchString ? `?${searchString}` : ''
+          },
+          { replace: true }
+        )
+      } catch (error) {
+        console.error('Erro ao iniciar avaliação clínica via chat:', error)
+      }
+    }
+
+    void triggerAssessment()
+  }, [activeRoomId, isImpersonatingPatient, location.pathname, location.search, navigate, sendMessage, startParam, user])
 
   if (!user) {
     return (

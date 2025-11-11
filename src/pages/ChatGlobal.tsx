@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { UserType } from '../lib/userTypes'
+import { useNoaPlatform } from '../contexts/NoaPlatformContext'
 
 // Declaração do tipo para BroadcastChannel
 declare global {
@@ -206,6 +207,8 @@ const BASE_DEBATES: DebateConfig[] = [
 const ChatGlobal: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { sendInitialMessage } = useNoaPlatform()
   const [activeTab, setActiveTab] = useState<'chat' | 'forum' | 'friends'>('chat')
   const [activeChannel, setActiveChannel] = useState('general')
   const [message, setMessage] = useState('')
@@ -225,6 +228,8 @@ const ChatGlobal: React.FC = () => {
   const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const [preselectedForumTopic, setPreselectedForumTopic] = useState<string | null>(null)
+  const promptHandledRef = useRef(false)
 
   const headerGradient = 'linear-gradient(135deg, #0A192F 0%, #1a365d 55%, #2d5a3d 100%)'
   const accentGradient = 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)'
@@ -388,6 +393,38 @@ const ChatGlobal: React.FC = () => {
     loadChannelsDataOffline()
     loadOnlineUsersOffline()
   }, [activeChannel]) // Mantém apenas activeChannel como dependência
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const tabParam = params.get('tab')
+    if (tabParam === 'forum' || tabParam === 'friends' || tabParam === 'chat') {
+      setActiveTab(tabParam)
+    }
+
+    const topicParam = params.get('topic')
+    if (topicParam) {
+      setPreselectedForumTopic(topicParam)
+    } else {
+      setPreselectedForumTopic(null)
+    }
+
+    const promptParam = params.get('prompt')
+    if (promptParam && !promptHandledRef.current) {
+      sendInitialMessage?.(promptParam)
+      promptHandledRef.current = true
+      params.delete('prompt')
+      const newSearch = params.toString()
+      navigate(
+        {
+          pathname: location.pathname,
+          search: newSearch ? `?${newSearch}` : ''
+        },
+        { replace: true }
+      )
+    } else if (!promptParam) {
+      promptHandledRef.current = false
+    }
+  }, [location.pathname, location.search, navigate, sendInitialMessage])
 
   // Configurar tempo real para mensagens
   const setupRealtimeSubscription = () => {
@@ -1519,6 +1556,40 @@ const ChatGlobal: React.FC = () => {
               </button>
             </div>
           </div>
+
+          {preselectedForumTopic && (
+            <div className="bg-slate-800/80 border border-blue-500/30 rounded-lg p-5 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-blue-300 uppercase tracking-[0.32em]">Protocolo em discussão</p>
+                  <h3 className="text-lg font-semibold text-white">{preselectedForumTopic}</h3>
+                  <p className="text-sm text-slate-300 mt-2">
+                    Tema encaminhado pela área de protocolos clínicos. Contribua com evidências, ajustes metodológicos e relatos de aplicação prática.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPreselectedForumTopic(null)}
+                  className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSearchTerm(preselectedForumTopic)}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors"
+                >
+                  Buscar debates relacionados
+                </button>
+                <button
+                  onClick={() => navigate('/app/chat?tab=forum')}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-blue-100 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
+                >
+                  Ver fórum completo
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Grid Layout: Debates + Coluna de Notícias */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">

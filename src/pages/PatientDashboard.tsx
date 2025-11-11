@@ -28,6 +28,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useUserView } from '../contexts/UserViewContext'
 import { clinicalReportService, ClinicalReport } from '../lib/clinicalReportService'
 import { supabase } from '../lib/supabase'
+import ShareReportModal from '../components/ShareReportModal'
 
 interface Appointment {
   id: string
@@ -216,6 +217,9 @@ const PatientDashboard: React.FC = () => {
   const [patientPrescriptions, setPatientPrescriptions] = useState<PatientPrescriptionSummary[]>([])
   const [patientPrescriptionsLoading, setPatientPrescriptionsLoading] = useState(false)
   const [quizResponses, setQuizResponses] = useState<Record<string, { selectedOptionId?: string; status?: 'correct' | 'incorrect' }>>({})
+  const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [shareModalReportId, setShareModalReportId] = useState<string | null>(null)
+  const [shareModalReportName, setShareModalReportName] = useState<string>('Relatório clínico')
 
   const normalizeAccessList = (raw: unknown): string[] | null => {
     if (!raw) return null
@@ -676,6 +680,33 @@ const PatientDashboard: React.FC = () => {
     }))
   }
 
+  const latestClinicalReport = reports.length ? reports[0] : null
+
+  const getReportStatusLabel = (status: ClinicalReport['status']) => {
+    switch (status) {
+      case 'draft':
+        return 'Rascunho'
+      case 'completed':
+        return 'Concluído'
+      case 'reviewed':
+        return 'Revisado'
+      default:
+        return 'Em andamento'
+    }
+  }
+
+  const handleShareReport = (report: ClinicalReport) => {
+    setShareModalReportId(report.id)
+    const readableName =
+      report.report_type === 'initial_assessment'
+        ? 'Avaliação clínica inicial'
+        : report.report_type === 'follow_up'
+          ? 'Relatório de acompanhamento'
+          : 'Relatório clínico'
+    setShareModalReportName(readableName)
+    setShareModalOpen(true)
+  }
+
   // Renderizar Dashboard Principal
   const renderDashboard = () => {
     const activePrescriptions = patientPrescriptions.filter(prescription => prescription.status === 'active')
@@ -867,6 +898,76 @@ const PatientDashboard: React.FC = () => {
             </div>
           </div>
         </button>
+
+        {/* Compartilhar Relatório Clínico */}
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5 flex flex-col justify-between">
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-purple-300" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.35em] text-purple-300">Relatório clínico</p>
+                  <h3 className="text-lg font-semibold text-white">
+                    {latestClinicalReport ? 'Compartilhe com sua equipe' : 'Gerar relatório inicial'}
+                  </h3>
+                </div>
+                {latestClinicalReport && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-purple-500/10 border border-purple-500/30 text-[11px] font-semibold text-purple-200">
+                    {getReportStatusLabel(latestClinicalReport.status)}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                {latestClinicalReport
+                  ? 'A IA residente gera seu relatório clínico com base na avaliação inicial. Compartilhe com o profissional quando estiver pronto.'
+                  : 'Comece sua jornada com a avaliação clínica inicial aplicada pela IA residente e gere o relatório base do eixo clínica.'}
+              </p>
+              {latestClinicalReport && (
+                <p className="text-xs text-slate-500">
+                  Gerado em{' '}
+                  {latestClinicalReport.generated_at
+                    ? new Date(latestClinicalReport.generated_at).toLocaleDateString('pt-BR')
+                    : 'data indisponível'}
+                  . Você controla o compartilhamento com os profissionais.
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="mt-4 flex flex-col sm:flex-row gap-2">
+            {latestClinicalReport ? (
+              <>
+                <button
+                  onClick={() => handleShareReport(latestClinicalReport)}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600/80 to-pink-600/80 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-semibold transition-colors"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Compartilhar com profissional
+                </button>
+                <button
+                  onClick={() =>
+                    navigate('/app/clinica/paciente/chat-profissional?origin=patient-dashboard&start=avaliacao-inicial')
+                  }
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-700 text-slate-200 hover:border-purple-400/60 hover:text-purple-200 text-sm font-semibold transition-colors"
+                >
+                  <FileText className="w-4 h-4" />
+                  Ver relatório completo
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() =>
+                  navigate('/app/clinica/paciente/chat-profissional?origin=patient-dashboard&start=avaliacao-inicial')
+                }
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary-500 hover:bg-primary-400 text-white text-sm font-semibold transition-colors"
+              >
+                <ArrowRight className="w-4 h-4" />
+                Iniciar avaliação clínica
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Card de Orientações para Consulta */}
@@ -1542,6 +1643,17 @@ const PatientDashboard: React.FC = () => {
           {activeTab === 'conteudo' && renderConteudoEducacional()}
         </div>
       </div>
+      {shareModalOpen && shareModalReportId && user?.id && (
+        <ShareReportModal
+          reportId={shareModalReportId}
+          patientId={user.id}
+          reportName={shareModalReportName}
+          onClose={() => setShareModalOpen(false)}
+          onShareSuccess={() => {
+            void loadPatientData()
+          }}
+        />
+      )}
     </div>
   )
 }
