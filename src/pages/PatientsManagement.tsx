@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import IntegrativePrescriptions from '../components/IntegrativePrescriptions'
@@ -58,6 +58,7 @@ interface Evolution {
 
 const PatientsManagement: React.FC = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
@@ -82,6 +83,23 @@ const PatientsManagement: React.FC = () => {
   const [loadingEvolutions, setLoadingEvolutions] = useState(false)
   const [showNewPatientMenu, setShowNewPatientMenu] = useState(false)
   const [openingChat, setOpeningChat] = useState(false)
+
+  const navigationState = location.state as { from?: string } | null
+  const originPath = navigationState?.from
+
+  const handleBack = useCallback(() => {
+    if (originPath) {
+      navigate(originPath)
+      return
+    }
+
+    if (window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+
+    navigate('/app/clinica/profissional/dashboard')
+  }, [navigate, originPath])
 
   // Fechar menu ao clicar fora
   useEffect(() => {
@@ -446,7 +464,7 @@ const PatientsManagement: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate('/app/clinica/profissional/dashboard')}
+                onClick={handleBack}
                 className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
               >
                 <ArrowLeft className="w-5 h-5 text-white" />
@@ -961,7 +979,10 @@ const PatientsManagement: React.FC = () => {
 
                     {activeTab === 'prescription' && (
                       <div className="space-y-4 w-full max-w-full overflow-x-hidden">
-                        <IntegrativePrescriptions />
+                        <IntegrativePrescriptions
+                          patientId={selectedPatient?.id}
+                          patientName={selectedPatient?.name}
+                        />
                       </div>
                     )}
 

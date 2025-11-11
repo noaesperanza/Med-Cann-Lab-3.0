@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Calendar,
@@ -21,7 +21,8 @@ import {
   Video,
   GraduationCap,
   Brain,
-  Zap
+  Zap,
+  Loader2
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useUserView } from '../contexts/UserViewContext'
@@ -45,7 +46,153 @@ interface TherapeuticPlan {
   nextReview: string
 }
 
+interface PatientPrescriptionSummary {
+  id: string
+  title: string
+  rationality: string | null
+  dosage: string | null
+  frequency: string | null
+  status: 'draft' | 'active' | 'completed' | 'suspended' | 'cancelled'
+  issuedAt: string
+  startsAt: string | null
+  endsAt: string | null
+  professionalName: string | null
+  planTitle: string | null
+}
+
+type ResourceType = 'video' | 'article' | 'document' | 'webinar' | 'audio' | 'other'
+
+interface EducationalResource {
+  id: string
+  title: string
+  description: string | null
+  category: string | null
+  resourceType: ResourceType
+  url: string | null
+  publishedAt: string | null
+  audience?: string | null
+  allowedRoles?: string[] | null
+  allowedAxes?: string[] | null
+  visibilityScope?: string | null
+}
+
+const RATIONALITY_LABELS: Record<string, string> = {
+  biomedical: 'Biomédica',
+  traditional_chinese: 'Medicina Tradicional Chinesa',
+  ayurvedic: 'Ayurvédica',
+  homeopathic: 'Homeopática',
+  integrativa: 'Integrativa'
+}
+
+const RESOURCE_TYPE_VISUALS: Record<ResourceType, { label: string; icon: React.ComponentType<{ className?: string }>; accent: string }> = {
+  video: { label: 'Vídeo', icon: Video, accent: 'text-primary-300' },
+  article: { label: 'Artigo', icon: FileText, accent: 'text-emerald-300' },
+  document: { label: 'Documento', icon: FileText, accent: 'text-sky-300' },
+  webinar: { label: 'Webinar', icon: Calendar, accent: 'text-amber-300' },
+  audio: { label: 'Áudio', icon: MessageCircle, accent: 'text-purple-300' },
+  other: { label: 'Recurso', icon: BookOpen, accent: 'text-slate-300' }
+}
+
 const DEFAULT_PROFESSIONAL_EMAILS = ['rrvalenca@gmail.com', 'eduardoscfaveret@gmail.com']
+
+const BASIC_COURSE_HIGHLIGHTS = [
+  {
+    id: 'module-foundations',
+    title: 'Módulo 1 • Fundamentos Clínicos',
+    description: 'Bases científicas da prescrição canabinoide no contexto nefrológico.',
+    icon: Heart,
+    accent: 'text-emerald-300',
+    badge: 'Pós-graduação • Dr. Eduardo Faveret'
+  },
+  {
+    id: 'module-neuro',
+    title: 'Módulo 2 • Neurociência e Sistemas Endocanabinoides',
+    description: 'Integração entre neurofisiologia, prática clínica e evidências.',
+    icon: Brain,
+    accent: 'text-sky-300',
+    badge: 'Módulo básico do curso'
+  },
+  {
+    id: 'module-integrative',
+    title: 'Módulo 3 • Protocolos Integrativos',
+    description: 'Estratégias terapêuticas alinhadas ao plano de cuidado personalizado.',
+    icon: Activity,
+    accent: 'text-amber-300',
+    badge: 'Metodologia AEC'
+  }
+]
+
+const BASIC_MODULE_SNIPPETS = [
+  {
+    id: 'snippet-endocannabinoid',
+    title: 'Como o sistema endocanabinoide protege seus rins',
+    summary:
+      'Explique ao paciente como os receptores CB1 e CB2 atuam no equilíbrio inflamatório e porque ajustes de dose são personalizados.',
+    tag: 'Pós-graduação Dr. Faveret',
+    quiz: {
+      question: 'Qual é o principal papel dos receptores CB2 na proteção renal?',
+      options: [
+        { id: 'A', label: 'Estimular retenção hídrica para manter a filtração glomerular.' },
+        { id: 'B', label: 'Modular processos inflamatórios e fibrose, favorecendo reparo tecidual.' },
+        { id: 'C', label: 'Aumentar diretamente a pressão arterial sistêmica.' },
+        { id: 'D', label: 'Impedir a ação dos receptores CB1 na microcirculação renal.' }
+      ],
+      correctOptionId: 'B',
+      aiFeedback: {
+        correct:
+          'Excelente! Você identificou que o CB2 atua como modulador anti-inflamatório, algo que seus rins agradecem durante o tratamento.',
+        incorrect:
+          'Quase lá. Lembre que o CB2 é nosso aliado quando precisamos controlar inflamação e fibrose nos néfrons. Vamos seguir juntos!'
+      }
+    }
+  },
+  {
+    id: 'snippet-safe-protocols',
+    title: 'Protocolos seguros no início do tratamento',
+    summary:
+      'Descrições claras sobre titulação lenta, acompanhamento laboratorial e sinais de atenção compartilhados com a equipe clínica.',
+    tag: 'Plano terapêutico',
+    quiz: {
+      question: 'Por que recomendamos titulação lenta na primeira fase do uso de canabinoides?',
+      options: [
+        { id: 'A', label: 'Para encurtar o tempo total de tratamento.' },
+        { id: 'B', label: 'Para identificar a menor dose eficaz e monitorar tolerabilidade.' },
+        { id: 'C', label: 'Para evitar a necessidade de exames laboratoriais.' },
+        { id: 'D', label: 'Para reduzir a adesão do paciente e testar sua disciplina.' }
+      ],
+      correctOptionId: 'B',
+      aiFeedback: {
+        correct:
+          'Perfeito! Titulação lenta significa personalização segura: achamos a dose ótima enquanto cuidamos dos marcadores clínicos.',
+        incorrect:
+          'Vamos retomar: titulação lenta permite ajustar a dose com segurança, com base em sintomas e exames. Continuamos juntos!'
+      }
+    }
+  },
+  {
+    id: 'snippet-communication',
+    title: '3 princípios para comunicar o seu cuidado',
+    summary:
+      'Semiose infinita (seu sentido evolui com cada consulta), economia política do significante (suas palavras têm valor) e heterogeneidade enunciativa (seu histórico importa).',
+    tag: 'Arte da Entrevista Clínica',
+    quiz: {
+      question: 'Qual princípio reforça que cada paciente traz múltiplas vozes e contextos à consulta?',
+      options: [
+        { id: 'A', label: 'Semiose infinita' },
+        { id: 'B', label: 'Economia política do significante' },
+        { id: 'C', label: 'Heterogeneidade enunciativa' },
+        { id: 'D', label: 'Ressonância simbólica' }
+      ],
+      correctOptionId: 'C',
+      aiFeedback: {
+        correct:
+          'Muito bem! Heterogeneidade enunciativa lembra que suas experiências, familiares e profissionais co-criam a narrativa clínica.',
+        incorrect:
+          'Boa tentativa. Experimente observar como diferentes vozes aparecem na sua história: é a heterogeneidade enunciativa em ação.'
+      }
+    }
+  }
+]
 
 const PatientDashboard: React.FC = () => {
   const { user } = useAuth()
@@ -63,6 +210,337 @@ const PatientDashboard: React.FC = () => {
   const [therapeuticPlan, setTherapeuticPlan] = useState<TherapeuticPlan | null>(null)
   const [activeTab, setActiveTab] = useState<'dashboard' | 'agendamento' | 'plano' | 'conteudo'>('dashboard')
   const [chatLoading, setChatLoading] = useState(false)
+  const [educationalResources, setEducationalResources] = useState<EducationalResource[]>([])
+  const [educationalLoading, setEducationalLoading] = useState(false)
+  const [educationalError, setEducationalError] = useState<string | null>(null)
+  const [patientPrescriptions, setPatientPrescriptions] = useState<PatientPrescriptionSummary[]>([])
+  const [patientPrescriptionsLoading, setPatientPrescriptionsLoading] = useState(false)
+  const [quizResponses, setQuizResponses] = useState<Record<string, { selectedOptionId?: string; status?: 'correct' | 'incorrect' }>>({})
+
+  const normalizeAccessList = (raw: unknown): string[] | null => {
+    if (!raw) return null
+    if (Array.isArray(raw)) {
+      return raw.map(item => String(item).toLowerCase().trim()).filter(Boolean)
+    }
+    if (typeof raw === 'string') {
+      const trimmed = raw.trim()
+      if (!trimmed.length) return null
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          return parsed.map(item => String(item).toLowerCase().trim()).filter(Boolean)
+        }
+      } catch (err) {
+        // not JSON, fallback to comma-separated string
+      }
+      return trimmed
+        .split(/[;,]/)
+        .map(item => item.trim().toLowerCase())
+        .filter(Boolean)
+    }
+    return null
+  }
+
+  const matchesRolePermission = (roles: string[] | null, effectiveRole: string): boolean => {
+    if (!roles || roles.length === 0) return true
+    const roleToken = effectiveRole.toLowerCase()
+    return roles.some(role => [roleToken, 'all', 'global', 'public', 'paciente', 'patient'].includes(role))
+  }
+
+  const matchesAxisPermission = (axes: string[] | null): boolean => {
+    if (!axes || axes.length === 0) return true
+    const clinicTokens = ['clinica', 'clínica', 'clinical', 'clinical-care', 'eixo-clinica']
+    return axes.some(axis => clinicTokens.includes(axis))
+  }
+
+  const availableProfessionals = [
+    {
+      id: 'eduardo-faveret',
+      name: 'Dr. Eduardo Faveret',
+      role: 'Neurologista Pediátrico',
+      rating: '4.9',
+      excerpt: 'Especialista em Epilepsia e Cannabis Medicinal. Atendimento personalizado com metodologia AEC.',
+      accentClasses: 'bg-emerald-500/20 text-emerald-300',
+      buttonClasses: 'bg-emerald-500 hover:bg-emerald-400',
+      navigateTo: '/app/clinica/paciente/agendamentos?professional=eduardo-faveret'
+    },
+    {
+      id: 'ricardo-valenca',
+      name: 'Dr. Ricardo Valença',
+      role: 'Administrador • Especialista',
+      rating: '5.0',
+      excerpt: 'Coordenador científico. Especialista em Arte da Entrevista Clínica e metodologia IMRE.',
+      accentClasses: 'bg-primary-500/20 text-primary-300',
+      buttonClasses: 'bg-primary-500 hover:bg-primary-400',
+      navigateTo: '/app/clinica/paciente/agendamentos?professional=ricardo-valenca'
+    }
+  ]
+
+  const loadPatientData = async () => {
+    if (!user?.id) return
+
+    setLoadingReports(true)
+    setPatientPrescriptionsLoading(true)
+
+    const patientId = user.id
+
+    try {
+      const patientReports = await clinicalReportService.getPatientReports(patientId)
+      setReports(patientReports)
+    } catch (error) {
+      console.warn('Erro ao buscar relatórios clínicos:', error)
+      setReports([])
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('appointment_date', { ascending: true })
+        .limit(20)
+
+      if (error) {
+        throw error
+      }
+
+      if (data && data.length) {
+        setAppointments(
+          data.map((apt: any) => ({
+            id: apt.id,
+            date: apt.appointment_date,
+            time: apt.appointment_time || '09:00',
+            professional: apt.professional_name || 'Equipe Clínica',
+            type: apt.appointment_type || 'Consulta',
+            status: apt.status || 'scheduled'
+          }))
+        )
+      } else {
+        setAppointments([])
+      }
+    } catch (directError) {
+      console.warn('Erro ao buscar agendamentos (tabela direta), tentando visão:', directError)
+      try {
+        const { data: viewData, error: viewError } = await supabase
+          .from('v_patient_appointments')
+          .select('*')
+          .eq('patient_id', patientId)
+          .order('appointment_date', { ascending: true })
+          .limit(20)
+
+        if (viewError) {
+          throw viewError
+        }
+
+        setAppointments(
+          (viewData ?? []).map((apt: any) => ({
+            id: apt.id,
+            date: apt.appointment_date,
+            time: apt.appointment_time || apt.start_time || '09:00',
+            professional: apt.professional_name || apt.professional_full_name || 'Equipe Clínica',
+            type: apt.appointment_type || apt.type || 'Consulta',
+            status: apt.status || 'scheduled'
+          }))
+        )
+      } catch (fallbackError) {
+        console.warn('Falha ao buscar agendamentos via visão pública:', fallbackError)
+        setAppointments([])
+      }
+    }
+
+    let latestReport: any = null
+    let latestAssessment: any = null
+
+    try {
+      const { data: reportData } = await supabase
+        .from('clinical_reports')
+        .select('*')
+        .eq('patient_id', patientId)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      latestReport = reportData?.[0] ?? null
+    } catch (error) {
+      console.warn('Erro ao buscar último relatório clínico:', error)
+    }
+
+    try {
+      const { data: assessmentData } = await supabase
+        .from('clinical_assessments')
+        .select('*')
+        .eq('patient_id', patientId)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      latestAssessment = assessmentData?.[0] ?? null
+    } catch (error) {
+      console.warn('Erro ao buscar última avaliação clínica:', error)
+    }
+
+    let fallbackMedications: Array<{ name: string; dosage: string; frequency: string }> = []
+    let fallbackProgress = 0
+    let fallbackNextReview = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+
+    if (latestReport?.content) {
+      const content = latestReport.content as any
+      if (content.plan?.medications) {
+        fallbackMedications = content.plan.medications
+      } else if (content.rationalities?.biomedical?.treatment) {
+        const treatment = content.rationalities.biomedical.treatment
+        if (typeof treatment === 'string' && treatment.includes('CBD')) {
+          fallbackMedications = [{ name: 'CBD', dosage: '25mg', frequency: '2x ao dia' }]
+        }
+      }
+      const daysSinceCreation = Math.floor(
+        (Date.now() - new Date(latestReport.created_at ?? Date.now()).getTime()) / (1000 * 60 * 60 * 24)
+      )
+      fallbackProgress = Math.min(100, Math.max(10, daysSinceCreation))
+      fallbackNextReview = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
+    }
+
+    if (latestAssessment?.follow_up_days) {
+      fallbackNextReview = new Date(Date.now() + latestAssessment.follow_up_days * 24 * 60 * 60 * 1000)
+    }
+
+    try {
+      const { data: planData, error: planError } = await supabase
+        .from('patient_therapeutic_plans')
+        .select('id, title, summary, status, started_at, completed_at')
+        .eq('patient_id', patientId)
+        .in('status', ['active', 'draft'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (planError) {
+        console.warn('Erro ao buscar plano terapêutico do paciente:', planError)
+        setTherapeuticPlan(null)
+      } else if (planData) {
+        setTherapeuticPlan({
+          id: planData.id,
+          title: planData.title ?? 'Plano terapêutico personalizado',
+          progress: fallbackProgress,
+          medications: fallbackMedications.length
+            ? fallbackMedications
+            : [
+                {
+                  name: 'A definir com a equipe clínica',
+                  dosage: 'Sob medida',
+                  frequency: 'Segundo protocolo'
+                }
+              ],
+          nextReview: fallbackNextReview.toLocaleDateString('pt-BR')
+        })
+      } else {
+        setTherapeuticPlan(null)
+      }
+    } catch (error) {
+      console.warn('Erro inesperado ao processar plano terapêutico:', error)
+      setTherapeuticPlan(null)
+    }
+
+    try {
+      const { data: prescriptionsData, error: prescriptionsError } = await supabase
+        .from('v_patient_prescriptions')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('issued_at', { ascending: false })
+
+      if (prescriptionsError) {
+        console.warn('Erro ao buscar prescrições do paciente:', prescriptionsError)
+        setPatientPrescriptions([])
+      } else {
+        setPatientPrescriptions(
+          (prescriptionsData ?? []).map((row: any) => ({
+            id: row.id,
+            title: row.title ?? row.template_title ?? 'Prescrição integrativa',
+            rationality: row.rationality ?? row.template_rationality ?? null,
+            dosage: row.dosage ?? row.template_dosage ?? null,
+            frequency: row.frequency ?? row.template_frequency ?? null,
+            status: row.status ?? 'draft',
+            issuedAt: row.issued_at,
+            startsAt: row.starts_at ?? row.plan_starts_at ?? null,
+            endsAt: row.ends_at ?? row.plan_ends_at ?? null,
+            professionalName: row.professional_name ?? null,
+            planTitle: row.plan_title ?? null
+          }))
+        )
+      }
+    } catch (error) {
+      console.warn('Erro inesperado ao processar prescrições:', error)
+      setPatientPrescriptions([])
+    } finally {
+      setLoadingReports(false)
+      setPatientPrescriptionsLoading(false)
+    }
+  }
+
+  const loadEducationalResources = useCallback(async () => {
+    setEducationalLoading(true)
+    setEducationalError(null)
+    try {
+      const { data, error } = await supabase
+        .from('educational_resources')
+        .select('id, title, summary, description, category, resource_type, url, published_at, audience, status, allowed_roles, role_permissions, allowed_axes, axis_permissions, visibility_scope')
+        .order('published_at', { ascending: false })
+        .limit(12)
+
+      if (error) {
+        throw error
+      }
+
+      const transformed: EducationalResource[] = (data ?? [])
+        .filter(entry => {
+          const rawAudience = (entry as any).audience
+          const status = (entry as any).status
+          const roles = normalizeAccessList((entry as any).allowed_roles ?? (entry as any).role_permissions ?? rawAudience)
+          const axes = normalizeAccessList((entry as any).allowed_axes ?? (entry as any).axis_permissions)
+          const visibility = ((entry as any).visibility_scope ?? '').toString().toLowerCase()
+
+          const isPublished = !status || ['published', 'ativo', 'active', 'liberado'].includes(String(status).toLowerCase())
+          const roleAllowed = matchesRolePermission(roles, 'patient')
+          const axisAllowed = matchesAxisPermission(axes)
+          const visibilityAllowed = !visibility || !['admin-only', 'professional-only'].includes(visibility)
+
+          return isPublished && roleAllowed && axisAllowed && visibilityAllowed
+        })
+        .map(entry => {
+          const rawAudience = (entry as any).audience ?? null
+          const resourceTypeRaw = (entry as any).resource_type
+          const resourceType = resourceTypeRaw && resourceTypeRaw in RESOURCE_TYPE_VISUALS ? (resourceTypeRaw as ResourceType) : 'other'
+          return {
+            id: String((entry as any).id),
+            title: (entry as any).title ?? 'Recurso educacional',
+            description: (entry as any).description ?? (entry as any).summary ?? null,
+            category: (entry as any).category ?? null,
+            resourceType,
+            url: (entry as any).url ?? null,
+            publishedAt: (entry as any).published_at ?? null,
+            audience: rawAudience ?? null,
+            allowedRoles: normalizeAccessList((entry as any).allowed_roles ?? (entry as any).role_permissions ?? rawAudience),
+            allowedAxes: normalizeAccessList((entry as any).allowed_axes ?? (entry as any).axis_permissions),
+            visibilityScope: ((entry as any).visibility_scope ?? null) as string | null
+          }
+        })
+
+      setEducationalResources(transformed)
+    } catch (error) {
+      const code = typeof error === 'object' && error !== null && 'code' in error ? (error as any).code : null
+      if (code === 'PGRST205') {
+        // Tabela/visão ainda não existente no ambiente: tratar como ausência de conteúdo.
+        setEducationalResources([])
+        setEducationalError(null)
+      } else {
+        console.warn('Falha ao carregar conteúdo educacional:', error)
+        setEducationalResources([])
+        setEducationalError('Não foi possível carregar os recursos educacionais neste momento.')
+      }
+    } finally {
+      setEducationalLoading(false)
+    }
+  }, [])
 
   // Carregar dados do paciente
   useEffect(() => {
@@ -71,126 +549,29 @@ const PatientDashboard: React.FC = () => {
     }
   }, [user?.id])
 
-  const loadPatientData = async () => {
-    try {
-      // Carregar relatórios
-      const patientReports = await clinicalReportService.getPatientReports(user!.id)
-      setReports(patientReports)
-
-      // Carregar agendamentos
-      const { data: appointmentsData, error: appointmentsError } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('patient_id', user!.id)
-        .order('appointment_date', { ascending: true })
-        .limit(5)
-
-      if (!appointmentsError && appointmentsData) {
-        setAppointments(appointmentsData.map((apt: any) => ({
-          id: apt.id,
-          date: apt.appointment_date,
-          time: apt.appointment_time || '09:00',
-          professional: apt.professional_name || 'Dr. Eduardo Faveret',
-          type: apt.appointment_type || 'Consulta',
-          status: apt.status || 'scheduled'
-        })))
-      }
-
-      // Carregar plano terapêutico do Supabase
-      // Buscar relatórios clínicos que podem conter prescrições
-      const { data: reportsData } = await supabase
-        .from('clinical_reports')
-        .select('*')
-        .eq('patient_id', user!.id)
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      const latestReport = reportsData && reportsData.length > 0 ? reportsData[0] : null
-
-      // Buscar também avaliações clínicas que podem ter prescrições
-      const { data: assessmentsData } = await supabase
-        .from('clinical_assessments')
-        .select('*')
-        .eq('patient_id', user!.id)
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      const latestAssessment = assessmentsData && assessmentsData.length > 0 ? assessmentsData[0] : null
-
-      // Extrair medicações do relatório ou avaliação
-      let medications: Array<{ name: string; dosage: string; frequency: string }> = []
-      let progress = 0
-      let nextReviewDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-
-      if (latestReport?.content) {
-        const content = latestReport.content as any
-        // Tentar extrair medicações do conteúdo do relatório
-        if (content.plan?.medications) {
-          medications = content.plan.medications
-        } else if (content.rationalities?.biomedical?.treatment) {
-          // Se não houver medicações explícitas, tentar extrair do tratamento biomédico
-          const treatment = content.rationalities.biomedical.treatment
-          if (typeof treatment === 'string' && treatment.includes('CBD')) {
-            // Parse básico - pode ser melhorado
-            medications = [
-              { name: 'CBD', dosage: '25mg', frequency: '2x ao dia' }
-            ]
-          }
-        }
-        // Calcular progresso baseado em quando foi criado
-        const daysSinceCreation = Math.floor((Date.now() - new Date(latestReport.created_at).getTime()) / (1000 * 60 * 60 * 24))
-        progress = Math.min(100, Math.max(0, (daysSinceCreation / 90) * 100)) // Progresso baseado em 90 dias
-      } else if (latestAssessment?.data) {
-        const data = latestAssessment.data as any
-        if (data.medications) {
-          medications = data.medications
-        }
-        // Calcular progresso
-        const daysSinceCreation = Math.floor((Date.now() - new Date(latestAssessment.created_at).getTime()) / (1000 * 60 * 60 * 24))
-        progress = Math.min(100, Math.max(0, (daysSinceCreation / 90) * 100))
-      }
-
-      // Buscar próximo agendamento para revisão
-      const { data: nextAppointmentsData } = await supabase
-        .from('appointments')
-        .select('appointment_date')
-        .eq('patient_id', user!.id)
-        .gte('appointment_date', new Date().toISOString())
-        .order('appointment_date', { ascending: true })
-        .limit(1)
-
-      const nextAppointment = nextAppointmentsData && nextAppointmentsData.length > 0 ? nextAppointmentsData[0] : null
-
-      if (nextAppointment?.appointment_date) {
-        nextReviewDate = new Date(nextAppointment.appointment_date)
-      }
-
-      // Se não houver medicações, não definir plano terapêutico
-      if (medications.length > 0) {
-        setTherapeuticPlan({
-          id: latestReport?.id || latestAssessment?.id || '1',
-          title: 'Plano Terapêutico - Cannabis Medicinal',
-          progress: Math.round(progress),
-          medications: medications,
-          nextReview: nextReviewDate.toLocaleDateString('pt-BR')
-        })
-      } else {
-        // Sem plano terapêutico ativo
-        setTherapeuticPlan(null)
-      }
-
-      setLoadingReports(false)
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error)
-      setLoadingReports(false)
-    }
-  }
+  useEffect(() => {
+    if (!user?.id) return
+    void loadEducationalResources()
+  }, [user?.id, loadEducationalResources])
 
   // Função para agendar consulta
   const handleScheduleAppointment = () => {
     setActiveTab('agendamento')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleOpenPlan = () => {
+    setActiveTab('plano')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleViewEducational = () => {
+    setActiveTab('conteudo')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleBackToDashboard = () => {
+    setActiveTab('dashboard')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -270,9 +651,49 @@ const PatientDashboard: React.FC = () => {
     }
   }
 
+  const handleSelectQuizOption = (snippetId: string, optionId: string) => {
+    setQuizResponses(prev => ({
+      ...prev,
+      [snippetId]: {
+        selectedOptionId: optionId,
+        status: undefined
+      }
+    }))
+  }
+
+  const handleSubmitQuiz = (snippetId: string) => {
+    const snippet = BASIC_MODULE_SNIPPETS.find(item => item.id === snippetId)
+    if (!snippet?.quiz) return
+    const selected = quizResponses[snippetId]?.selectedOptionId
+    if (!selected) return
+    const isCorrect = selected === snippet.quiz.correctOptionId
+    setQuizResponses(prev => ({
+      ...prev,
+      [snippetId]: {
+        ...prev[snippetId],
+        status: isCorrect ? 'correct' : 'incorrect'
+      }
+    }))
+  }
+
   // Renderizar Dashboard Principal
-  const renderDashboard = () => (
-    <div className="space-y-6">
+  const renderDashboard = () => {
+    const activePrescriptions = patientPrescriptions.filter(prescription => prescription.status === 'active')
+    const totalPrescriptions = patientPrescriptions.length
+    const rationalityChips = Array.from(
+      new Set(
+        patientPrescriptions
+          .map(prescription =>
+            prescription.rationality && RATIONALITY_LABELS[prescription.rationality]
+              ? RATIONALITY_LABELS[prescription.rationality]
+              : null
+          )
+          .filter((label): label is string => Boolean(label))
+      )
+    ).slice(0, 3)
+
+    return (
+      <div className="space-y-6">
       {/* Mensagem de Boas-vindas */}
       <div className="rounded-xl p-6 mb-6" style={{ background: 'rgba(7,22,41,0.82)', border: '1px solid rgba(0,193,106,0.12)' }}>
         <div className="flex items-center justify-between mb-4">
@@ -297,19 +718,21 @@ const PatientDashboard: React.FC = () => {
       </div>
 
       {/* Cards de Ações Rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* Agendar Consulta */}
         <button
           onClick={handleScheduleAppointment}
           className="rounded-xl p-4 text-left transition-transform transform hover:scale-[1.01]"
           style={{ background: 'linear-gradient(135deg, #1a365d 0%, #274a78 100%)', boxShadow: '0 10px 24px rgba(26,54,93,0.35)' }}
         >
-          <div className="flex items-center space-x-3 mb-3">
+          <div className="flex items-start gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
               <Calendar className="w-5 h-5 text-white" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">📅 Agendar Consulta</h3>
-            <p className="text-sm text-white/80">Agende sua consulta com profissionais especializados</p>
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-white leading-tight">📅 Agendar Consulta</h3>
+              <p className="text-sm text-white/80">Agende sua consulta com profissionais especializados</p>
+            </div>
           </div>
         </button>
 
@@ -322,55 +745,126 @@ const PatientDashboard: React.FC = () => {
           }`}
           style={{ background: 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)', boxShadow: '0 10px 24px rgba(0,193,106,0.35)' }}
         >
-          <div className="flex items-center space-x-3 mb-3">
+          <div className="flex items-start gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
               <MessageCircle className="w-5 h-5 text-white" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">
-              {chatLoading ? '🔄 Abrindo chat...' : '💬 Chat com Médico'}
-            </h3>
-            <p className="text-sm text-white/80">Comunicação direta com seu profissional</p>
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-white leading-tight">
+                {chatLoading ? '🔄 Abrindo chat...' : '💬 Chat com Médico'}
+              </h3>
+              <p className="text-sm text-white/80">Comunicação direta com seu profissional</p>
+            </div>
           </div>
         </button>
 
         {/* Plano Terapêutico - Card Compacto */}
         <button
-          onClick={() => setActiveTab('plano')}
-          className="rounded-xl p-4 text-left transition-transform transform hover:scale-[1.01]"
-          style={{ background: 'linear-gradient(135deg, #2d5a3d 0%, #1a365d 100%)', boxShadow: '0 10px 24px rgba(45,90,61,0.35)' }}
+          onClick={handleOpenPlan}
+          className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5 text-left transition-transform hover:-translate-y-0.5 hover:border-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500/60"
         >
-          <div className="flex items-center space-x-3 mb-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <Heart className="w-5 h-5 text-white" />
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-xl bg-primary-500/15 border border-primary-500/30 flex items-center justify-center">
+              <Heart className="w-5 h-5 text-primary-300" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">💊 Plano Terapêutico</h3>
-            <p className="text-sm text-white/80">
-              {therapeuticPlan
-                ? `Progresso: ${therapeuticPlan.progress}% • ${therapeuticPlan.medications.length} medicações`
-                : 'Acesse suas prescrições integrativas'}
-            </p>
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.35em] text-primary-300">Plano terapêutico</p>
+                  <h3 className="text-lg font-semibold text-white">Acompanhamento do plano</h3>
+                </div>
+                {therapeuticPlan && (
+                  <span className="inline-flex items-center justify-center min-w-[3rem] px-2 py-1 rounded-lg bg-primary-500/15 border border-primary-500/30 text-xs font-semibold text-primary-200">
+                    {therapeuticPlan.progress}%
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-slate-300">
+                {patientPrescriptionsLoading
+                  ? 'Carregando suas prescrições integrativas...'
+                  : totalPrescriptions > 0
+                  ? `Você possui ${activePrescriptions.length} prescrição(ões) ativa(s) entre ${totalPrescriptions} registrada(s). Próxima revisão em ${therapeuticPlan?.nextReview ?? 'definição conjunta com a equipe clínica'}.`
+                  : 'Nenhuma prescrição ativa no momento. Complete a avaliação clínica para receber um plano terapêutico personalizado.'}
+              </p>
+              {patientPrescriptionsLoading ? (
+                <div className="flex items-center gap-2 pt-1 text-xs text-slate-400">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Atualizando prescrições...
+                </div>
+              ) : totalPrescriptions > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {activePrescriptions.slice(0, 2).map(prescription => (
+                    <span
+                      key={prescription.id}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-primary-500/30 bg-primary-500/10 text-[11px] text-primary-200"
+                    >
+                      <Stethoscope className="w-3 h-3" />
+                      {prescription.title}
+                    </span>
+                  ))}
+                  {rationalityChips.map(label => (
+                    <span
+                      key={label}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-700 bg-slate-900/70 text-[11px] text-slate-300"
+                    >
+                      <Brain className="w-3 h-3 text-slate-500" />
+                      {label}
+                    </span>
+                  ))}
+                  {totalPrescriptions > activePrescriptions.length + rationalityChips.length && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full border border-slate-700 bg-slate-800/60 text-[11px] text-slate-300">
+                      +{totalPrescriptions - activePrescriptions.length - rationalityChips.length}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2 pt-1 text-[11px] text-slate-400">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-700 bg-slate-900/70">
+                    <Brain className="w-3 h-3 text-slate-500" />
+                    Integrativa
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-700 bg-slate-900/70">
+                    <Zap className="w-3 h-3 text-slate-500" />
+                    Individualizado
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-700 bg-slate-900/70">
+                    <Target className="w-3 h-3 text-slate-500" />
+                    Multidisciplinar
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-                         <span className="text-xs bg-white/20 px-2 py-1 rounded flex items-center space-x-1">
-               <Stethoscope className="w-3 h-3" />
-               <span>Biomédica</span>
-             </span>
-                           <span className="text-xs bg-white/20 px-2 py-1 rounded flex items-center space-x-1">
-                <Heart className="w-3 h-3" />
-                <span>MTC</span>
-              </span>
-            <span className="text-xs bg-white/20 px-2 py-1 rounded flex items-center space-x-1">
-              <Zap className="w-3 h-3" />
-              <span>Ayurvédica</span>
-            </span>
-            <span className="text-xs bg-white/20 px-2 py-1 rounded flex items-center space-x-1">
-              <Target className="w-3 h-3" />
-              <span>Homeopática</span>
-            </span>
-            <span className="text-xs bg-white/20 px-2 py-1 rounded flex items-center space-x-1">
-              <Brain className="w-3 h-3" />
-              <span>Integrativa</span>
-            </span>
+        </button>
+
+        {/* Conteúdo Educacional */}
+        <button
+          onClick={handleViewEducational}
+          className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5 text-left transition-transform hover:-translate-y-0.5 hover:border-sky-500/40 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-sky-300" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.35em] text-sky-300">Conteúdo educativo</p>
+                <h3 className="text-lg font-semibold text-white">Biblioteca personalizada</h3>
+              </div>
+              <p className="text-sm text-slate-300">
+                Acesse vídeos, guias e artigos selecionados pela equipe clínica para apoiar seu tratamento integrado.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1 text-[11px] text-slate-400">
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-700 bg-slate-900/70">
+                  <GraduationCap className="w-3 h-3 text-sky-300" />
+                  Trilhas guiadas
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-700 bg-slate-900/70">
+                  <FileText className="w-3 h-3 text-sky-300" />
+                  Protocolos clínicos
+                </span>
+              </div>
+            </div>
           </div>
         </button>
       </div>
@@ -421,141 +915,166 @@ const PatientDashboard: React.FC = () => {
           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={() => setActiveTab('conteudo')}
-            className="bg-slate-700 rounded-lg p-4 text-left hover:bg-slate-600 transition-colors"
-          >
-            <Heart className="w-8 h-8 text-green-400 mb-2" />
-            <h4 className="text-white font-semibold mb-1">Cannabis Medicinal</h4>
-            <p className="text-slate-400 text-xs">Fundamentos e aplicações clínicas</p>
-          </button>
-          <button
-            onClick={() => setActiveTab('conteudo')}
-            className="bg-slate-700 rounded-lg p-4 text-left hover:bg-slate-600 transition-colors"
-          >
-            <div className="w-8 h-8 mb-2 flex items-center justify-center">
-              <img
-                src="/brain.png"
-                alt="MedCannLab Logo"
-                className="w-full h-full object-contain"
-                style={{
-                  filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.4)) brightness(1.1)'
-                }}
-              />
-            </div>
-            <h4 className="text-white font-semibold mb-1">Saúde Renal</h4>
-            <p className="text-slate-400 text-xs">Fatores tradicionais e não tradicionais</p>
-          </button>
-          <button
-            onClick={() => setActiveTab('conteudo')}
-            className="bg-slate-700 rounded-lg p-4 text-left hover:bg-slate-600 transition-colors"
-          >
-            <Heart className="w-8 h-8 text-red-400 mb-2" />
-            <h4 className="text-white font-semibold mb-1">Bem-estar Integral</h4>
-            <p className="text-slate-400 text-xs">Abordagem integrativa de saúde</p>
-          </button>
+          {BASIC_COURSE_HIGHLIGHTS.map(highlight => {
+            const Icon = highlight.icon
+            return (
+              <button
+                key={highlight.id}
+                onClick={() => setActiveTab('conteudo')}
+                className="bg-slate-700 rounded-lg p-4 text-left hover:bg-slate-600 transition-colors border border-slate-700/60"
+              >
+                <Icon className={`w-8 h-8 mb-3 ${highlight.accent}`} />
+                <p className="text-[11px] uppercase tracking-[0.28em] text-primary-300 mb-1">{highlight.badge}</p>
+                <h4 className="text-white font-semibold mb-1">{highlight.title}</h4>
+                <p className="text-slate-400 text-xs">{highlight.description}</p>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>
   )
+  }
 
   // Renderizar Sistema de Agendamento
   const renderAgendamento = () => (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">📅 Sistema de Agendamento</h2>
-        <p className="text-white/90">Agende consultas com profissionais especializados do MedCannLab</p>
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-primary-300 mb-2">Atendimento Integrado</p>
+          <h2 className="text-2xl font-semibold text-white flex items-center gap-3">
+            <Calendar className="w-6 h-6 text-primary-300" />
+            Sistema de Agendamento
+          </h2>
+          <p className="text-slate-400 text-sm mt-2 max-w-2xl">
+            Agende consultas com os profissionais especializados do MedCannLab e acompanhe seu cronograma clínico em um só lugar.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/app/clinica/paciente/agendamentos')}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-500 hover:bg-primary-400 text-white text-sm transition-colors"
+        >
+          Ver agenda completa
+          <ArrowRight className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Profissionais Disponíveis */}
-      <div className="bg-slate-800 rounded-xl p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Profissionais Disponíveis</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Dr. Eduardo Faveret */}
-          <div className="bg-slate-700 rounded-lg p-6">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
-                <Stethoscope className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h4 className="text-white font-semibold text-lg">Dr. Eduardo Faveret</h4>
-                <p className="text-slate-400 text-sm">Neurologista Pediátrico</p>
-                <div className="flex items-center space-x-1 mt-1">
-                  <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                  <span className="text-yellow-400 text-sm">4.9</span>
-                </div>
-              </div>
-            </div>
-            <p className="text-slate-300 text-sm mb-4">
-              Especialista em Epilepsia e Cannabis Medicinal. Atendimento personalizado com metodologia AEC.
-            </p>
-            <button
-              onClick={() => navigate('/app/clinica/paciente/agendamentos?professional=eduardo-faveret')}
-              className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors"
-            >
-              Agendar Consulta
-            </button>
-          </div>
+      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Stethoscope className="w-5 h-5 text-primary-300" />
+            Profissionais disponíveis
+          </h3>
+          <p className="text-xs text-slate-400">
+            Escolha um especialista e selecione o melhor horário para o seu acompanhamento.
+          </p>
+        </div>
 
-          {/* Dr. Ricardo Valença */}
-          <div className="bg-slate-700 rounded-lg p-6">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
-                <Stethoscope className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h4 className="text-white font-semibold text-lg">Dr. Ricardo Valença</h4>
-                <p className="text-slate-400 text-sm">Administrador • Especialista</p>
-                <div className="flex items-center space-x-1 mt-1">
-                  <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                  <span className="text-yellow-400 text-sm">5.0</span>
+        <div className="space-y-4">
+          {availableProfessionals.map(professional => (
+            <div
+              key={professional.id}
+              className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 transition-colors hover:border-primary-500/40"
+            >
+              <div className="flex items-start gap-4">
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center border border-slate-800/60 ${professional.accentClasses}`}>
+                  <Stethoscope className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h4 className="text-white text-lg font-semibold">{professional.name}</h4>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-xs text-slate-300">
+                      <Star className="w-3 h-3 text-amber-300 fill-amber-300" />
+                      {professional.rating}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-400 mt-1">{professional.role}</p>
+                  <p className="text-sm text-slate-300 mt-3 max-w-xl">{professional.excerpt}</p>
                 </div>
               </div>
+              <button
+                onClick={() => navigate(professional.navigateTo)}
+                className={`inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white transition-colors ${professional.buttonClasses}`}
+              >
+                Agendar consulta
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
-            <p className="text-slate-300 text-sm mb-4">
-              Coordenador científico. Especialista em Arte da Entrevista Clínica e metodologia IMRE.
-            </p>
-            <button
-              onClick={() => navigate('/app/clinica/paciente/agendamentos?professional=ricardo-valenca')}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
-            >
-              Agendar Consulta
-            </button>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* Minhas Consultas */}
-      <div className="bg-slate-800 rounded-xl p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Minhas Consultas</h3>
+      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Clock className="w-5 h-5 text-primary-300" />
+            Minhas consultas
+          </h3>
+          {appointments.length > 0 && (
+            <button
+              onClick={() => navigate('/app/clinica/paciente/agendamentos?view=calendar')}
+              className="text-xs text-primary-300 hover:text-primary-200 inline-flex items-center gap-1 transition-colors"
+            >
+              Ver histórico completo
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+
         {appointments.length > 0 ? (
           <div className="space-y-3">
-            {appointments.map((apt) => (
-              <div key={apt.id} className="rounded-lg p-4" style={{ background: 'rgba(15,36,60,0.68)', border: '1px solid rgba(0,193,106,0.12)' }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <Calendar className="w-8 h-8 text-blue-400" />
-                    <div>
-                      <p className="text-white font-semibold">{apt.professional}</p>
-                      <p className="text-slate-400 text-sm">{new Date(apt.date).toLocaleDateString('pt-BR')} às {apt.time}</p>
-                    </div>
+            {appointments.map(appointment => (
+              <div
+                key={appointment.id}
+                className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-11 h-11 rounded-lg bg-primary-500/15 border border-primary-500/30 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-primary-300" />
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs ${
-                    apt.status === 'scheduled' ? 'bg-green-500/20 text-green-400' :
-                    apt.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
-                    'bg-red-500/20 text-red-400'
-                  }`}>
-                    {apt.status === 'scheduled' ? 'Agendada' :
-                     apt.status === 'completed' ? 'Concluída' : 'Cancelada'}
-                  </span>
+                  <div>
+                    <p className="text-sm text-slate-400 uppercase tracking-[0.2em] mb-1">
+                      {appointment.type}
+                    </p>
+                    <h4 className="text-white font-semibold">{appointment.professional}</h4>
+                    <p className="text-sm text-slate-300">
+                      {new Date(appointment.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {appointment.time}
+                    </p>
+                  </div>
                 </div>
+                <span
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${
+                    appointment.status === 'scheduled'
+                      ? 'bg-emerald-500/10 text-emerald-300 border-emerald-400/40'
+                      : appointment.status === 'completed'
+                        ? 'bg-blue-500/10 text-blue-300 border-blue-400/40'
+                        : 'bg-rose-500/10 text-rose-300 border-rose-400/40'
+                  }`}
+                >
+                  {appointment.status === 'scheduled'
+                    ? 'Agendada'
+                    : appointment.status === 'completed'
+                      ? 'Concluída'
+                      : 'Cancelada'}
+                </span>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-8">
-            <Calendar className="w-16 h-16 text-slate-500 mx-auto mb-3" />
-            <p className="text-slate-400">Nenhuma consulta agendada</p>
+          <div className="border border-dashed border-slate-800 rounded-2xl py-12 text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-slate-900 border border-slate-800 mx-auto">
+              <Calendar className="w-6 h-6 text-slate-500" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-400">Nenhuma consulta agendada até o momento.</p>
+              <button
+                onClick={handleScheduleAppointment}
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-primary-500/40 text-primary-300 hover:bg-primary-500/10 transition-colors text-sm font-semibold"
+              >
+                Agendar primeira consulta
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -563,66 +1082,150 @@ const PatientDashboard: React.FC = () => {
   )
 
   // Renderizar Acompanhamento do Plano Terapêutico
-  const renderPlanoTerapeutico = () => (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">💊 Acompanhamento do Plano Terapêutico</h2>
-        <p className="text-white/90">Monitore seu tratamento e evolução clínica</p>
-      </div>
+  const renderPlanoTerapeutico = () => {
+    const totalPrescriptions = patientPrescriptions.length
+    const activePrescriptions = patientPrescriptions.filter(prescription => prescription.status === 'active')
+    const latestPrescription = patientPrescriptions[0]
+    const hasPrescriptions = totalPrescriptions > 0
+    const effectiveProgress = therapeuticPlan
+      ? therapeuticPlan.progress
+      : hasPrescriptions
+      ? Math.round((activePrescriptions.length / totalPrescriptions) * 100)
+      : 0
+    const planTitle = therapeuticPlan?.title ?? (hasPrescriptions ? 'Plano terapêutico em construção' : 'Plano terapêutico')
+    const nextReviewText =
+      therapeuticPlan?.nextReview ??
+      (latestPrescription?.endsAt
+        ? new Date(latestPrescription.endsAt).toLocaleDateString('pt-BR')
+        : 'Defina a próxima revisão com a equipe clínica')
 
-      {therapeuticPlan ? (
-        <>
-          {/* Progresso Geral */}
-          <div className="rounded-xl p-6" style={{ background: 'rgba(7,22,41,0.86)', border: '1px solid rgba(0,193,106,0.16)', boxShadow: '0 16px 32px rgba(2,12,27,0.45)' }}>
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-6 text-white">
+          <h2 className="text-2xl font-bold mb-2">💊 Acompanhamento do Plano Terapêutico</h2>
+          <p className="text-white/90">Monitore seu tratamento e evolução clínica</p>
+        </div>
+
+        {(therapeuticPlan || hasPrescriptions) && (
+          <div
+            className="rounded-xl p-6"
+            style={{ background: 'rgba(7,22,41,0.86)', border: '1px solid rgba(0,193,106,0.16)', boxShadow: '0 16px 32px rgba(2,12,27,0.45)' }}
+          >
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h3 className="text-xl font-semibold text-white">Progresso do Tratamento</h3>
-                <p className="text-slate-300 text-sm">{therapeuticPlan.title}</p>
+                <p className="text-slate-300 text-sm">{planTitle}</p>
               </div>
               <div className="px-4 py-2 rounded-lg" style={{ background: 'rgba(0,193,106,0.12)', border: '1px solid rgba(0,193,106,0.28)' }}>
-                <span className="text-2xl font-bold text-[#00F5A0]">{therapeuticPlan.progress}%</span>
+                <span className="text-2xl font-bold text-[#00F5A0]">{effectiveProgress}%</span>
               </div>
             </div>
             <div className="mt-6">
               <div className="w-full h-3 rounded-full" style={{ background: 'rgba(12,34,54,0.75)', border: '1px solid rgba(0,193,106,0.12)' }}>
                 <div
                   className="h-3 rounded-full transition-all"
-                  style={{ width: `${therapeuticPlan.progress}%`, background: 'linear-gradient(135deg, #00C16A 0%, #00F5A0 100%)' }}
+                  style={{ width: `${effectiveProgress}%`, background: 'linear-gradient(135deg, #00C16A 0%, #00F5A0 100%)' }}
                 />
               </div>
             </div>
           </div>
+        )}
 
-          {/* Medicações */}
-          <div className="rounded-xl p-6" style={{ background: 'rgba(7,22,41,0.86)', border: '1px solid rgba(0,193,106,0.16)', boxShadow: '0 16px 32px rgba(2,12,27,0.45)' }}>
-            <h3 className="text-xl font-semibold text-white mb-4">Medicações Ativas</h3>
+        <div
+          className="rounded-xl p-6"
+          style={{ background: 'rgba(7,22,41,0.86)', border: '1px solid rgba(0,193,106,0.16)', boxShadow: '0 16px 32px rgba(2,12,27,0.45)' }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-white">Prescrições integrativas</h3>
+            {patientPrescriptionsLoading ? (
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Atualizando...
+              </div>
+            ) : (
+              <span className="text-xs text-slate-400">
+                {activePrescriptions.length} ativa(s) • {totalPrescriptions} no histórico
+              </span>
+            )}
+          </div>
+          {patientPrescriptionsLoading ? (
+            <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-6 text-center text-sm text-slate-400">
+              Carregando prescrições emitidas pela equipe clínica...
+            </div>
+          ) : hasPrescriptions ? (
             <div className="space-y-3">
-              {therapeuticPlan.medications.map((med, idx) => (
+              {patientPrescriptions.map(prescription => (
                 <div
-                  key={idx}
-                  className="rounded-lg p-4 flex items-start justify-between"
+                  key={prescription.id}
+                  className="rounded-lg p-4 space-y-3"
                   style={{ background: 'rgba(12,34,54,0.75)', border: '1px solid rgba(0,193,106,0.14)' }}
                 >
-                  <div className="flex items-start space-x-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,193,106,0.15)' }}>
-                      <CheckCircle className="w-5 h-5 text-[#00F5A0]" />
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                      <p className="text-white font-semibold">{prescription.title}</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Emitida em {new Date(prescription.issuedAt).toLocaleDateString('pt-BR')}
+                        {prescription.professionalName ? ` • Profissional: ${prescription.professionalName}` : ''}
+                        {prescription.planTitle ? ` • Plano: ${prescription.planTitle}` : ''}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${
+                        prescription.status === 'active'
+                          ? 'bg-emerald-500/10 text-emerald-200 border-emerald-400/40'
+                          : prescription.status === 'completed'
+                          ? 'bg-sky-500/10 text-sky-200 border-sky-400/40'
+                          : prescription.status === 'suspended'
+                          ? 'bg-amber-500/10 text-amber-200 border-amber-400/40'
+                          : 'bg-rose-500/10 text-rose-200 border-rose-400/40'
+                      }`}
+                    >
+                      {prescription.status === 'active'
+                        ? 'Ativa'
+                        : prescription.status === 'completed'
+                        ? 'Concluída'
+                        : prescription.status === 'suspended'
+                        ? 'Suspensa'
+                        : 'Cancelada'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-300">
+                    <div>
+                      <span className="text-slate-400 uppercase tracking-[0.2em] block mb-1">Dosagem</span>
+                      <p className="text-white font-medium">
+                        {prescription.dosage ?? 'Personalizado com a equipe clínica'}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-white font-semibold">{med.name}</p>
-                      <p className="text-slate-300 text-sm">{med.dosage}</p>
+                      <span className="text-slate-400 uppercase tracking-[0.2em] block mb-1">Frequência</span>
+                      <p className="text-white font-medium">
+                        {prescription.frequency ?? 'Definida no acompanhamento'}
+                      </p>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs uppercase tracking-wide text-slate-400">Frequência</span>
-                    <p className="text-white font-medium text-sm mt-1">{med.frequency}</p>
+                    <div>
+                      <span className="text-slate-400 uppercase tracking-[0.2em] block mb-1">Racionalidade</span>
+                      <p className="text-white font-medium">
+                        {prescription.rationality && RATIONALITY_LABELS[prescription.rationality]
+                          ? RATIONALITY_LABELS[prescription.rationality]
+                          : 'Integrativa'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-6 text-center text-sm text-slate-400">
+              Ainda não há prescrições registradas para o seu plano. Elas aparecerão aqui assim que sua equipe clínica emitir um protocolo integrado.
+            </div>
+          )}
+        </div>
 
-          {/* Próximas Ações */}
-          <div className="rounded-xl p-6" style={{ background: 'rgba(7,22,41,0.86)', border: '1px solid rgba(0,193,106,0.16)', boxShadow: '0 16px 32px rgba(2,12,27,0.45)' }}>
+        {(therapeuticPlan || hasPrescriptions) && (
+          <div
+            className="rounded-xl p-6"
+            style={{ background: 'rgba(7,22,41,0.86)', border: '1px solid rgba(0,193,106,0.16)', boxShadow: '0 16px 32px rgba(2,12,27,0.45)' }}
+          >
             <h3 className="text-xl font-semibold text-white mb-4">Próximas Ações</h3>
             <div className="space-y-3">
               <div className="rounded-lg p-4 flex items-center justify-between" style={{ background: 'rgba(12,34,54,0.75)', border: '1px solid rgba(0,193,106,0.14)' }}>
@@ -632,7 +1235,7 @@ const PatientDashboard: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-white font-semibold">Revisão do Plano Terapêutico</p>
-                    <p className="text-slate-300 text-sm">{therapeuticPlan.nextReview}</p>
+                    <p className="text-slate-300 text-sm">{nextReviewText}</p>
                   </div>
                 </div>
                 <button
@@ -640,130 +1243,245 @@ const PatientDashboard: React.FC = () => {
                   className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-transform transform hover:scale-[1.02]"
                   style={{ background: 'linear-gradient(135deg, #007BFF 0%, #00C1FF 100%)' }}
                 >
-                  Agendar Revisão
+                  Agendar revisão
                 </button>
               </div>
+              {latestPrescription && (
+                <div className="rounded-lg p-4 flex items-center justify-between" style={{ background: 'rgba(12,34,54,0.75)', border: '1px solid rgba(0,193,106,0.14)' }}>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,193,106,0.15)' }}>
+                      <CheckCircle className="w-5 h-5 text-[#00F5A0]" />
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold">Última prescrição</p>
+                      <p className="text-slate-300 text-sm">
+                        {new Date(latestPrescription.issuedAt).toLocaleDateString('pt-BR')}
+                        {latestPrescription.professionalName ? ` • ${latestPrescription.professionalName}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('plano')}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold text-primary-200 border border-primary-500/40 hover:bg-primary-500/10 transition-colors"
+                  >
+                    Ver detalhes
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-        </>
-      ) : (
-        <div className="bg-slate-800 rounded-xl p-6 text-center">
-                                           <CheckCircle className="w-16 h-16 text-slate-500 mx-auto mb-3" />
-          <p className="text-slate-400 mb-4">Nenhum plano terapêutico ativo</p>
-          <p className="text-slate-500 text-sm">Complete sua avaliação clínica inicial para receber seu plano personalizado</p>
-        </div>
-      )}
-    </div>
-  )
+        )}
+
+        {!therapeuticPlan && !hasPrescriptions && !patientPrescriptionsLoading && (
+          <div className="bg-slate-800 rounded-xl p-6 text-center">
+            <CheckCircle className="w-16 h-16 text-slate-500 mx-auto mb-3" />
+            <p className="text-slate-400 mb-4">Nenhum plano terapêutico ativo</p>
+            <p className="text-slate-500 text-sm">
+              Complete sua avaliação clínica inicial para receber seu plano personalizado ou converse com a equipe clínica para iniciar suas prescrições.
+            </p>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   // Renderizar Conteúdo Educacional
   const renderConteudoEducacional = () => (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">📚 Conteúdo Educacional</h2>
-        <p className="text-white/90">Aprenda sobre Cannabis Medicinal e Saúde Renal</p>
-      </div>
-
-      {/* Cannabis Medicinal */}
-      <div className="bg-slate-800 rounded-xl p-6">
-        <div className="flex items-center space-x-3 mb-4">
-                                                   <Heart className="w-8 h-8 text-green-400" />
-          <h3 className="text-xl font-semibold text-white">Cannabis Medicinal</h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-                                                   <Video className="w-6 h-6 text-green-400 mb-2" />
-            <h4 className="text-white font-semibold mb-2">Fundamentos da Cannabis Medicinal</h4>
-            <p className="text-slate-400 text-sm mb-3">Conceitos básicos, componentes ativos e mecanismos de ação</p>
-            <span className="text-green-400 text-xs">Assistir vídeo →</span>
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-primary-300 mb-2">Biblioteca MedCannLab</p>
+            <h2 className="text-2xl font-semibold text-white flex items-center gap-3">
+              <BookOpen className="w-6 h-6 text-primary-300" />
+              Conteúdo educacional
+            </h2>
+            <p className="text-slate-400 text-sm mt-2 max-w-3xl leading-relaxed">
+              Acompanhe materiais validados pela equipe clínica sobre cannabis medicinal, nefrologia e autocuidado. Os recursos abaixo
+              são disponibilizados conforme seu plano terapêutico e as competências essenciais da pós-graduação.
+            </p>
           </div>
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <BookOpen className="w-6 h-6 text-green-400 mb-2" />
-            <h4 className="text-white font-semibold mb-2">Aplicações Clínicas</h4>
-            <p className="text-slate-400 text-sm mb-3">Uso clínico em diferentes condições de saúde</p>
-            <span className="text-green-400 text-xs">Ler artigo →</span>
-          </div>
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <FileText className="w-6 h-6 text-green-400 mb-2" />
-            <h4 className="text-white font-semibold mb-2">Dosagem e Administração</h4>
-            <p className="text-slate-400 text-sm mb-3">Protocolos de dosagem e formas de administração</p>
-            <span className="text-green-400 text-xs">Ver guia →</span>
-          </div>
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <Users className="w-6 h-6 text-green-400 mb-2" />
-            <h4 className="text-white font-semibold mb-2">Casos Clínicos</h4>
-            <p className="text-slate-400 text-sm mb-3">Estudos de caso e experiências reais de pacientes</p>
-            <span className="text-green-400 text-xs">Explorar →</span>
+          <div className="flex flex-col items-end gap-2 text-xs uppercase tracking-[0.32em] text-primary-200">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-primary-500/10 border border-primary-500/20 text-primary-100">
+              <Zap className="w-3 h-3" />
+              Área ativa • Conteúdo clínico
+            </span>
+            <span className="text-slate-500 normal-case tracking-normal text-[11px]">
+              Atualizado conforme plano terapêutico vigente.
+            </span>
           </div>
         </div>
-      </div>
-
-      {/* Saúde Renal */}
-      <div className="bg-slate-800 rounded-xl p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <img
-              src="/brain.png"
-              alt="MedCannLab Logo"
-              className="w-full h-full object-contain"
-              style={{
-                filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.4)) brightness(1.1)'
-              }}
-            />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-300">
+          <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+            <p className="text-[11px] uppercase tracking-[0.28em] text-primary-300 mb-1">Trilhas guiadas</p>
+            <p className="leading-relaxed">
+              Conteúdos introdutórios selecionados da pós-graduação em cannabis medicinal para orientar suas prioridades de estudo.
+            </p>
           </div>
-          <h3 className="text-xl font-semibold text-white">Saúde Renal - Fatores Tradicionais e Não Tradicionais</h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-                                                   <CheckCircle className="w-6 h-6 text-blue-400 mb-2" />
-            <h4 className="text-white font-semibold mb-2">Fatores Tradicionais</h4>
-            <p className="text-slate-400 text-sm mb-3">Pressão arterial, diabetes, função renal, exames laboratoriais</p>
-            <span className="text-blue-400 text-xs">Saiba mais →</span>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+            <p className="text-[11px] uppercase tracking-[0.28em] text-primary-300 mb-1">Protocolos clínicos</p>
+            <p className="leading-relaxed">
+              Sínteses rápidas para consulta durante o acompanhamento: titulação, monitoramento e ajustes personalizados.
+            </p>
           </div>
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <Zap className="w-6 h-6 text-blue-400 mb-2" />
-            <h4 className="text-white font-semibold mb-2">Fatores Não Tradicionais</h4>
-            <p className="text-slate-400 text-sm mb-3">Estresse, sono, nutrição, atividade física, bem-estar mental</p>
-            <span className="text-blue-400 text-xs">Saiba mais →</span>
-          </div>
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <Activity className="w-6 h-6 text-blue-400 mb-2" />
-            <h4 className="text-white font-semibold mb-2">Monitoramento Renal</h4>
-            <p className="text-slate-400 text-sm mb-3">Como acompanhar e manter a saúde dos rins</p>
-            <span className="text-blue-400 text-xs">Ver guia →</span>
-          </div>
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <Heart className="w-6 h-6 text-blue-400 mb-2" />
-            <h4 className="text-white font-semibold mb-2">Abordagem Integrativa</h4>
-            <p className="text-slate-400 text-sm mb-3">Cuidado holístico para saúde renal completa</p>
-            <span className="text-blue-400 text-xs">Explorar →</span>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+            <p className="text-[11px] uppercase tracking-[0.28em] text-primary-300 mb-1">Comunicação terapêutica</p>
+            <p className="leading-relaxed">
+              Princípios da Arte da Entrevista Clínica para fortalecer sua participação ativa no plano de cuidado.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Cursos e Recursos */}
-      <div className="bg-slate-800 rounded-xl p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <GraduationCap className="w-8 h-8 text-purple-400" />
-          <h3 className="text-xl font-semibold text-white">Cursos e Recursos Adicionais</h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <Video className="w-6 h-6 text-purple-400 mb-2" />
-            <h4 className="text-white font-semibold mb-2">Vídeos Educativos</h4>
-            <p className="text-slate-400 text-xs">Biblioteca de vídeos sobre saúde e bem-estar</p>
+      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4">
+        {educationalError && (
+          <div className="rounded-xl border border-rose-500/40 bg-rose-950/40 text-rose-200 text-sm px-4 py-3">
+            {educationalError}
           </div>
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <Video className="w-6 h-6 text-purple-400 mb-2" />
-            <h4 className="text-white font-semibold mb-2">Webinars</h4>
-            <p className="text-slate-400 text-xs">Sessões ao vivo com especialistas</p>
+        )}
+
+        {educationalLoading ? (
+          <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            Carregando materiais educacionais...
           </div>
-          <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer">
-            <BookOpen className="w-6 h-6 text-purple-400 mb-2" />
-            <h4 className="text-white font-semibold mb-2">Biblioteca Científica</h4>
-            <p className="text-slate-400 text-xs">Artigos e pesquisas científicas</p>
+        ) : educationalResources.length === 0 ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-primary-500/20 bg-primary-500/5 p-5 text-sm text-primary-100">
+              Estamos preparando sua biblioteca personalizada. Enquanto isso, selecionamos trechos essenciais do módulo básico do
+              curso de cannabis medicinal do Dr. Eduardo Faveret e dos princípios de comunicação do curso Arte da Entrevista Clínica
+              para orientar seus próximos passos.
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {BASIC_MODULE_SNIPPETS.map(snippet => (
+                <article
+                  key={snippet.id}
+                  className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5 flex flex-col gap-3 hover:border-primary-500/40 transition-colors"
+                >
+                  <span className="text-[11px] uppercase tracking-[0.28em] text-primary-300">{snippet.tag}</span>
+                  <h3 className="text-lg font-semibold text-white">{snippet.title}</h3>
+                  <p className="text-sm text-slate-300 leading-relaxed">{snippet.summary}</p>
+                  {snippet.quiz && (
+                    <div className="mt-2 space-y-3">
+                      <p className="text-xs text-slate-400 uppercase tracking-[0.3em]">Quiz interativo</p>
+                      <p className="text-sm text-slate-200">{snippet.quiz.question}</p>
+                      <div className="space-y-2">
+                        {snippet.quiz.options.map(option => {
+                          const current = quizResponses[snippet.id]
+                          const isSelected = current?.selectedOptionId === option.id
+                          const status = current?.status
+                          const isCorrectOption = status === 'correct' && option.id === snippet.quiz?.correctOptionId
+                          const isIncorrectSelected = status === 'incorrect' && isSelected
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => handleSelectQuizOption(snippet.id, option.id)}
+                              className={`w-full text-left text-sm rounded-lg border px-3 py-2 transition-colors ${
+                                isCorrectOption
+                                  ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-200'
+                                  : isIncorrectSelected
+                                    ? 'border-amber-400/60 bg-amber-500/10 text-amber-200'
+                                    : isSelected
+                                      ? 'border-primary-500/60 bg-primary-500/10 text-primary-200'
+                                      : 'border-slate-800 bg-slate-900/50 text-slate-200 hover:border-primary-500/40'
+                              }`}
+                            >
+                              <span className="font-semibold mr-2">{option.id}.</span>
+                              {option.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <button
+                        onClick={() => handleSubmitQuiz(snippet.id)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-primary-500/50 bg-primary-500/10 px-3 py-2 text-xs font-semibold text-primary-100 hover:bg-primary-500/20 transition-colors"
+                        disabled={!quizResponses[snippet.id]?.selectedOptionId}
+                      >
+                        <MessageCircle className="w-3 h-3" />
+                        Consultar IA residente
+                      </button>
+                      {quizResponses[snippet.id]?.status && snippet.quiz.aiFeedback && (
+                        <div
+                          className={`flex items-start gap-2 rounded-lg border px-3 py-3 text-sm ${
+                            quizResponses[snippet.id]?.status === 'correct'
+                              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-100'
+                              : 'border-amber-500/40 bg-amber-500/10 text-amber-100'
+                          }`}
+                        >
+                          <MessageCircle className="w-4 h-4 mt-0.5" />
+                          <div>
+                            <p className="font-semibold text-xs uppercase tracking-[0.3em] mb-1">IA residente</p>
+                            <p>
+                              {quizResponses[snippet.id]?.status === 'correct'
+                                ? snippet.quiz.aiFeedback.correct
+                                : snippet.quiz.aiFeedback.incorrect}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {educationalResources.map(resource => {
+              const visuals = RESOURCE_TYPE_VISUALS[resource.resourceType] ?? RESOURCE_TYPE_VISUALS.other
+              const Icon = visuals.icon
+              return (
+                <article
+                  key={resource.id}
+                  className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5 flex flex-col gap-4 transition-colors hover:border-primary-500/40"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center">
+                      <Icon className={`w-5 h-5 ${visuals.accent}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] uppercase tracking-[0.3em] text-primary-300">
+                          {visuals.label}
+                        </span>
+                        {resource.category && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-slate-700 bg-slate-900/70 text-[11px] text-slate-300">
+                            {resource.category}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-lg font-semibold text-white mt-1">{resource.title}</h3>
+                      {resource.description && (
+                        <p className="text-sm text-slate-300 mt-2 line-clamp-3">{resource.description}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 text-xs text-slate-400">
+                    <span>
+                      {resource.publishedAt
+                        ? `Disponibilizado em ${new Date(resource.publishedAt).toLocaleDateString('pt-BR')}`
+                        : 'Disponibilizado pela equipe clínica'}
+                    </span>
+                    {resource.url ? (
+                      <a
+                        href={resource.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-primary-300 hover:text-primary-200 transition-colors"
+                      >
+                        Acessar recurso
+                        <ArrowRight className="w-3 h-3" />
+                      </a>
+                    ) : (
+                      <span className="text-slate-600 italic">Arquivo disponível durante a consulta</span>
+                    )}
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -789,76 +1507,31 @@ const PatientDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
-      <div className="p-6" style={{ background: headerGradient, borderBottom: '1px solid rgba(0,193,106,0.18)' }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Meu Dashboard de Saúde</h1>
-            <p className="text-slate-400">Programa de Cuidado Renal • Cannabis Medicinal</p>
-          </div>
+      {/* Header removido: bloco duplicado estava redundante com a mensagem de boas-vindas */}
 
-          {/* User Profile */}
-          <div className="flex items-center space-x-3 bg-slate-700 p-3 rounded-lg">
-            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold">
-                {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'P'}
+      {activeTab !== 'dashboard' && (
+        <div style={{ background: 'rgba(15, 36, 60, 0.75)', borderBottom: '1px solid rgba(28,64,94,0.6)' }}>
+          <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <button
+              onClick={handleBackToDashboard}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#C8D6E5] hover:text-white transition-colors"
+            >
+              <span className="text-lg">←</span>
+              Voltar ao Dashboard
+            </button>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.35em] text-[#8FA7BF]">
+              <span>Seção ativa:</span>
+              <span className="text-[#FFD33D]">
+                {activeTab === 'agendamento'
+                  ? 'Agendamento'
+                  : activeTab === 'plano'
+                  ? 'Plano Terapêutico'
+                  : 'Conteúdo Educacional'}
               </span>
             </div>
-            <div>
-              <p className="font-semibold text-white">{user?.name || 'Paciente'}</p>
-              <p className="text-sm text-slate-400">Paciente</p>
-            </div>
           </div>
         </div>
-      </div>
-
-      {/* Tabs de Navegação */}
-      <div style={{ background: 'rgba(15, 36, 60, 0.85)', borderBottom: '1px solid rgba(28,64,94,0.6)' }}>
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex space-x-1 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'dashboard'
-                  ? 'text-[#FFD33D] border-b-2 border-[#FFD33D]'
-                  : 'text-[#8FA7BF] hover:text-[#C8D6E5]'
-              }`}
-            >
-              🏠 Dashboard
-            </button>
-            <button
-              onClick={() => setActiveTab('agendamento')}
-              className={`px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'agendamento'
-                  ? 'text-[#FFD33D] border-b-2 border-[#FFD33D]'
-                  : 'text-[#8FA7BF] hover:text-[#C8D6E5]'
-              }`}
-            >
-              📅 Agendamento
-            </button>
-            <button
-              onClick={() => setActiveTab('plano')}
-              className={`px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'plano'
-                  ? 'text-[#FFD33D] border-b-2 border-[#FFD33D]'
-                  : 'text-[#8FA7BF] hover:text-[#C8D6E5]'
-              }`}
-            >
-              💊 Plano Terapêutico
-            </button>
-            <button
-              onClick={() => setActiveTab('conteudo')}
-              className={`px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'conteudo'
-                  ? 'text-[#FFD33D] border-b-2 border-[#FFD33D]'
-                  : 'text-[#8FA7BF] hover:text-[#C8D6E5]'
-              }`}
-            >
-              📚 Conteúdo Educacional
-            </button>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Main Content */}
       <div className="p-6">
@@ -874,3 +1547,4 @@ const PatientDashboard: React.FC = () => {
 }
 
 export default PatientDashboard
+

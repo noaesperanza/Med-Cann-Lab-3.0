@@ -37,6 +37,23 @@ interface UseChatSystemOptions {
   enabled?: boolean
 }
 
+interface ChatMessageRow {
+  id: string | number
+  room_id: string
+  sender_id: string
+  message: string | null
+  message_type: string | null
+  file_url?: string | null
+  created_at: string
+  read_at?: string | null
+}
+
+interface ChatProfile {
+  user_id: string
+  name?: string | null
+  email?: string | null
+}
+
 const mapRoomSummary = (entry: any): ChatRoomSummary => ({
   id: entry.id,
   name: entry.name,
@@ -90,20 +107,22 @@ export const useChatSystem = (activeRoomId?: string, options?: UseChatSystemOpti
       return
     }
 
-    const senderIds = Array.from(new Set(data.map(row => row.sender_id).filter(Boolean)))
+    const rows = (data ?? []) as ChatMessageRow[]
+    const senderIds = Array.from(new Set(rows.map(row => row.sender_id).filter(Boolean)))
     let profileMap = new Map<string, { name: string; email: string | null }>()
 
     if (senderIds.length > 0) {
-      const { data: profiles, error: profileError } = await supabase.rpc(
+      const { data: profileRows, error: profileError } = await supabase.rpc(
         'get_chat_user_profiles',
         { p_user_ids: senderIds }
       )
 
-      if (profileError || !profiles) {
+      if (profileError || !profileRows) {
         if (profileError) {
           console.warn('Falha ao carregar perfis de remetentes:', profileError)
         }
       } else {
+        const profiles = profileRows as ChatProfile[]
         profileMap = new Map(
           profiles.map(profile => [
             profile.user_id,
@@ -113,7 +132,7 @@ export const useChatSystem = (activeRoomId?: string, options?: UseChatSystemOpti
       }
     }
 
-    const normalized: RoomMessage[] = data.map(row => {
+    const normalized: RoomMessage[] = rows.map(row => {
       const meta = profileMap.get(row.sender_id) ?? { name: 'Usuário', email: null }
       return {
         id: String(row.id),

@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import type { UserType } from '../lib/userTypes'
 
 // Declaração do tipo para BroadcastChannel
 declare global {
@@ -47,6 +48,161 @@ import {
   Flag
 } from 'lucide-react'
 
+type ChannelPermissionConfig = {
+  id: string
+  name: string
+  type: 'public' | 'private'
+  description: string
+  members: number
+  unread: number
+  allowedRoles: UserType[]
+  postRoles: UserType[]
+}
+
+type ChannelWithAccess = ChannelPermissionConfig & {
+  canView: boolean
+  canPost: boolean
+  isReadOnly: boolean
+}
+
+type DebateConfig = {
+  id: number
+  title: string
+  author: string
+  authorAvatar: string
+  category: string
+  participants: number
+  views: number
+  replies: number
+  votes: { up: number; down: number }
+  tags: string[]
+  lastActivity: string
+  isPinned: boolean
+  isHot: boolean
+  isActive: boolean
+  isPasswordProtected: boolean
+  description: string
+  allowedRoles: UserType[]
+  postRoles: UserType[]
+}
+
+const BASE_CHANNELS: ChannelPermissionConfig[] = [
+  {
+    id: 'general',
+    name: 'Geral',
+    type: 'public',
+    members: 0,
+    unread: 0,
+    description: 'Discussões gerais sobre medicina',
+    allowedRoles: ['admin', 'profissional', 'aluno', 'paciente'],
+    postRoles: ['admin', 'profissional', 'aluno', 'paciente']
+  },
+  {
+    id: 'cannabis',
+    name: 'Cannabis Medicinal',
+    type: 'public',
+    members: 0,
+    unread: 0,
+    description: 'Especialistas em cannabis medicinal',
+    allowedRoles: ['admin', 'profissional', 'aluno'],
+    postRoles: ['admin', 'profissional', 'aluno']
+  },
+  {
+    id: 'clinical',
+    name: 'Casos Clínicos',
+    type: 'public',
+    members: 0,
+    unread: 0,
+    description: 'Discussão de casos complexos',
+    allowedRoles: ['admin', 'profissional', 'aluno'],
+    postRoles: ['admin', 'profissional']
+  },
+  {
+    id: 'research',
+    name: 'Pesquisa',
+    type: 'public',
+    members: 0,
+    unread: 0,
+    description: 'Pesquisas e estudos recentes',
+    allowedRoles: ['admin', 'profissional', 'aluno'],
+    postRoles: ['admin', 'profissional', 'aluno']
+  },
+  {
+    id: 'support',
+    name: 'Suporte',
+    type: 'private',
+    members: 0,
+    unread: 0,
+    description: 'Suporte técnico e ajuda',
+    allowedRoles: ['admin', 'profissional', 'aluno', 'paciente'],
+    postRoles: ['admin', 'profissional', 'paciente']
+  }
+]
+
+const BASE_DEBATES: DebateConfig[] = [
+  {
+    id: 1,
+    title: 'CBD vs THC: Qual é mais eficaz para dor crônica?',
+    author: 'Dr. João Silva',
+    authorAvatar: 'JS',
+    category: 'Cannabis Medicinal',
+    participants: 24,
+    views: 156,
+    replies: 18,
+    votes: { up: 15, down: 3 },
+    tags: ['CBD', 'THC', 'Dor Crônica', 'Cannabis'],
+    lastActivity: '2 horas atrás',
+    isPinned: true,
+    isHot: true,
+    isActive: true,
+    isPasswordProtected: false,
+    description:
+      'Discussão sobre a eficácia comparativa entre CBD e THC no tratamento da dor crônica, baseada em evidências clínicas recentes.',
+    allowedRoles: ['admin', 'profissional', 'aluno'],
+    postRoles: ['admin', 'profissional']
+  },
+  {
+    id: 2,
+    title: 'Protocolo de dosagem para pacientes idosos com cannabis',
+    author: 'Dra. Maria Santos',
+    authorAvatar: 'MS',
+    category: 'Protocolos',
+    participants: 18,
+    views: 89,
+    replies: 12,
+    votes: { up: 22, down: 1 },
+    tags: ['Dosagem', 'Idosos', 'Protocolo', 'Segurança'],
+    lastActivity: '4 horas atrás',
+    isPinned: false,
+    isHot: false,
+    isActive: false,
+    isPasswordProtected: true,
+    description: 'Compartilhamento de protocolos seguros para dosagem de cannabis em pacientes da terceira idade.',
+    allowedRoles: ['admin', 'profissional'],
+    postRoles: ['admin', 'profissional']
+  },
+  {
+    id: 3,
+    title: 'Interações medicamentosas com cannabis: Casos reais',
+    author: 'Dr. Pedro Costa',
+    authorAvatar: 'PC',
+    category: 'Farmacologia',
+    participants: 31,
+    views: 203,
+    replies: 25,
+    votes: { up: 28, down: 2 },
+    tags: ['Interações', 'Farmacologia', 'Casos Reais', 'Segurança'],
+    lastActivity: '1 hora atrás',
+    isPinned: false,
+    isHot: true,
+    isActive: true,
+    isPasswordProtected: false,
+    description: 'Análise de casos reais de interações medicamentosas com cannabis e estratégias de prevenção.',
+    allowedRoles: ['admin', 'profissional', 'aluno'],
+    postRoles: ['admin', 'profissional']
+  }
+]
+
 const ChatGlobal: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -80,70 +236,59 @@ const ChatGlobal: React.FC = () => {
     boxShadow: '0 18px 42px rgba(2,12,27,0.45)'
   }
 
-  const [channels, setChannels] = useState([
-    { id: 'general', name: 'Geral', type: 'public', members: 0, unread: 0, description: 'Discussões gerais sobre medicina' },
-    { id: 'cannabis', name: 'Cannabis Medicinal', type: 'public', members: 0, unread: 0, description: 'Especialistas em cannabis medicinal' },
-    { id: 'clinical', name: 'Casos Clínicos', type: 'public', members: 0, unread: 0, description: 'Discussão de casos complexos' },
-    { id: 'research', name: 'Pesquisa', type: 'public', members: 0, unread: 0, description: 'Pesquisas e estudos recentes' },
-    { id: 'support', name: 'Suporte', type: 'private', members: 0, unread: 0, description: 'Suporte técnico e ajuda' }
-  ])
+  const [channels, setChannels] = useState<ChannelPermissionConfig[]>(() =>
+    BASE_CHANNELS.map(channel => ({ ...channel }))
+  )
+  const userType: UserType = user?.type ?? 'paciente'
 
-  const debates = [
-    {
-      id: 1,
-      title: 'CBD vs THC: Qual é mais eficaz para dor crônica?',
-      author: 'Dr. João Silva',
-      authorAvatar: 'JS',
-      category: 'Cannabis Medicinal',
-      participants: 24,
-      views: 156,
-      replies: 18,
-      votes: { up: 15, down: 3 },
-      tags: ['CBD', 'THC', 'Dor Crônica', 'Cannabis'],
-      lastActivity: '2 horas atrás',
-      isPinned: true,
-      isHot: true,
-      isActive: true,
-      isPasswordProtected: false,
-      description: 'Discussão sobre a eficácia comparativa entre CBD e THC no tratamento da dor crônica, baseada em evidências clínicas recentes.'
-    },
-    {
-      id: 2,
-      title: 'Protocolo de dosagem para pacientes idosos com cannabis',
-      author: 'Dra. Maria Santos',
-      authorAvatar: 'MS',
-      category: 'Protocolos',
-      participants: 18,
-      views: 89,
-      replies: 12,
-      votes: { up: 22, down: 1 },
-      tags: ['Dosagem', 'Idosos', 'Protocolo', 'Segurança'],
-      lastActivity: '4 horas atrás',
-      isPinned: false,
-      isHot: false,
-      isActive: false,
-      isPasswordProtected: true,
-      description: 'Compartilhamento de protocolos seguros para dosagem de cannabis em pacientes da terceira idade.'
-    },
-    {
-      id: 3,
-      title: 'Interações medicamentosas com cannabis: Casos reais',
-      author: 'Dr. Pedro Costa',
-      authorAvatar: 'PC',
-      category: 'Farmacologia',
-      participants: 31,
-      views: 203,
-      replies: 25,
-      votes: { up: 28, down: 2 },
-      tags: ['Interações', 'Farmacologia', 'Casos Reais', 'Segurança'],
-      lastActivity: '1 hora atrás',
-      isPinned: false,
-      isHot: true,
-      isActive: true,
-      isPasswordProtected: false,
-      description: 'Análise de casos reais de interações medicamentosas com cannabis e estratégias de prevenção.'
+  const channelsWithAccess: ChannelWithAccess[] = useMemo(() => {
+    return channels.map(channel => {
+      const canView = channel.allowedRoles.includes(userType)
+      const canPost = canView && channel.postRoles.includes(userType)
+      return {
+        ...channel,
+        canView,
+        canPost,
+        isReadOnly: canView && !canPost
+      }
+    })
+  }, [channels, userType])
+
+  const accessibleChannels = useMemo(
+    () => channelsWithAccess.filter(channel => channel.canView),
+    [channelsWithAccess]
+  )
+
+  const activeChannelData = useMemo(
+    () => channelsWithAccess.find(channel => channel.id === activeChannel),
+    [channelsWithAccess, activeChannel]
+  )
+
+  useEffect(() => {
+    if (!accessibleChannels.length) {
+      return
     }
-  ]
+    const isActiveAccessible = accessibleChannels.some(channel => channel.id === activeChannel)
+    if (!isActiveAccessible) {
+      setActiveChannel(accessibleChannels[0].id)
+    }
+  }, [accessibleChannels, activeChannel])
+
+  const debatesForUser = useMemo(() => {
+    return BASE_DEBATES.filter(debate => debate.allowedRoles.includes(userType))
+  }, [userType])
+
+  const filteredDebates = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim()
+    if (!term) return debatesForUser
+    return debatesForUser.filter(debate =>
+      debate.title.toLowerCase().includes(term) ||
+      debate.tags.some(tag => tag.toLowerCase().includes(term)) ||
+      debate.category.toLowerCase().includes(term)
+    )
+  }, [debatesForUser, searchTerm])
+
+  const canStartDebate = userType === 'admin' || userType === 'profissional'
 
   // Verificar se é admin
   useEffect(() => {
@@ -208,7 +353,8 @@ const ChatGlobal: React.FC = () => {
             name: msg.user_name,
             avatar: msg.user_avatar,
             crm: msg.crm,
-            specialty: msg.specialty
+            specialty: msg.specialty,
+            status: 'online'
           })
         }
         return acc
@@ -221,7 +367,8 @@ const ChatGlobal: React.FC = () => {
           name: user.name || 'Usuário',
           avatar: 'U',
           crm: user.crm || '',
-          specialty: ''
+          specialty: '',
+          status: 'online'
         })
       }
 
@@ -452,7 +599,8 @@ const ChatGlobal: React.FC = () => {
           name: user?.name || 'Usuário Atual',
           avatar: 'U',
           crm: user?.crm || '',
-          specialty: ''
+          specialty: '',
+          status: 'online'
         }
       ]
       
@@ -499,7 +647,12 @@ const ChatGlobal: React.FC = () => {
 
   const handleSendMessage = async () => {
     if (!message.trim() || !user || isSending) return
-    
+
+    if (!activeChannelData?.canPost) {
+      alert('Seu perfil possui acesso somente leitura neste canal. Solicite mediação de um profissional para participar.')
+      return
+    }
+
     setIsSending(true)
     console.log('💬 Enviando (OFFLINE):', message)
     
@@ -890,35 +1043,53 @@ const ChatGlobal: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                {channels.map((channel) => (
-                  <button
-                    key={channel.id}
-                    onClick={() => setActiveChannel(channel.id)}
-                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
-                      activeChannel === channel.id
-                        ? 'bg-primary-600 text-white'
-                        : 'hover:bg-slate-700/50 text-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <div className="text-left">
-                        <p className="font-medium">{channel.name}</p>
-                        <p className="text-xs opacity-75">{channel.description}</p>
+                {channelsWithAccess.map((channel) => {
+                  const isActive = activeChannel === channel.id
+                  const baseClasses = isActive && channel.canView
+                    ? 'bg-primary-600 text-white'
+                    : channel.canView
+                      ? 'hover:bg-slate-700/50 text-slate-300'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/60'
+
+                  return (
+                    <button
+                      key={channel.id}
+                      onClick={() => {
+                        if (!channel.canView) {
+                          alert('Seu perfil não possui acesso direto a este canal. Procure o canal recomendado para o seu tipo de usuário.')
+                          return
+                        }
+                        setActiveChannel(channel.id)
+                      }}
+                      className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${baseClasses}`}
+                      disabled={!channel.canView}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-2 h-2 rounded-full ${channel.canView ? 'bg-green-400' : 'bg-slate-500'}`}></div>
+                        <div className="text-left">
+                          <p className="font-medium">{channel.name}</p>
+                          <p className="text-xs opacity-75">{channel.description}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs bg-slate-600 px-2 py-1 rounded">
-                        {channel.members}
-                      </span>
-                      {channel.unread > 0 && (
-                        <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                          {channel.unread}
+                      <div className="flex items-center space-x-2">
+                        {channel.isReadOnly && channel.canView && (
+                          <span className="text-[10px] uppercase tracking-wide bg-slate-600/70 text-slate-200 px-2 py-0.5 rounded-full">
+                            Somente leitura
+                          </span>
+                        )}
+                        {!channel.canView && <Lock className="w-3.5 h-3.5 text-slate-400" />}
+                        <span className="text-xs bg-slate-600 px-2 py-1 rounded">
+                          {channel.members}
                         </span>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                        {channel.unread > 0 && channel.canView && (
+                          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                            {channel.unread}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -970,10 +1141,10 @@ const ChatGlobal: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <h3 className="text-base md:text-lg font-semibold text-white truncate">
-                      {channels.find(c => c.id === activeChannel)?.name}
+                      {activeChannelData?.name || 'Canal indisponível'}
                     </h3>
                     <p className="text-slate-400 text-xs md:text-sm">
-                      {channels.find(c => c.id === activeChannel)?.members} membros
+                      {activeChannelData?.members || 0} membros
                     </p>
                   </div>
                   <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
@@ -1074,7 +1245,8 @@ const ChatGlobal: React.FC = () => {
                       onChange={(e) => setMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="Digite sua mensagem..."
-                      className="w-full px-2 md:px-4 py-2 md:py-3 text-sm md:text-base bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-2 md:px-4 py-2 md:py-3 text-sm md:text-base bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={!activeChannelData?.canPost}
                     />
                   </div>
                   <button className="p-1.5 md:p-2 text-slate-400 hover:text-yellow-400 transition-colors hidden sm:block">
@@ -1092,12 +1264,17 @@ const ChatGlobal: React.FC = () => {
                   </button>
                   <button
                     onClick={handleSendMessage}
-                    disabled={isSending}
+                    disabled={isSending || !activeChannelData?.canPost}
                     className="bg-primary-600 hover:bg-primary-700 text-white px-2 md:px-4 py-2 md:py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   >
                     <Send className="w-4 h-4 md:w-5 md:h-5" />
                   </button>
                 </div>
+                {activeChannelData?.isReadOnly && (
+                  <p className="mt-2 text-[11px] md:text-xs text-slate-400">
+                    Este canal é moderado. Perfis <strong>{userType}</strong> participam em modo leitura; envolva um profissional para abrir novas interações.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1306,9 +1483,21 @@ const ChatGlobal: React.FC = () => {
                 <h2 className="text-2xl font-bold text-white mb-2">🏛️ Fórum Profissional</h2>
                 <p className="text-slate-300">Debates, discussões e troca de conhecimento entre profissionais</p>
               </div>
-              <button className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors">
+              <button
+                onClick={() => {
+                  if (!canStartDebate) {
+                    alert('Abertura de debates é restrita a profissionais e administradores. Solicite uma mediação.')
+                  }
+                }}
+                disabled={!canStartDebate}
+                className={`px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors ${
+                  canStartDebate
+                    ? 'bg-primary-600 hover:bg-primary-700 text-white'
+                    : 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
+                }`}
+              >
                 <Plus className="w-5 h-5" />
-                <span>Novo Debate</span>
+                <span>{canStartDebate ? 'Novo Debate' : 'Restrito a profissionais'}</span>
               </button>
             </div>
 
@@ -1335,84 +1524,106 @@ const ChatGlobal: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
             {/* Debates List */}
             <div className="lg:col-span-2 space-y-4">
-            {debates.map((debate) => (
-              <div key={debate.id} className="bg-slate-800/80 rounded-lg p-6 border border-slate-700 hover:bg-slate-800/90 transition-colors">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-lg font-semibold text-white">{debate.title}</h3>
-                      {debate.isPinned && <Pin className="w-5 h-5 text-yellow-400" />}
-                      {debate.isHot && <TrendingUp className="w-5 h-5 text-red-400" />}
-                      {debate.isActive && (
-                        <div className="flex items-center space-x-1">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                          <span className="text-green-400 text-sm font-medium">ONLINE</span>
+            {filteredDebates.length > 0 ? (
+              filteredDebates.map((debate) => {
+                const canPostInDebate = debate.postRoles.includes(userType)
+                return (
+                  <div key={debate.id} className="bg-slate-800/80 rounded-lg p-6 border border-slate-700 hover:bg-slate-800/90 transition-colors">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="text-lg font-semibold text-white">{debate.title}</h3>
+                          {debate.isPinned && <Pin className="w-5 h-5 text-yellow-400" />}
+                          {debate.isHot && <TrendingUp className="w-5 h-5 text-red-400" />}
+                          {debate.isActive && (
+                            <div className="flex items-center space-x-1">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                              <span className="text-green-400 text-sm font-medium">ONLINE</span>
+                            </div>
+                          )}
+                          {debate.isPasswordProtected && (
+                            <div className="flex items-center space-x-1">
+                              <Lock className="w-4 h-4 text-primary-400" />
+                              <span className="text-primary-400 text-sm">Protegido</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {debate.isPasswordProtected && (
-                        <div className="flex items-center space-x-1">
-                          <Lock className="w-4 h-4 text-primary-400" />
-                          <span className="text-primary-400 text-sm">Protegido</span>
+                        <p className="text-slate-300 text-sm mb-3">{debate.description}</p>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {debate.tags.map((tag, index) => (
+                            <span key={index} className="px-2 py-1 bg-primary-500/20 text-primary-400 text-xs rounded-full">
+                              {tag}
+                            </span>
+                          ))}
                         </div>
-                      )}
-                    </div>
-                    <p className="text-slate-300 text-sm mb-3">{debate.description}</p>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {debate.tags.map((tag, index) => (
-                        <span key={index} className="px-2 py-1 bg-primary-500/20 text-primary-400 text-xs rounded-full">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex items-center space-x-4 text-sm text-slate-400">
-                      <div className="flex items-center space-x-1">
-                        <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-purple-600 rounded-full flex items-center justify-center">
-                          <span className="text-white font-bold text-xs">{debate.authorAvatar}</span>
+                        <div className="flex items-center space-x-4 text-sm text-slate-400">
+                          <div className="flex items-center space-x-1">
+                            <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-purple-600 rounded-full flex items-center justify-center">
+                              <span className="text-white font-bold text-xs">{debate.authorAvatar}</span>
+                            </div>
+                            <span>{debate.author}</span>
+                          </div>
+                          <span>•</span>
+                          <span>{debate.category}</span>
+                          <span>•</span>
+                          <span>{debate.participants} participantes</span>
+                          <span>•</span>
+                          <span>{debate.views} visualizações</span>
+                          <span>•</span>
+                          <span>{debate.lastActivity}</span>
+                          {!canPostInDebate && (
+                            <>
+                              <span>•</span>
+                              <span className="text-slate-500 italic">Somente leitura para o seu perfil</span>
+                            </>
+                          )}
                         </div>
-                        <span>{debate.author}</span>
                       </div>
-                      <span>•</span>
-                      <span>{debate.category}</span>
-                      <span>•</span>
-                      <span>{debate.participants} participantes</span>
-                      <span>•</span>
-                      <span>{debate.views} visualizações</span>
-                      <span>•</span>
-                      <span>{debate.lastActivity}</span>
+                      <div className="flex flex-col items-end space-y-2">
+                        <div className={`flex items-center space-x-1 ${getVoteColor(debate.votes)}`}>
+                          <ThumbsUp className="w-4 h-4" />
+                          <span className="text-sm font-medium">{debate.votes.up}</span>
+                          <ThumbsDown className="w-4 h-4" />
+                          <span className="text-sm font-medium">{debate.votes.down}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button 
+                            onClick={() => handleOpenDebate(debate.id)}
+                            disabled={!canPostInDebate}
+                            className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
+                              canPostInDebate
+                                ? 'bg-primary-600 hover:bg-primary-700 text-white'
+                                : 'bg-slate-700 text-slate-300 cursor-not-allowed'
+                            }`}
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            <span>{canPostInDebate ? 'Participar' : 'Somente leitura'}</span>
+                          </button>
+                          <button className="p-2 text-slate-400 hover:text-primary-400 transition-colors">
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button className="p-2 text-slate-400 hover:text-green-400 transition-colors">
+                            <Reply className="w-4 h-4" />
+                          </button>
+                          <button className="p-2 text-slate-400 hover:text-purple-400 transition-colors">
+                            <Share2 className="w-4 h-4" />
+                          </button>
+                          <button className="p-2 text-slate-400 hover:text-red-400 transition-colors">
+                            <Flag className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end space-y-2">
-                    <div className={`flex items-center space-x-1 ${getVoteColor(debate.votes)}`}>
-                      <ThumbsUp className="w-4 h-4" />
-                      <span className="text-sm font-medium">{debate.votes.up}</span>
-                      <ThumbsDown className="w-4 h-4" />
-                      <span className="text-sm font-medium">{debate.votes.down}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={() => handleOpenDebate(debate.id)}
-                        className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg flex items-center space-x-2 transition-colors"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        <span>Participar</span>
-                      </button>
-                      <button className="p-2 text-slate-400 hover:text-primary-400 transition-colors">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-slate-400 hover:text-green-400 transition-colors">
-                        <Reply className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-slate-400 hover:text-purple-400 transition-colors">
-                        <Share2 className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-slate-400 hover:text-red-400 transition-colors">
-                        <Flag className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                )
+              })
+            ) : (
+              <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700 text-slate-300 text-sm">
+                {debatesForUser.length === 0
+                  ? 'O seu perfil participa do fórum por meio de canais mediados. Converse com a coordenação para ser convidado a debates especializados.'
+                  : 'Nenhum debate encontrado para a sua busca. Ajuste os filtros ou tente outra palavra-chave.'}
               </div>
-            ))}
+            )}
             </div>
 
             {/* Coluna de Notícias, Parcerias, Patrocinadores e Apoiadores */}

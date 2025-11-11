@@ -7,6 +7,7 @@ import PatientManagementAdvanced from './PatientManagementAdvanced'
 import ProfessionalChatSystem from '../components/ProfessionalChatSystem'
 import VideoCall from '../components/VideoCall'
 import ClinicalReports from '../components/ClinicalReports'
+import IntegrativePrescriptions from '../components/IntegrativePrescriptions'
 import { 
   Brain, 
   Users, 
@@ -36,7 +37,8 @@ import {
   User,
   UserPlus,
   GraduationCap,
-  Loader2
+  Loader2,
+  ArrowRight
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { getAllPatients, isAdmin } from '../lib/adminPermissions'
@@ -90,6 +92,7 @@ type SectionId =
   | 'admin-renal'
   | 'atendimento'
   | 'pacientes'
+  | 'prescricoes'
   | 'agendamentos'
   | 'relatorios-clinicos'
   | 'chat-profissionais'
@@ -871,8 +874,13 @@ const RicardoValencaDashboard: React.FC = () => {
   }, [navigate])
 
   const handleOpenPatientManagement = useCallback(() => {
-    navigate('/app/clinica/profissional/pacientes')
-  }, [navigate])
+    navigate('/app/clinica/profissional/pacientes', {
+      state: {
+        from: location.pathname,
+        selectedPatientId: selectedPatient
+      }
+    })
+  }, [location.pathname, navigate, selectedPatient])
 
   const handleCreatePatient = useCallback(() => {
     navigate('/app/new-patient')
@@ -1602,15 +1610,86 @@ const RicardoValencaDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Botão para voltar ao dashboard */}
-      <div className="text-center">
-        <button
-          onClick={() => goToSection('dashboard')}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-        >
-          ← Voltar ao Dashboard
-        </button>
+      <div className="bg-gradient-to-br from-emerald-900/30 via-slate-900/60 to-slate-950/80 border border-emerald-500/20 rounded-2xl shadow-lg shadow-emerald-900/30 overflow-hidden">
+        <div className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-400/20 flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-emerald-200" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-emerald-200/80 mb-1">
+                Nôa Esperança IA • Base de Conhecimento
+              </p>
+              <h3 className="text-xl md:text-2xl font-semibold text-white">Biblioteca Compartilhada</h3>
+              <p className="text-sm text-emerald-100/80 mt-1 max-w-2xl">
+                Últimos materiais integrados à plataforma para suportar decisões clínicas e educacionais.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => goToSection('admin-upload')}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-400/40 text-emerald-100 hover:bg-emerald-500/10 transition-colors text-sm font-semibold"
+          >
+            Abrir base completa
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="border-t border-emerald-500/10 bg-slate-950/40">
+          {knowledgeLoading ? (
+            <div className="flex items-center gap-2 text-emerald-200 px-6 py-5">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Carregando documentos...
+            </div>
+          ) : knowledgeError ? (
+            <div className="px-6 py-5 text-sm text-emerald-200/80">{knowledgeError}</div>
+          ) : knowledgeDocuments.length === 0 ? (
+            <div className="px-6 py-5 text-sm text-emerald-200/80">
+              Nenhum documento disponível. Carregue materiais na Biblioteca Compartilhada.
+            </div>
+          ) : (
+            <div className="divide-y divide-emerald-500/10">
+              {knowledgeDocuments.slice(0, 3).map(doc => (
+                <button
+                  key={doc.id}
+                  onClick={() => handleOpenKnowledgeDocument(doc)}
+                  className="w-full text-left px-6 py-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between hover:bg-emerald-500/5 transition-colors"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      {doc.title ?? doc.summary ?? 'Documento sem título'}
+                    </p>
+                    <p className="text-xs text-emerald-100/70 mt-1 line-clamp-2">{doc.summary || 'Sem descrição'}</p>
+                    <div className="flex items-center gap-3 mt-2 text-[11px] text-emerald-200/60 uppercase tracking-[0.2em]">
+                      <span>{doc.category ?? 'Sem categoria'}</span>
+                      {doc.updated_at && (
+                        <span className="text-emerald-200/40">
+                          Atualizado {formatKnowledgeRelativeTime(doc.updated_at)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-emerald-200/80 text-xs font-semibold uppercase tracking-[0.2em]">
+                    Visualizar
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Botão para voltar ao dashboard */}
+      {resolvedSection !== 'dashboard' && (
+        <div className="text-center">
+          <button
+            onClick={() => goToSection('dashboard')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+          >
+            ← Voltar ao Dashboard
+          </button>
+        </div>
+      )}
     </div>
   )
 
@@ -2116,11 +2195,124 @@ const RicardoValencaDashboard: React.FC = () => {
                 </button>
               )
             })}
-          </div>
         </div>
+      </div>
       </div>
     )
   }
+
+  const renderPrescricoes = () => (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-800 rounded-xl p-6 text-white border border-slate-700/40">
+        <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+          <FileText className="w-6 h-6" />
+          Prescrições Integrativas
+        </h2>
+        <p className="text-blue-100 text-sm md:text-base max-w-3xl">
+          Acompanhe os protocolos terapêuticos, selecione um paciente e registre novas prescrições integradas às cinco racionalidades médicas.
+        </p>
+      </div>
+
+      <div className="flex flex-col xl:flex-row gap-6">
+        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4 w-full xl:w-[320px] flex-shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-emerald-300" />
+                Selecionar paciente
+              </h3>
+              <p className="text-xs text-slate-400">Escolha um paciente para vincular prescrições ao plano terapêutico.</p>
+            </div>
+            <button
+              onClick={handleOpenPatientManagement}
+              className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-lg border border-emerald-500/50 hover:bg-emerald-500/10 transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              Prontuário
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-10 text-sm text-slate-400">Carregando pacientes...</div>
+          ) : patients.length === 0 ? (
+            <div className="text-center py-10 text-sm text-slate-400">
+              Nenhum paciente encontrado. Cadastre um paciente para emitir prescrições.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1 custom-scrollbar">
+              {patients.map(patient => {
+                const isActive = patient.id === selectedPatient
+                const assessmentCount = patient.assessments?.length || 0
+                const statusLabel = (() => {
+                  const raw = (patient.status ?? '').toLowerCase()
+                  switch (raw) {
+                    case 'completed':
+                      return 'Concluído'
+                    case 'ativo':
+                    case 'active':
+                      return 'Ativo'
+                    case 'pending':
+                      return 'Pendente'
+                    case 'suspended':
+                      return 'Suspenso'
+                    default:
+                      return patient.status ?? 'Em acompanhamento'
+                  }
+                })()
+                return (
+                  <button
+                    key={patient.id}
+                    type="button"
+                    onClick={() => setSelectedPatient(patient.id)}
+                    className={`w-full text-left rounded-xl border px-4 py-3 transition-colors ${
+                      isActive
+                        ? 'border-emerald-500/50 bg-emerald-500/10 text-white'
+                        : 'border-slate-800 bg-slate-900/60 text-slate-200 hover:border-emerald-400/40 hover:bg-emerald-500/5'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <p className="text-sm font-semibold truncate">{patient.name}</p>
+                        <p className="text-xs text-slate-400 leading-relaxed break-words">
+                          {patient.condition ?? 'Plano em avaliação'}
+                        </p>
+                        <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                          <span className="truncate">
+                            {patient.specialty ?? 'Não especificado'}
+                          </span>
+                          <span className="text-slate-700">•</span>
+                          <span>
+                            {assessmentCount} {assessmentCount === 1 ? 'avaliação' : 'avaliações'}
+                          </span>
+                        </p>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-[0.12em] whitespace-nowrap ${
+                          statusLabel === 'Ativo'
+                            ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30'
+                            : 'bg-slate-800 text-slate-300 border border-slate-700'
+                        }`}
+                      >
+                        {statusLabel}
+                      </span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <IntegrativePrescriptions
+            patientId={selectedPatientData?.id ?? null}
+            patientName={selectedPatientData?.name ?? null}
+            className="overflow-visible"
+          />
+        </div>
+      </div>
+    </div>
+  )
 
   const renderPacientes = () => (
     <div className="space-y-6">
@@ -2520,6 +2712,8 @@ const RicardoValencaDashboard: React.FC = () => {
             </ul>
           </div>
         </div>
+
+        {summarySection}
       </div>
     )
   }
@@ -2910,8 +3104,8 @@ const RicardoValencaDashboard: React.FC = () => {
       }
     ]
 
-    return (
-      <div className="space-y-6">
+    const summarySection = (
+      <>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {summaryCards.map(card => {
             const SummaryIcon = card.icon
@@ -2943,7 +3137,11 @@ const RicardoValencaDashboard: React.FC = () => {
         {doctorDashboardError && !doctorDashboardLoading && (
           <p className="text-sm text-rose-300">{doctorDashboardError}</p>
         )}
+      </>
+    )
 
+    return (
+      <div className="space-y-6">
         <div className="grid grid-cols-1 xl:grid-cols-[1.8fr_1.2fr] gap-6">
           <div className="rounded-xl p-6 space-y-5" style={surfaceStyle}>
             <div className="flex items-center justify-between">
@@ -4064,6 +4262,8 @@ const RicardoValencaDashboard: React.FC = () => {
         return renderAtendimento()
       case 'pacientes':
         return renderPacientes()
+      case 'prescricoes':
+        return renderPrescricoes()
       case 'agendamentos':
         return renderAgendamentos()
       case 'financeiro':
@@ -4111,6 +4311,11 @@ const RicardoValencaDashboard: React.FC = () => {
   }, [appointments])
 
   const upcomingAppointments = useMemo(() => appointments.slice(0, 4), [appointments])
+
+const selectedPatientData = useMemo(
+  () => patients.find(patient => patient.id === selectedPatient) ?? null,
+  [patients, selectedPatient]
+)
 
   const {
     totalToday: totalTodayCount,
@@ -4453,22 +4658,24 @@ const RicardoValencaDashboard: React.FC = () => {
       data-page="ricardo-valenca-dashboard"
     >
       <div className="max-w-7xl mx-auto px-2 md:px-4 lg:px-6 py-4 md:py-6 lg:py-8 w-full overflow-x-hidden">
+        {renderActiveSection(resolvedSection)}
+
         {sectionNavOptions && sectionNavOptions.length > 0 && (
-          <div className="space-y-3 mb-6">
+          <div className="space-y-3 mt-12">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                   {normalizedEffectiveType === 'admin'
-                    ? 'Painel Administrativo • Eixos Integrados'
+                    ? 'Painel Administrativo • Navegação rápida'
                     : currentEixo === 'ensino'
-                    ? 'Eixo Ensino'
+                    ? 'Eixo Ensino • Navegação'
                     : currentEixo === 'pesquisa'
-                    ? 'Eixo Pesquisa'
-                    : 'Eixo Clínica'}
+                    ? 'Eixo Pesquisa • Navegação'
+                    : 'Eixo Clínica • Navegação'}
                 </p>
-                <h1 className="text-xl md:text-2xl font-semibold text-white">
-                  {sectionNavOptions.find(option => option.id === resolvedSection)?.label || 'Resumo'}
-                </h1>
+                <h2 className="text-lg md:text-xl font-semibold text-white">
+                  Acesse outras áreas especializadas
+                </h2>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -4521,8 +4728,6 @@ const RicardoValencaDashboard: React.FC = () => {
             </div>
           </div>
         )}
-
-        {renderActiveSection(resolvedSection)}
 
         {/* Modal de Seleção de Dashboard Profissional */}
         {showProfessionalModal && (
