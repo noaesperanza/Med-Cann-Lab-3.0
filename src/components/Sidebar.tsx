@@ -77,9 +77,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   const getNavigationItems = () => {
     const adminItems = [
       // OUTROS
-      { 
-        name: '💬 Fórum Cann Matrix', 
-        href: '/app/chat', 
+      {
+        name: '💬 Fórum Cann Matrix',
+        href: '/app/chat',
         icon: MessageCircle,
         section: 'other'
       },
@@ -107,9 +107,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     const professionalItems = [
       // OUTROS
-      { 
-        name: '💬 Fórum Cann Matrix', 
-        href: '/app/chat', 
+      {
+        name: '💬 Fórum Cann Matrix',
+        href: '/app/chat',
         icon: MessageCircle,
         section: 'other'
       },
@@ -134,7 +134,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       { name: 'Simulações', href: '/app/ensino/aluno/dashboard?section=simulacoes', icon: Activity },
       { name: 'Teste de Nivelamento', href: '/app/ensino/aluno/dashboard?section=teste', icon: CheckCircle },
       { name: 'Biblioteca', href: '/app/ensino/aluno/dashboard?section=biblioteca', icon: BookOpen },
-      { name: 'Fórum Cann Matrix', href: '/app/ensino/aluno/dashboard?section=forum', icon: MessageCircle }
+      { name: 'Fórum Cann Matrix', href: '/app/chat', icon: MessageCircle }
     ]
 
     let specificItems = []
@@ -193,6 +193,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     label: string
     description: string
     icon: React.ComponentType<{ className?: string }>
+    href?: string
   }
 
   const adminSections: AxisSection[] = [
@@ -203,22 +204,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: LayoutDashboard
     },
     {
-      id: 'admin-usuarios',
-      label: 'Usuários',
-      description: 'Gestão de equipes e permissões',
-      icon: Users
-    },
-    {
       id: 'admin-upload',
       label: 'Base de Conhecimento',
       description: 'Protocolos, manuais e arquivos estratégicos',
-      icon: BookOpen
-    },
-    {
-      id: 'admin-renal',
-      label: 'Função Renal',
-      description: 'Monitoramento integrado de nefrologia',
-      icon: Activity
+      icon: BookOpen,
+      href: '/app/library'
     }
   ]
 
@@ -299,31 +289,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       id: 'avaliacao',
       label: 'Protocolos',
       description: 'Gestão de estudos e métricas de pesquisa',
-      icon: Activity
-    },
-    {
-      id: 'relatorios-clinicos',
-      label: 'Analytics',
-      description: 'Indicadores e resultados consolidados',
-      icon: TrendingUp
-    },
-    {
-      id: 'biblioteca',
-      label: 'Base Científica',
-      description: 'Publicações, datasets e referências',
-      icon: BookOpen
-    },
-    {
-      id: 'newsletter',
-      label: 'Insights',
-      description: 'Atualizações científicas e relatórios da equipe',
-      icon: Bell
-    },
-    {
-      id: 'chat-profissionais',
-      label: 'Colaboração',
-      description: 'Sincronização com pesquisadores e parceiros',
-      icon: MessageCircle
+      icon: Activity,
+      href: '/app/pesquisa/profissional/cidade-amiga-dos-rins'
     }
   ]
 
@@ -515,8 +482,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                         >
                           {combinedSections.map((section) => {
                             const SectionIcon = section.icon
-                            const sectionIsActive = currentSection === section.id
-                            const target = `${axis.path}?section=${section.id}`
+                            const target = section.href || `${axis.path}?section=${section.id}`
+                            const sectionIsActive = section.href
+                              ? location.pathname === section.href
+                              : currentSection === section.id
 
                             return (
                               <Link

@@ -6,7 +6,6 @@ import { normalizeUserType } from '../lib/userTypes'
 import PatientManagementAdvanced from './PatientManagementAdvanced'
 import ProfessionalChatSystem from '../components/ProfessionalChatSystem'
 import VideoCall from '../components/VideoCall'
-import IntegrativePrescriptions from '../components/IntegrativePrescriptions'
 import ClinicalReports from '../components/ClinicalReports'
 import { 
   Brain, 
@@ -31,6 +30,8 @@ import {
   Phone,
   Download,
   Upload,
+  Database,
+  ClipboardList,
   Bell,
   User,
   UserPlus,
@@ -90,7 +91,6 @@ type SectionId =
   | 'atendimento'
   | 'pacientes'
   | 'agendamentos'
-  | 'prescricoes'
   | 'relatorios-clinicos'
   | 'chat-profissionais'
   | 'aulas'
@@ -105,6 +105,16 @@ type SectionOption = {
   label: string
   description: string
   icon: React.ComponentType<{ className?: string }>
+}
+
+interface NoaCommandDetail {
+  type: 'navigate-section' | 'navigate-route'
+  target: string
+  label?: string
+  fallbackRoute?: string
+  rawMessage?: string
+  source?: 'voice' | 'text'
+  timestamp?: string
 }
 
 const RicardoValencaDashboard: React.FC = () => {
@@ -181,7 +191,19 @@ const RicardoValencaDashboard: React.FC = () => {
   const [clinicalNotes, setClinicalNotes] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null)
   const [appointments, setAppointments] = useState<EnrichedAppointment[]>([])
+  const [appointmentsError, setAppointmentsError] = useState<string | null>(null)
   const [appointmentsLoading, setAppointmentsLoading] = useState(false)
+  const [doctorDashboardStats, setDoctorDashboardStats] = useState({
+    totalToday: 0,
+    confirmedToday: 0,
+    waitingRoomToday: 0,
+    completedToday: 0,
+    next24h: 0,
+    upcoming: 0,
+    unreadMessages: 0
+  })
+  const [doctorDashboardLoading, setDoctorDashboardLoading] = useState(false)
+  const [doctorDashboardError, setDoctorDashboardError] = useState<string | null>(null)
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null)
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
@@ -206,13 +228,30 @@ const RicardoValencaDashboard: React.FC = () => {
   const [knowledgeViewerMode, setKnowledgeViewerMode] = useState<'preview' | 'raw'>('preview')
 
   const normalizedEffectiveType = normalizeUserType(effectiveType)
+  const [localSectionOverride, setLocalSectionOverride] = useState<SectionId | null>(null)
   const isProfessionalDashboard =
     normalizedEffectiveType === 'profissional' ||
     viewAsType === 'profissional' ||
     location.pathname.includes('/profissional/')
 
   const sectionNavOptions = useMemo<SectionOption[] | null>(() => {
+    const isAdminDashboardRoute =
+      normalizedEffectiveType === 'admin' &&
+      location.pathname.includes('ricardo-valenca-dashboard')
+
     const clinicaOptions: SectionOption[] = [
+      {
+        id: 'admin-upload',
+        label: 'Biblioteca Compartilhada',
+        description: 'Uploads e organização de documentos',
+        icon: Upload
+      },
+      {
+        id: 'admin-renal',
+        label: 'Função Renal',
+        description: 'Monitoramento integrado de nefrologia',
+        icon: Activity
+      },
       {
         id: 'atendimento',
         label: 'Atendimento',
@@ -230,12 +269,6 @@ const RicardoValencaDashboard: React.FC = () => {
         label: 'Pacientes',
         description: 'Histórico, prioridades e anotações clínicas',
         icon: Users
-      },
-      {
-        id: 'prescricoes',
-        label: 'Prescrições',
-        description: 'Protocolos terapêuticos e integrações',
-        icon: FileText
       },
       {
         id: 'relatorios-clinicos',
@@ -281,12 +314,12 @@ const RicardoValencaDashboard: React.FC = () => {
         label: 'Mentoria',
         description: 'Comunicação com corpo docente e tutores',
         icon: MessageCircle
-    },
-    {
-      id: 'ferramentas-pedagogicas',
-      label: 'Ferramentas Pedagógicas',
-      description: 'Recursos inteligentes para criação de aulas e slides',
-      icon: FileText
+      },
+      {
+        id: 'ferramentas-pedagogicas',
+        label: 'Ferramentas Pedagógicas',
+        description: 'Recursos inteligentes para criação de aulas e slides',
+        icon: FileText
       }
     ]
 
@@ -327,7 +360,7 @@ const RicardoValencaDashboard: React.FC = () => {
       return null
     }
 
-    if (normalizedEffectiveType === 'admin') {
+    if (normalizedEffectiveType === 'admin' && isAdminDashboardRoute) {
       const eixoOptions =
         currentEixo === 'ensino'
           ? ensinoOptions
@@ -372,7 +405,11 @@ const RicardoValencaDashboard: React.FC = () => {
         }
       })
 
-      return adminOptions
+      const uniqueAdminOptions = adminOptions.filter(
+        (option, index, array) => array.findIndex(candidate => candidate.id === option.id) === index
+      )
+
+      return uniqueAdminOptions
     }
 
     if (currentEixo === 'ensino') {
@@ -384,20 +421,51 @@ const RicardoValencaDashboard: React.FC = () => {
     }
 
     return clinicaOptions
-  }, [currentEixo, isProfessionalDashboard, normalizedEffectiveType])
+  }, [currentEixo, isProfessionalDashboard, normalizedEffectiveType, location.pathname])
 
   const sectionParam = (searchParams.get('section') as SectionId | null) || null
 
   const goToSection = useCallback(
     (sectionId: SectionId) => {
+      if (localSectionOverride === sectionId && sectionParam === sectionId) {
+        return
+      }
+      setLocalSectionOverride(sectionId)
       const nextParams = new URLSearchParams(searchParams)
       nextParams.set('section', sectionId)
       setSearchParams(nextParams, { replace: true })
     },
-    [searchParams, setSearchParams]
+    [localSectionOverride, sectionParam, searchParams, setSearchParams]
   )
 
-  const resolvedSection: SectionId = useMemo(() => {
+  useEffect(() => {
+    const handleNoaCommand = (event: Event) => {
+      const custom = event as CustomEvent<NoaCommandDetail>
+      const detail = custom.detail
+      if (!detail) return
+
+      if (detail.type === 'navigate-section') {
+        const targetSection = detail.target as SectionId
+        if (sectionNavOptions?.some(option => option.id === targetSection)) {
+          goToSection(targetSection)
+          return
+        }
+        if (detail.fallbackRoute) {
+          navigate(detail.fallbackRoute)
+        }
+        return
+      }
+
+      if (detail.type === 'navigate-route' && typeof detail.target === 'string') {
+        navigate(detail.target)
+      }
+    }
+
+    window.addEventListener('noaCommand', handleNoaCommand as EventListener)
+    return () => window.removeEventListener('noaCommand', handleNoaCommand as EventListener)
+  }, [goToSection, navigate, sectionNavOptions])
+
+  const baseSection: SectionId = useMemo(() => {
     const defaultByContext: Record<string, SectionId> = {
       admin: 'atendimento',
       clinica: 'atendimento',
@@ -430,11 +498,14 @@ const RicardoValencaDashboard: React.FC = () => {
     return preferredSection || 'atendimento'
   }, [sectionParam, sectionNavOptions, normalizedEffectiveType, currentEixo])
 
+  const resolvedSection: SectionId = useMemo(
+    () => localSectionOverride ?? baseSection,
+    [localSectionOverride, baseSection]
+  )
   useEffect(() => {
-    if (!sectionNavOptions || sectionNavOptions.length === 0) return
-    if (sectionParam === resolvedSection) return
-    goToSection(resolvedSection)
-  }, [resolvedSection, sectionNavOptions, sectionParam, goToSection])
+    if (!sectionParam) return
+    setLocalSectionOverride(prev => (prev === sectionParam ? prev : sectionParam))
+  }, [sectionParam])
   
   // KPIs Administrativos Personalizados
   const [kpis, setKpis] = useState({
@@ -466,110 +537,74 @@ const RicardoValencaDashboard: React.FC = () => {
   // Carregar KPIs das 3 camadas da plataforma
   const loadKPIs = useCallback(async () => {
     try {
-      const { data: assessments, error: assessmentsError } = await supabase
-        .from('clinical_assessments')
+      const { data, error } = await supabase
+        .from('v_kpi_basic')
         .select('*')
-        .order('created_at', { ascending: false })
+        .maybeSingle()
 
-      if (assessmentsError) {
-        console.error('❌ Erro ao buscar avaliações:', assessmentsError)
-        return
+      if (error) {
+        console.warn('⚠️ Erro ao carregar KPIs básicos:', error)
       }
-
-      const assessmentList = assessments || []
-
-      const uniquePatientIds = new Set(
-        assessmentList
-          .map((assessment: any) => assessment.patient_id)
-          .filter((id: string | null) => Boolean(id))
-      )
-      const totalPacientes = uniquePatientIds.size
-      const avaliacoesCompletas = assessmentList.filter((assessment: any) => assessment.status === 'completed').length
-      const protocolosAEC = assessmentList.filter((assessment: any) => assessment.assessment_type === 'AEC').length
-      const protocolosIMRE = assessmentList.filter((assessment: any) => assessment.assessment_type === 'IMRE').length
-      const respondedoresTEZ = assessmentList.filter((assessment: any) => assessment.data?.improvement === true).length
-      const consultoriosAtivos = new Set(
-        assessmentList
-          .map((assessment: any) => assessment.doctor_id || assessment.data?.doctor_id)
-          .filter((id: string | null) => Boolean(id))
-      ).size
-
-      const { data: semanticKPIs, error: semanticError } = await supabase
-        .from('clinical_kpis')
-        .select('name, current_value, category')
-        .in('category', ['comportamental', 'cognitivo', 'social', 'neurologico'])
-
-      if (semanticError) {
-        console.warn('⚠️ Erro ao carregar KPIs semânticos:', semanticError)
-      }
-
-      let qualidadeEscuta = 0
-      let engajamentoPaciente = 0
-      let satisfacaoClinica = 0
-      let aderenciaTratamento = 0
-
-      if (semanticKPIs && semanticKPIs.length > 0) {
-        const qualidadeKPI = semanticKPIs.find(kpi => kpi.name?.toLowerCase().includes('qualidade') || kpi.name?.toLowerCase().includes('escuta'))
-        const engajamentoKPI = semanticKPIs.find(kpi => kpi.name?.toLowerCase().includes('engajamento'))
-        const satisfacaoKPI = semanticKPIs.find(kpi => kpi.name?.toLowerCase().includes('satisfação') || kpi.name?.toLowerCase().includes('satisfacao'))
-        const aderenciaKPI = semanticKPIs.find(kpi => kpi.name?.toLowerCase().includes('aderência') || kpi.name?.toLowerCase().includes('aderencia'))
-
-        qualidadeEscuta = qualidadeKPI?.current_value ? Number(qualidadeKPI.current_value) : 0
-        engajamentoPaciente = engajamentoKPI?.current_value ? Number(engajamentoKPI.current_value) : 0
-        satisfacaoClinica = satisfacaoKPI?.current_value ? Number(satisfacaoKPI.current_value) : 0
-        aderenciaTratamento = aderenciaKPI?.current_value ? Number(aderenciaKPI.current_value) : 0
-      }
-
-      const { data: wearableDevices, error: wearableError } = await supabase
-        .from('wearable_devices')
-        .select('id')
-        .eq('connection_status', 'connected')
-
-      if (wearableError) {
-        console.warn('⚠️ Erro ao carregar dispositivos conectados:', wearableError)
-      }
-
-      const { data: epilepsyEvents, error: epilepsyError } = await supabase
-        .from('epilepsy_events')
-        .select('severity, timestamp')
-        .gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-
-      if (epilepsyError) {
-        console.warn('⚠️ Erro ao carregar eventos de epilepsia:', epilepsyError)
-      }
-
-      const wearablesAtivos = wearableDevices?.length || 0
-      const monitoramento24h = wearablesAtivos
-      const episodiosEpilepsia = epilepsyEvents?.length || 0
-      const eventosLeves = epilepsyEvents?.filter(evento => evento.severity === 'leve').length || 0
-      const melhoraSintomas = episodiosEpilepsia > 0 ? Math.round((eventosLeves / episodiosEpilepsia) * 100) : 0
 
       setKpis({
         administrativos: {
-          totalPacientes,
-          avaliacoesCompletas,
-          protocolosAEC,
-          protocolosIMRE,
-          respondedoresTEZ,
-          consultoriosAtivos
+          totalPacientes: data?.total_reports ?? 0,
+          avaliacoesCompletas: data?.total_assessments ?? 0,
+          protocolosAEC: 0,
+          protocolosIMRE: 0,
+          respondedoresTEZ: 0,
+          consultoriosAtivos: data?.total_appointments ?? 0
         },
         semanticos: {
-          qualidadeEscuta: Math.round(qualidadeEscuta),
-          engajamentoPaciente: Math.round(engajamentoPaciente),
-          satisfacaoClinica: Math.round(satisfacaoClinica),
-          aderenciaTratamento: Math.round(aderenciaTratamento)
+          qualidadeEscuta: 0,
+          engajamentoPaciente: 0,
+          satisfacaoClinica: 0,
+          aderenciaTratamento: 0
         },
         clinicos: {
-          wearablesAtivos,
-          monitoramento24h,
-          episodiosEpilepsia,
-          melhoraSintomas
+          wearablesAtivos: 0,
+          monitoramento24h: 0,
+          episodiosEpilepsia: 0,
+          melhoraSintomas: 0
         }
       })
     } catch (error) {
       console.error('❌ Erro ao carregar KPIs:', error)
     }
-  }, [user?.id])
+  }, [])
+
+  const loadDoctorDashboardStats = useCallback(async () => {
+    try {
+      setDoctorDashboardLoading(true)
+      setDoctorDashboardError(null)
+
+      const { data, error } = await supabase
+        .from('v_doctor_dashboard_kpis')
+        .select('*')
+        .maybeSingle()
+
+      if (error) {
+        console.warn('⚠️ Erro ao carregar KPIs de atendimento:', error)
+        setDoctorDashboardError('Não foi possível carregar os indicadores clínicos.')
+        return
+      }
+
+      setDoctorDashboardStats({
+        totalToday: data?.total_today ?? 0,
+        confirmedToday: data?.confirmed_today ?? 0,
+        waitingRoomToday: data?.waiting_room_today ?? 0,
+        completedToday: data?.completed_today ?? 0,
+        next24h: data?.next_24h ?? 0,
+        upcoming: data?.upcoming ?? 0,
+        unreadMessages: data?.unread_messages ?? 0
+      })
+    } catch (error) {
+      console.error('❌ Erro inesperado ao carregar KPIs de atendimento:', error)
+      setDoctorDashboardError('Não foi possível carregar os indicadores clínicos.')
+    } finally {
+      setDoctorDashboardLoading(false)
+    }
+  }, [])
 
   const loadPatients = useCallback(async () => {
     try {
@@ -645,45 +680,93 @@ const RicardoValencaDashboard: React.FC = () => {
 
     try {
       setAppointmentsLoading(true)
+      setAppointmentsError(null)
 
-      const fromDate = new Date()
-      fromDate.setDate(fromDate.getDate() - 1)
-
-      let query = supabase
-        .from('appointments')
-        .select('id, patient_id, professional_id, title, description, appointment_date, duration, status, type, location, is_remote, meeting_url')
-        .gte('appointment_date', fromDate.toISOString())
-        .order('appointment_date', { ascending: true })
+      const { data: upcomingData, error: upcomingError } = await supabase
+        .from('v_next_appointments')
+        .select('id, appt_at, patient_id, professional_id, status_norm')
+        .order('appt_at', { ascending: true })
         .limit(60)
 
+      if (upcomingError) {
+        console.error('❌ Erro ao carregar agendamentos a partir da view:', upcomingError)
+        setAppointments([])
+        setAppointmentsError('Não foi possível carregar os agendamentos no momento.')
+        return
+      }
+
+      let upcomingRows =
+        upcomingData?.filter(row => Boolean(row?.appt_at)) ?? []
+
       if (normalizedEffectiveType === 'profissional' && user.id) {
-        query = query.eq('professional_id', user.id)
+        upcomingRows = upcomingRows.filter(row => row.professional_id === user.id)
       }
 
-      const { data, error } = await query
-
-      if (error) {
-        console.error('❌ Erro ao carregar agendamentos:', error)
+      if (upcomingRows.length === 0) {
         setAppointments([])
         return
       }
 
-      const appointmentList: Appointment[] = data || []
+      const appointmentIds = upcomingRows
+        .map(row => row.id)
+        .filter((id): id is string => Boolean(id))
 
-      if (appointmentList.length === 0) {
-        setAppointments([])
-        return
+      const appointmentDetailsMap = new Map<
+        string,
+        {
+          title: string | null
+          description: string | null
+          appointment_date: string | null
+          duration: number | null
+          status: string | null
+          type: string | null
+          location: string | null
+          is_remote: boolean | null
+          meeting_url: string | null
+        }
+      >()
+
+      if (appointmentIds.length > 0) {
+        const { data: appointmentDetails, error: appointmentDetailsError } = await supabase
+          .from('appointments')
+          .select(
+            'id, title, description, appointment_date, duration, status, type, location, is_remote, meeting_url'
+          )
+          .in('id', appointmentIds)
+
+        if (appointmentDetailsError) {
+          console.warn('⚠️ Erro ao carregar detalhes dos agendamentos:', appointmentDetailsError)
+        }
+
+        appointmentDetails?.forEach(detail => {
+          if (detail?.id) {
+            appointmentDetailsMap.set(detail.id, {
+              title: detail.title ?? null,
+              description: detail.description ?? null,
+              appointment_date: detail.appointment_date ?? null,
+              duration: detail.duration ?? null,
+              status: detail.status ?? null,
+              type: detail.type ?? null,
+              location: detail.location ?? null,
+              is_remote: detail.is_remote ?? null,
+              meeting_url: detail.meeting_url ?? null
+            })
+          }
+        })
       }
 
       const patientIds = Array.from(
         new Set(
-          appointmentList
-            .map(appointment => appointment.patient_id)
+          upcomingRows
+            .map(row => row.patient_id)
             .filter((id): id is string => Boolean(id))
         )
       )
 
-      const patientsMap = new Map<string, { id: string; name: string | null; email: string | null; phone?: string | null; type?: string | null }>()
+      const patientsMap = new Map<
+        string,
+        { id: string; name: string | null; email: string | null; phone?: string | null; type?: string | null }
+      >()
 
       if (patientIds.length > 0) {
         const { data: patientsData, error: patientsError } = await supabase
@@ -708,11 +791,25 @@ const RicardoValencaDashboard: React.FC = () => {
         })
       }
 
-      const enrichedAppointments: EnrichedAppointment[] = appointmentList.map(appointment => {
-        const appointmentDate = new Date(appointment.appointment_date)
-        const patientInfo = appointment.patient_id ? patientsMap.get(appointment.patient_id) : undefined
+      const enrichedAppointments: EnrichedAppointment[] = upcomingRows.map(row => {
+        const details = row.id ? appointmentDetailsMap.get(row.id) : undefined
+        const isoDate = details?.appointment_date ?? row.appt_at ?? null
+        const appointmentDate = isoDate ? new Date(isoDate) : new Date()
+        const patientInfo = row.patient_id ? patientsMap.get(row.patient_id) : undefined
+
         return {
-          ...appointment,
+          id: row.id,
+          patient_id: row.patient_id ?? null,
+          professional_id: row.professional_id ?? null,
+          title: details?.title ?? '',
+          description: details?.description ?? null,
+          appointment_date: isoDate ?? new Date().toISOString(),
+          duration: details?.duration ?? null,
+          status: details?.status ?? row.status_norm ?? null,
+          type: details?.type ?? null,
+          location: details?.location ?? null,
+          is_remote: details?.is_remote ?? null,
+          meeting_url: details?.meeting_url ?? null,
           patient: patientInfo,
           formattedTime: new Intl.DateTimeFormat('pt-BR', {
             hour: '2-digit',
@@ -729,9 +826,11 @@ const RicardoValencaDashboard: React.FC = () => {
       })
 
       setAppointments(enrichedAppointments)
+      setAppointmentsError(null)
     } catch (error) {
-      console.error('❌ Erro inesperado ao carregar agendamentos:', error)
+      console.error('❌ Erro ao carregar agendamentos:', error)
       setAppointments([])
+      setAppointmentsError('Não foi possível carregar os agendamentos no momento.')
     } finally {
       setAppointmentsLoading(false)
     }
@@ -741,8 +840,9 @@ const RicardoValencaDashboard: React.FC = () => {
     if (!user?.id) return
     loadPatients()
     loadKPIs()
+    loadDoctorDashboardStats()
     loadAppointments()
-  }, [user?.id, loadPatients, loadKPIs, loadAppointments])
+  }, [user?.id, loadPatients, loadKPIs, loadDoctorDashboardStats, loadAppointments])
 
   const handleStartAppointment = useCallback(
     (appointment: EnrichedAppointment, opts?: { navigateToChat?: boolean }) => {
@@ -769,6 +869,52 @@ const RicardoValencaDashboard: React.FC = () => {
   const handleCreateAppointment = useCallback(() => {
     navigate('/app/clinica/profissional/agendamentos')
   }, [navigate])
+
+  const handleOpenPatientManagement = useCallback(() => {
+    navigate('/app/clinica/profissional/pacientes')
+  }, [navigate])
+
+  const handleCreatePatient = useCallback(() => {
+    navigate('/app/new-patient')
+  }, [navigate])
+
+  const handleOpenPatientAgenda = useCallback(
+    (patientId: string) => {
+      navigate(`/app/clinica/profissional/agendamentos?patientId=${patientId}`)
+    },
+    [navigate]
+  )
+
+  const handleOpenPatientRecord = useCallback(
+    (patientId: string) => {
+      navigate(`/app/clinica/profissional/pacientes?patientId=${patientId}`)
+    },
+    [navigate]
+  )
+
+  const handleOpenPatientChat = useCallback(
+    (patientId?: string | null) => {
+      const targetId = patientId ?? selectedPatient
+      if (targetId) {
+        navigate(`/app/clinica/paciente/chat-profissional/${targetId}`)
+      } else {
+        navigate('/app/clinica/paciente/chat-profissional')
+      }
+    },
+    [navigate, selectedPatient]
+  )
+
+  const handleOpenPatientHistory = useCallback(
+    (patientId?: string | null) => {
+      const targetId = patientId ?? selectedPatient
+      if (targetId) {
+        navigate(`/app/clinica/profissional/pacientes?patientId=${targetId}`)
+      } else {
+        navigate('/app/clinica/profissional/pacientes')
+      }
+    },
+    [navigate, selectedPatient]
+  )
 
   const handleOpenAgenda = useCallback(() => {
     navigate('/app/clinica/profissional/agendamentos')
@@ -1263,30 +1409,6 @@ const RicardoValencaDashboard: React.FC = () => {
                   </p>
                 </button>
 
-                {/* Card Aluno */}
-                <button
-                  onClick={() => {
-                    // Se admin, definir tipo visual como aluno
-                    if (normalizeUserType(user?.type) === 'admin') {
-                      setViewAsType('aluno')
-                    }
-                    // Navegar para dashboard de aluno no eixo ensino ou pesquisa
-                    const eixo = currentEixo === 'pesquisa' ? 'pesquisa' : 'ensino'
-                    navigate(`/app/${eixo}/aluno/dashboard`)
-                  }}
-                  className={`bg-gradient-to-r from-amber-500 to-orange-400 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left ${
-                    effectiveType === 'aluno' ? 'ring-4 ring-yellow-400' : ''
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-medium opacity-90">🎓 Dashboard do Aluno</h3>
-                    <GraduationCap className="w-6 h-6" />
-                  </div>
-                  <p className="text-xs opacity-75 mt-1">
-                    {effectiveType === 'aluno' && isAdminViewingAs && '👁️ Visualizando como '}
-                    Acessar dashboard do aluno (ensino/pesquisa)
-                  </p>
-                </button>
               </div>
             </div>
           </div>
@@ -1493,7 +1615,7 @@ const RicardoValencaDashboard: React.FC = () => {
   )
 
   const renderAgendamentos = () => {
-    const todayCount = todaysAppointments.length
+    const todayCount = totalTodayCount
 
     const startOfWeek = new Date()
     startOfWeek.setHours(0, 0, 0, 0)
@@ -1597,6 +1719,20 @@ const RicardoValencaDashboard: React.FC = () => {
         gradient: 'linear-gradient(135deg, rgba(59,130,246,0.28) 0%, rgba(26,54,93,0.9) 100%)'
       },
       {
+        id: 'student-dashboard',
+        label: 'Dashboard do Aluno',
+        description: 'Acesse o ambiente acadêmico integrado',
+        icon: GraduationCap,
+        onClick: () => {
+          if (normalizeUserType(user?.type) === 'admin') {
+            setViewAsType('aluno')
+          }
+          const eixo = currentEixo === 'pesquisa' ? 'pesquisa' : 'ensino'
+          navigate(`/app/${eixo}/aluno/dashboard`)
+        },
+        gradient: 'rgba(10,31,54,0.78)'
+      },
+      {
         id: 'export',
         label: 'Exportar Agenda',
         description: 'Baixe a agenda em CSV para compartilhar com a equipe',
@@ -1609,25 +1745,194 @@ const RicardoValencaDashboard: React.FC = () => {
     return (
       <div className="space-y-6 lg:space-y-8">
         <div
-          className="rounded-2xl p-6 lg:p-8 border border-[#00C16A]/25 shadow-2xl"
+          className="rounded-2xl p-6 lg:p-8 border border-[#00C16A]/25 shadow-2xl space-y-6"
           style={{ background: landingGradient }}
         >
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h2 className="text-2xl lg:text-3xl font-bold text-white flex items-center gap-3">
-                <Calendar className="w-6 h-6 lg:w-8 lg:h-8 text-emerald-300" />
-                <span>📅 Agendamentos em tempo real</span>
-              </h2>
-              <p className="text-sm lg:text-base text-slate-200/90 mt-2 max-w-3xl">
-                Sincronizado com o Supabase: acompanhe atendimentos confirmados, pendentes e
-                teleatendimentos com a paleta da landing page.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 text-xs lg:text-sm text-emerald-200/80">
+          <div className="space-y-4">
+            <h2 className="text-2xl lg:text-3xl font-bold text-white flex items-center gap-3">
+              <Calendar className="w-6 h-6 lg:w-8 lg:h-8 text-emerald-300" />
+              <span>📅 Agendamentos em tempo real</span>
+            </h2>
+            <p className="text-sm lg:text-base text-slate-200/90 max-w-3xl">
+              Sincronizado com o Supabase: acompanhe atendimentos confirmados, pendentes e
+              teleatendimentos integrados à IA residente.
+            </p>
+            <p className="text-xs lg:text-sm text-slate-300">
+              {appointmentsLoading
+                ? 'Sincronizando com o sistema de agendamentos...'
+                : todayCount > 0
+                ? `Você tem ${todayCount} atendimento${todayCount > 1 ? 's' : ''} programado${todayCount > 1 ? 's' : ''} para hoje.`
+                : appointmentsError
+                ? 'Não foi possível carregar os agendamentos no momento.'
+                : 'Nenhum atendimento agendado para hoje.'}
+            </p>
+            {!appointmentsLoading && appointmentsError && (
+              <p className="text-xs text-red-300">{appointmentsError}</p>
+            )}
+            <div className="inline-flex items-center gap-2 text-xs text-emerald-200/80">
               <Loader2
-                className={`w-4 h-4 ${appointmentsLoading ? 'animate-spin' : 'opacity-60'}`}
+                className={`w-3 h-3 ${appointmentsLoading ? 'animate-spin' : 'opacity-60'}`}
               />
-              {appointmentsLoading ? 'Atualizando agenda...' : 'Dados atualizados em tempo real'}
+              {appointmentsLoading ? 'Atualizando agenda...' : 'Agenda conectada'}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="rounded-2xl p-6 lg:p-8 space-y-4" style={surfaceStyle}>
+              <div>
+                <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-emerald-300" />
+                  Atendimento Integrado
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  Escolha um paciente para iniciar o chat clínico. Todas as interações ficam
+                  registradas no histórico do paciente e do profissional.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <select
+                  className="w-full px-3 py-2 bg-slate-800 border border-emerald-500/20 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  value={selectedPatient || ''}
+                  onChange={event => {
+                    const patientId = event.target.value || null
+                    setSelectedPatient(patientId)
+                  }}
+                >
+                  <option value="">Selecionar paciente...</option>
+                  {patients.map(patient => (
+                    <option key={patient.id} value={patient.id}>
+                      {patient.name}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPatientChat()}
+                    className="flex-1 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors"
+                  >
+                    Abrir Chat Clínico
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPatientHistory()}
+                    className="px-3 py-2 rounded-lg text-sm font-semibold text-white bg-slate-700 hover:bg-slate-600 transition-colors"
+                  >
+                    Ver Histórico
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl p-6 lg:p-8 space-y-4" style={surfaceStyle}>
+              <div>
+                <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-emerald-300" />
+                  Chat com Pacientes
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  Sistema integrado ao prontuário médico. Todas as conversas ficam arquivadas
+                  automaticamente e alimentam os indicadores clínicos.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-700/60 bg-slate-900/70 p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-emerald-300" />
+                    Selecionar Paciente para Chat
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/app/clinica/profissional/pacientes')}
+                    className="text-xs text-emerald-300 hover:text-emerald-200 transition-colors"
+                  >
+                    Gestão avançada
+                  </button>
+                </div>
+
+                {loading ? (
+                  <div className="text-center py-6 text-slate-400 text-sm">
+                    Carregando pacientes...
+                  </div>
+                ) : patients.length === 0 ? (
+                  <div className="text-center py-6 text-slate-400 text-sm">
+                    Nenhum paciente encontrado.
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-72 overflow-y-auto custom-scrollbar pr-1">
+                    {patients.map(patient => (
+                      <div
+                        key={patient.id}
+                        onClick={() => setSelectedPatient(patient.id)}
+                        className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                          selectedPatient === patient.id
+                            ? 'bg-emerald-600/40 border-emerald-300 text-white'
+                            : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700/80'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="font-semibold text-sm">{patient.name}</h4>
+                            <p className="text-xs text-slate-400 mt-1">
+                              Última visita: {patient.lastVisit || 'Sem registro'}
+                            </p>
+                          </div>
+                          <span
+                            className={`px-2 py-1 rounded-full text-[10px] uppercase tracking-wide ${
+                              patient.status === 'Ativo'
+                                ? 'bg-emerald-500/20 text-emerald-200'
+                                : 'bg-amber-500/20 text-amber-200'
+                            }`}
+                          >
+                            {patient.status || 'Sem status'}
+                          </span>
+                        </div>
+                        <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400 flex-wrap">
+                          <span className="px-2 py-0.5 rounded bg-slate-700/80 border border-slate-600/60">
+                            {patient.assessments?.length || 0} avaliações
+                          </span>
+                          {patient.condition && (
+                            <span className="px-2 py-0.5 rounded bg-slate-700/80 border border-slate-600/60">
+                              {patient.condition}
+                            </span>
+                          )}
+                          {patient.priority && (
+                            <span className="px-2 py-0.5 rounded bg-slate-700/80 border border-slate-600/60 capitalize">
+                              Prioridade {patient.priority}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-3 flex items-center gap-2 text-xs">
+                          <button
+                            type="button"
+                            onClick={event => {
+                              event.stopPropagation()
+                              setSelectedPatient(patient.id)
+                              handleOpenPatientChat(patient.id)
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 transition-colors"
+                          >
+                            Abrir chat
+                          </button>
+                          <button
+                            type="button"
+                            onClick={event => {
+                              event.stopPropagation()
+                              handleOpenPatientRecord(patient.id)
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-slate-700/80 text-slate-200 hover:bg-slate-600 transition-colors"
+                          >
+                            Ver prontuário
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1681,6 +1986,11 @@ const RicardoValencaDashboard: React.FC = () => {
                   ? `Você tem ${todayCount} atendimento${todayCount > 1 ? 's' : ''} programado${todayCount > 1 ? 's' : ''} para hoje.`
                   : 'Nenhum atendimento agendado para hoje.'}
               </p>
+              {!appointmentsLoading && appointmentsError && (
+                <p className="text-xs text-red-300 mt-2">
+                  {appointmentsError}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-3 text-xs text-slate-400">
               <span className="inline-flex items-center gap-2">
@@ -1808,8 +2118,6 @@ const RicardoValencaDashboard: React.FC = () => {
             })}
           </div>
         </div>
-
-        {renderChatPacientes()}
       </div>
     )
   }
@@ -1875,13 +2183,16 @@ const RicardoValencaDashboard: React.FC = () => {
           </h3>
           <div className="flex items-center space-x-2">
             <button 
-              onClick={() => navigate('/app/patient-management-advanced')}
+              onClick={handleOpenPatientManagement}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
             >
               <FileText className="w-4 h-4 inline mr-2" />
               Gestão Avançada
             </button>
-            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors">
+            <button
+              onClick={handleCreatePatient}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
               <Plus className="w-4 h-4 inline mr-2" />
               Novo Paciente
             </button>
@@ -1900,7 +2211,7 @@ const RicardoValencaDashboard: React.FC = () => {
                 className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors cursor-pointer"
                 onClick={() => setSelectedPatient(patient.id)}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
                       <span className="text-white font-bold text-lg">{patient.name.charAt(0)}</span>
@@ -1911,15 +2222,51 @@ const RicardoValencaDashboard: React.FC = () => {
                       <p className="text-slate-500 text-xs">Última visita: {patient.lastVisit}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      patient.status === 'Ativo' 
-                        ? 'bg-green-500/20 text-green-400' 
-                        : 'bg-orange-500/20 text-orange-400'
-                    }`}>
-                      {patient.status}
-                    </span>
-                    <p className="text-slate-400 text-sm mt-1">{patient.assessments?.length || 0} avaliações</p>
+                  <div className="flex flex-col items-start md:items-end gap-2">
+                    <div className="text-right">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        patient.status === 'Ativo' 
+                          ? 'bg-green-500/20 text-green-400' 
+                          : 'bg-orange-500/20 text-orange-400'
+                      }`}>
+                        {patient.status}
+                      </span>
+                      <p className="text-slate-400 text-sm mt-1">{patient.assessments?.length || 0} avaliações</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={event => {
+                          event.stopPropagation()
+                          handleOpenPatientAgenda(patient.id)
+                        }}
+                        className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors"
+                      >
+                        Ver Agenda
+                      </button>
+                      <button
+                        type="button"
+                        onClick={event => {
+                          event.stopPropagation()
+                          setSelectedPatient(patient.id)
+                          handleOpenPatientChat(patient.id)
+                        }}
+                        className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-slate-600 hover:bg-slate-500 transition-colors"
+                      >
+                        Chat Clínico
+                      </button>
+                      <button
+                        type="button"
+                        onClick={event => {
+                          event.stopPropagation()
+                          setSelectedPatient(patient.id)
+                          handleOpenPatientHistory(patient.id)
+                        }}
+                        className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-slate-700 hover:bg-slate-600 transition-colors"
+                      >
+                        Prontuário
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2306,6 +2653,187 @@ const RicardoValencaDashboard: React.FC = () => {
     </div>
   )
 
+  const renderPesquisaDashboard = () => {
+    const researchSummaryCards = [
+      {
+        id: 'studies',
+        label: 'Estudos Ativos',
+        value: kpis.administrativos.protocolosIMRE || 0,
+        description: 'Protocolos de pesquisa em andamento',
+        icon: Activity,
+        gradient: 'linear-gradient(135deg, rgba(249,115,22,0.25) 0%, rgba(251,191,36,0.2) 100%)',
+        iconClass: 'text-amber-300'
+      },
+      {
+        id: 'datasets',
+        label: 'Bases Processadas',
+        value: kpis.administrativos.protocolosAEC || 0,
+        description: 'Datasets integrados à plataforma',
+        icon: Database,
+        gradient: 'linear-gradient(135deg, rgba(99,102,241,0.28) 0%, rgba(129,140,248,0.22) 100%)',
+        iconClass: 'text-indigo-300'
+      },
+      {
+        id: 'insights',
+        label: 'Insights Publicados',
+        value: kpis.administrativos.respondedoresTEZ || 0,
+        description: 'Relatórios e briefings emitidos',
+        icon: BarChart3,
+        gradient: 'linear-gradient(135deg, rgba(56,189,248,0.26) 0%, rgba(14,165,233,0.22) 100%)',
+        iconClass: 'text-sky-300'
+      },
+      {
+        id: 'teams',
+        label: 'Equipes Envolvidas',
+        value: kpis.administrativos.consultoriosAtivos || 0,
+        description: 'Times multidisciplinares ativos',
+        icon: Users,
+        gradient: 'linear-gradient(135deg, rgba(16,185,129,0.26) 0%, rgba(5,150,105,0.22) 100%)',
+        iconClass: 'text-emerald-300'
+      }
+    ]
+
+    const researchActions = [
+      {
+        id: 'admin-dashboard',
+        title: 'Resumo Administrativo',
+        caption: 'Visão consolidada da plataforma',
+        icon: LayoutDashboard,
+        action: () => goToSection('dashboard')
+      },
+      {
+        id: 'admin-users',
+        title: 'Usuários',
+        caption: 'Gestão de equipes e permissões',
+        icon: Users,
+        action: () => goToSection('admin-usuarios')
+      },
+      {
+        id: 'knowledge-base',
+        title: 'Base de Conhecimento',
+        caption: 'Protocolos, manuais e arquivos estratégicos',
+        icon: BookOpen,
+        action: () => goToSection('admin-upload')
+      },
+      {
+        id: 'renal-monitoring',
+        title: 'Função Renal',
+        caption: 'Monitoramento integrado de nefrologia',
+        icon: Activity,
+        action: () => goToSection('admin-renal')
+      },
+      {
+        id: 'protocols',
+        title: 'Protocolos',
+        caption: 'Gestão de estudos e métricas',
+        icon: ClipboardList,
+        action: () => goToSection('avaliacao')
+      },
+      {
+        id: 'analytics',
+        title: 'Analytics',
+        caption: 'Indicadores e resultados consolidados',
+        icon: TrendingUp,
+        action: () => goToSection('relatorios-clinicos')
+      },
+      {
+        id: 'base-cientifica',
+        title: 'Base Científica',
+        caption: 'Publicações, datasets e referências',
+        icon: Search,
+        action: () => goToSection('biblioteca')
+      },
+      {
+        id: 'insights',
+        title: 'Insights',
+        caption: 'Atualizações e relatórios da equipe',
+        icon: Bell,
+        action: () => goToSection('newsletter')
+      },
+      {
+        id: 'collaboration',
+        title: 'Colaboração',
+        caption: 'Sincronização com pesquisadores e parceiros',
+        icon: MessageCircle,
+        action: () => goToSection('chat-profissionais')
+      }
+    ]
+
+    const surfaceStyle: React.CSSProperties = {
+      background: 'rgba(12,24,45,0.85)',
+      border: '1px solid rgba(59,130,246,0.18)',
+      boxShadow: '0 12px 32px rgba(15,23,42,0.4)'
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {researchSummaryCards.map(card => {
+            const SummaryIcon = card.icon
+            return (
+              <div key={card.id} className="rounded-xl p-5 border border-slate-700/40 backdrop-blur-md" style={{ background: card.gradient }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.25em] text-white/70">{card.label}</p>
+                    <p className="text-3xl font-semibold text-white mt-2">{card.value}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-black/20">
+                    <SummaryIcon className={`w-5 h-5 ${card.iconClass}`} />
+                  </div>
+                </div>
+                <p className="text-xs text-white/80">{card.description}</p>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="rounded-2xl border border-slate-700/40 p-6" style={surfaceStyle}>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.35em] text-blue-300 mb-2">MedCannLab Pesquisa</p>
+              <h2 className="text-2xl font-bold text-white">Centro Integrado de Pesquisa Clínica &amp; Translacional</h2>
+              <p className="text-sm text-slate-300 mt-2 max-w-3xl">
+                Organize protocolos, monitore indicadores e conecte equipes multidisciplinares em tempo real. Controle total
+                da jornada de pesquisa com apoio da IA residente Nôa Esperanza.
+              </p>
+            </div>
+            <button
+              onClick={() => goToSection('avaliacao')}
+              className="self-start lg:self-center bg-gradient-to-r from-blue-500 to-cyan-400 text-white px-5 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+            >
+              Criar Protocolo
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {researchActions.map(action => {
+              const ActionIcon = action.icon
+              return (
+                <button
+                  key={action.id}
+                  type="button"
+                  onClick={action.action}
+                  className="group text-left rounded-xl border border-slate-700/60 bg-slate-900/60 hover:border-blue-400/40 hover:bg-slate-900/80 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                >
+                  <div className="p-4 flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-500/15 text-blue-200 group-hover:text-blue-100">
+                      <ActionIcon className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-100 group-hover:text-white truncate">{action.title}</p>
+                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">{action.caption}</p>
+                    </div>
+                  </div>
+                  <div className="h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const renderAtendimento = () => {
     type SummaryCard = {
       id: string
@@ -2370,31 +2898,20 @@ const RicardoValencaDashboard: React.FC = () => {
         icon: Calendar,
         gradient: 'linear-gradient(135deg, rgba(59,130,246,0.28) 0%, rgba(14,165,233,0.22) 100%)',
         iconClass: 'text-sky-300'
+      },
+      {
+        id: 'unread-messages',
+        label: 'Mensagens',
+        value: unreadMessages,
+        description: 'Mensagens clínicas não lidas',
+        icon: MessageCircle,
+        gradient: 'linear-gradient(135deg, rgba(168,85,247,0.28) 0%, rgba(59,130,246,0.22) 100%)',
+        iconClass: 'text-purple-300'
       }
     ]
 
     return (
       <div className="space-y-6">
-        <div className="rounded-xl p-6" style={headerStyle}>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
-                <Stethoscope className="w-6 h-6 text-[#FFD33D]" />
-                <span>Atendimento Clínico Integrado</span>
-              </h2>
-              <p className="text-[#C8D6E5] text-sm md:text-base max-w-2xl">
-                Conecte-se com seus pacientes, acompanhe consultas em tempo real e acione a IA residente para gerar relatórios e notas durante o atendimento.
-              </p>
-            </div>
-            <button
-              onClick={() => goToSection('agendamentos')}
-              className="bg-gradient-to-r from-[#00C16A] to-[#00F5A0] text-slate-900 px-5 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
-            >
-              Abrir Agenda Completa
-            </button>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {summaryCards.map(card => {
             const SummaryIcon = card.icon
@@ -2404,7 +2921,7 @@ const RicardoValencaDashboard: React.FC = () => {
                   <div>
                     <p className="text-xs text-white/60 uppercase tracking-[0.25em]">{card.label}</p>
                     <div className="flex items-baseline space-x-2 mt-1">
-                      {appointmentsLoading ? (
+                      {doctorDashboardLoading ? (
                         <Loader2 className="w-6 h-6 text-white animate-spin" />
                       ) : (
                         <span className="text-3xl font-bold text-white">{card.value}</span>
@@ -2423,6 +2940,9 @@ const RicardoValencaDashboard: React.FC = () => {
             )
           })}
         </div>
+        {doctorDashboardError && !doctorDashboardLoading && (
+          <p className="text-sm text-rose-300">{doctorDashboardError}</p>
+        )}
 
         <div className="grid grid-cols-1 xl:grid-cols-[1.8fr_1.2fr] gap-6">
           <div className="rounded-xl p-6 space-y-5" style={surfaceStyle}>
@@ -2976,35 +3496,6 @@ const RicardoValencaDashboard: React.FC = () => {
     </div>
   )
 
-  const renderPrescricoes = () => (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-emerald-800 to-emerald-700 rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
-          <FileText className="w-6 h-6" />
-          <span>💊 Prescrições Integrativas</span>
-        </h2>
-        <p className="text-emerald-200">
-          Sistema de Prescrições Integrativas conforme Diretrizes CFM + Práticas Integrativas
-        </p>
-      </div>
-
-      <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h4 className="font-semibold text-blue-900 mb-2">Conforme Diretrizes CFM + Práticas Integrativas</h4>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Assinatura Digital com Certificado ICP Brasil</li>
-            <li>• Validação no Portal do ITI</li>
-            <li>• Envio por Email e SMS com QR Code</li>
-            <li>• Cinco racionalidades médicas integradas</li>
-            <li>• Camadas clínicas de leitura dos dados primários</li>
-            <li>• NFT e Blockchain para rastreabilidade</li>
-          </ul>
-        </div>
-        <IntegrativePrescriptions />
-      </div>
-    </div>
-  )
-
   const renderRelatoriosClinicos = () => (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-amber-800 to-amber-700 rounded-lg p-6">
@@ -3032,158 +3523,6 @@ const RicardoValencaDashboard: React.FC = () => {
         </p>
       </div>
       <ProfessionalChatSystem />
-    </div>
-  )
-
-  const renderChatPacientes = () => (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-800 to-blue-700 rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
-          <Users className="w-6 h-6" />
-          <span>Chat com Pacientes</span>
-        </h2>
-        <p className="text-blue-200">
-          Sistema de comunicação integrado ao prontuário médico - Todas as conversas são automaticamente arquivadas no prontuário do paciente
-        </p>
-      </div>
-
-      {/* Lista de Pacientes para Chat */}
-      <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
-        <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-          <Users className="w-6 h-6 mr-2 text-blue-400" />
-          Selecionar Paciente para Chat
-        </h3>
-        
-        {loading ? (
-          <div className="text-center py-8 text-slate-400">Carregando pacientes...</div>
-        ) : patients.length === 0 ? (
-          <div className="text-center py-8 text-slate-400">Nenhum paciente encontrado.</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {patients.map((patient) => (
-              <div
-                key={patient.id}
-                onClick={() => setSelectedPatient(patient.id)}
-                className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-lg ${
-                  selectedPatient === patient.id
-                    ? 'bg-blue-600 border-blue-400 text-white'
-                    : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold">{patient.name}</h4>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    patient.status === 'Ativo' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                  }`}>
-                    {patient.status}
-                  </span>
-                </div>
-                <p className="text-sm opacity-75">Idade: {patient.age} anos</p>
-                <p className="text-sm opacity-75">Última visita: {patient.lastVisit}</p>
-                <div className="mt-2 flex items-center space-x-2">
-                  <span className="text-xs bg-slate-600 px-2 py-1 rounded">
-                    {patient.assessments?.length || 0} avaliações
-                  </span>
-                  <span className="text-xs bg-slate-600 px-2 py-1 rounded">
-                    {patient.condition}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Chat Interface */}
-      {selectedPatient && (
-        <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-white flex items-center">
-              <MessageCircle className="w-6 h-6 mr-2 text-blue-400" />
-              Chat com {patients.find(p => p.id === selectedPatient)?.name}
-            </h3>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setIsVideoCallOpen(true)}
-                className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
-              >
-                📹 Video Call
-              </button>
-              <button
-                onClick={() => {
-                  setCallType('audio')
-                  setIsAudioCallOpen(true)
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
-              >
-                📞 Audio Call
-              </button>
-            </div>
-          </div>
-
-          {/* Área de Chat */}
-          <div className="bg-slate-900 rounded-lg p-4 h-96 overflow-y-auto mb-4">
-            <div className="space-y-4">
-              {/* Mensagens simuladas */}
-              <div className="flex justify-end">
-                <div className="bg-blue-600 text-white p-3 rounded-lg max-w-xs">
-                  <p className="text-sm">Olá Dr. Ricardo, como está minha evolução?</p>
-                  <p className="text-xs opacity-75 mt-1">10:30</p>
-                </div>
-              </div>
-              <div className="flex justify-start">
-                <div className="bg-slate-700 text-white p-3 rounded-lg max-w-xs">
-                  <p className="text-sm">Olá! Sua evolução está muito boa. Os dados dos wearables mostram uma redução significativa nos episódios.</p>
-                  <p className="text-xs opacity-75 mt-1">10:32</p>
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <div className="bg-blue-600 text-white p-3 rounded-lg max-w-xs">
-                  <p className="text-sm">Que ótimo! Posso continuar com a mesma medicação?</p>
-                  <p className="text-xs opacity-75 mt-1">10:35</p>
-                </div>
-              </div>
-              <div className="flex justify-start">
-                <div className="bg-slate-700 text-white p-3 rounded-lg max-w-xs">
-                  <p className="text-sm">Sim, mas vamos ajustar a dosagem baseado nos novos dados. Vou enviar uma prescrição atualizada.</p>
-                  <p className="text-xs opacity-75 mt-1">10:37</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Input de mensagem */}
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              placeholder="Digite sua mensagem..."
-              className="flex-1 px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-              Enviar
-            </button>
-          </div>
-
-          {/* Informações do Prontuário */}
-          <div className="mt-4 p-4 bg-slate-700 rounded-lg">
-            <h4 className="text-sm font-semibold text-white mb-2">📋 Prontuário Integrado</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="text-slate-400">Conversas arquivadas:</p>
-                <p className="text-white font-medium">12 conversas</p>
-              </div>
-              <div>
-                <p className="text-slate-400">Relatórios compartilhados:</p>
-                <p className="text-white font-medium">{patients.find(p => p.id === selectedPatient)?.assessments?.length || 0} relatórios</p>
-              </div>
-              <div>
-                <p className="text-slate-400">Última atualização:</p>
-                <p className="text-white font-medium">Hoje, 10:37</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 
@@ -3433,21 +3772,270 @@ const RicardoValencaDashboard: React.FC = () => {
   }
 
   const renderAdminRenal = (): React.ReactNode => {
+    const surfaceStyle: React.CSSProperties = {
+      background: 'rgba(15,27,45,0.85)',
+      border: '1px solid rgba(239,68,68,0.25)',
+      boxShadow: '0 16px 40px rgba(15,23,42,0.35)'
+    }
+
+    const renalSummaryCards = [
+      {
+        id: 'egfr',
+        label: 'TFG Média (últimos 90 dias)',
+        value: '68 mL/min/1,73m²',
+        trend: '+4 pts',
+        caption: 'Meta ≥ 60 mL/min/1,73m²',
+        gradient: 'linear-gradient(135deg, rgba(56,189,248,0.35) 0%, rgba(14,165,233,0.6) 100%)'
+      },
+      {
+        id: 'albuminuria',
+        label: 'Albuminúria',
+        value: '78 mg/g',
+        trend: '-12 mg/g',
+        caption: 'Meta < 30 mg/g • Screening trimestral',
+        gradient: 'linear-gradient(135deg, rgba(250,204,21,0.35) 0%, rgba(253,186,116,0.6) 100%)'
+      },
+      {
+        id: 'bp',
+        label: 'PA Controlada',
+        value: '72%',
+        trend: '+9%',
+        caption: 'Meta ≥ 70% pacientes < 130x80 mmHg',
+        gradient: 'linear-gradient(135deg, rgba(74,222,128,0.35) 0%, rgba(16,185,129,0.6) 100%)'
+      },
+      {
+        id: 'visits',
+        label: 'Telemonitoramento Ativo',
+        value: '19 pacientes',
+        trend: '+4 pacientes',
+        caption: 'Inclui wearable com estimativa contínua de TFG',
+        gradient: 'linear-gradient(135deg, rgba(244,114,182,0.35) 0%, rgba(236,72,153,0.6) 100%)'
+      }
+    ]
+
+    const traditionalFactors = [
+      { factor: 'Hipertensão arterial sistêmica', prevalence: '48%', management: 'Bloqueio do SRAA + controle pressórico <130x80' },
+      { factor: 'Diabetes mellitus tipo 2', prevalence: '33%', management: 'iSGLT2 + agonistas GLP-1 + controle glicêmico intensivo' },
+      { factor: 'Obesidade / Resistência insulínica', prevalence: '27%', management: 'Programa metabólico integrado + dieta plant-based' },
+      { factor: 'Dislipidemia', prevalence: '22%', management: 'Estatinas de alta potência + ômega-3 medicinal' }
+    ]
+
+    const nonTraditionalFactors = [
+      { factor: 'Inflamação crônica de baixo grau', prevalence: '19%', management: 'Protocolos anti-inflamatórios com canabinoides + nutracêuticos' },
+      { factor: 'Microbiota disbiótica / Uremia', prevalence: '16%', management: 'Probióticos direcionados + ajuste alimentar + fibra prebiótica' },
+      { factor: 'Poluição ambiental / metais pesados', prevalence: '11%', management: 'Quelantes supervisionados + monitoramento ambiental' },
+      { factor: 'Distúrbios do sono / Ritmo circadiano', prevalence: '15%', management: 'Cronoterapia + protocolos de luz + microdoses de CBD' }
+    ]
+
+    const renalMonitoringMatrix = [
+      {
+        biomarker: 'Creatinina sérica',
+        last: '1,38 mg/dL',
+        variation: '+0,08 mg/dL',
+        cadence: 'Mensal',
+        alert: '⚠️ Alerta suave (avaliar hidratação e uso de nefrotóxicos)'
+      },
+      {
+        biomarker: 'TFG (CKD-EPI)',
+        last: '61 mL/min/1,73m²',
+        variation: '+3 mL/min',
+        cadence: 'Mensal',
+        alert: '✅ Dentro da meta após otimização terapêutica'
+      },
+      {
+        biomarker: 'Albumina/Creatinina urinária',
+        last: '96 mg/g',
+        variation: '-18 mg/g',
+        cadence: 'Trimestral',
+        alert: '🟠 Manter terapia anti-proteinúrica; reforçar adesão'
+      },
+      {
+        biomarker: 'Potássio plasmático',
+        last: '5,2 mEq/L',
+        variation: '+0,3 mEq/L',
+        cadence: 'Mensal',
+        alert: '⚠️ Monitorar dieta e uso de bloqueadores do SRAA'
+      }
+    ]
+
     return (
       <div className="space-y-6">
-        <div className="bg-gradient-to-r from-red-800 to-pink-700 rounded-lg p-6">
-          <h2 className="text-2xl font-bold text-white mb-2 flex items-center space-x-2">
-            <Activity className="w-6 h-6" />
-            <span>🫀 Monitoramento de Função Renal</span>
-          </h2>
-          <p className="text-slate-200">Monitore e analise dados de função renal dos pacientes</p>
+        <div className="rounded-2xl p-6 lg:p-8 border border-rose-500/25 shadow-2xl" style={surfaceStyle}>
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+            <div className="space-y-4 max-w-3xl">
+              <h2 className="text-2xl lg:text-3xl font-bold text-white flex items-center gap-3">
+                <Activity className="w-7 h-7 text-rose-300" />
+                <span>🫀 Monitoramento Clínico da Função Renal</span>
+              </h2>
+              <p className="text-sm lg:text-base text-slate-200/90">
+                Visão consolidada para pacientes em risco ou vivendo com Doença Renal Crônica (DRC), integrando fatores tradicionais,
+                determinantes não tradicionais e parâmetros laboratoriais críticos.
+              </p>
+              <div className="inline-flex items-center gap-2 text-xs text-rose-200/80 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-400/20">
+                <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" />
+                Dados agregados das últimas 90 sessões + wearables conectados
+              </div>
+            </div>
+            <div className="w-full lg:max-w-xs bg-slate-950/60 rounded-2xl border border-rose-500/20 p-5 space-y-3 text-sm text-slate-200">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Pacientes acompanhados</span>
+                <span className="font-semibold text-white">42</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Alertas ativos</span>
+                <span className="font-semibold text-amber-300">3 moderados</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Última atualização</span>
+                <span className="font-semibold text-white">11/11/2025 - 00h42</span>
+              </div>
+              <button
+                type="button"
+                className="w-full mt-2 bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-[1.01]"
+                onClick={() => navigate('/app/clinica/profissional/agendamentos?filter=renal-monitoring')}
+              >
+                Ver Cronograma de Monitoramento
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-8">
+            {renalSummaryCards.map(card => (
+              <div key={card.id} className="rounded-xl border border-white/10 p-4 text-white backdrop-blur" style={{ background: card.gradient }}>
+                <p className="text-[10px] uppercase tracking-[0.4em] text-white/80">{card.label}</p>
+                <div className="mt-3 flex items-baseline gap-3">
+                  <span className="text-3xl font-semibold">{card.value}</span>
+                  <span className="text-xs text-white/70 bg-white/20 px-2 py-0.5 rounded-full">{card.trend}</span>
+                </div>
+                <p className="text-xs text-white/80 mt-3">{card.caption}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
-          <p className="text-slate-300 text-center py-8">
-            Área de desenvolvimento: Sistema de monitoramento de função renal será implementado aqui.
-            <br />
-            <span className="text-sm text-slate-400">Funcionalidades: Gráficos, relatórios, alertas, histórico, comparações, etc.</span>
-          </p>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1.8fr] gap-6">
+          <div className="bg-slate-900/70 rounded-2xl border border-slate-700/60 p-6">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <span>Fatores de Risco Tradicionais</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-400/20">
+                Controle clínico intensivo
+              </span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Principais determinantes clássicos para progressão da DRC.</p>
+            <div className="mt-4 space-y-3">
+              {traditionalFactors.map(item => (
+                <div key={item.factor} className="rounded-xl border border-white/5 bg-slate-950/40 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-semibold text-white">{item.factor}</h4>
+                    <span className="text-xs text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-full">Prevalência {item.prevalence}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-2 leading-relaxed">{item.management}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-slate-900/70 rounded-2xl border border-slate-700/60 p-6">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <span>Fatores de Risco Não Tradicionais</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-400/20">
+                Determinantes sistêmicos & estilo de vida
+              </span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Elementos emergentes que aceleram a perda de função renal.</p>
+            <div className="mt-4 space-y-3">
+              {nonTraditionalFactors.map(item => (
+                <div key={item.factor} className="rounded-xl border border-white/5 bg-slate-950/40 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-semibold text-white">{item.factor}</h4>
+                    <span className="text-xs text-sky-300 bg-sky-500/10 px-2 py-0.5 rounded-full">Prevalência {item.prevalence}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-2 leading-relaxed">{item.management}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/70 rounded-2xl border border-slate-700/60 p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <span>Indicadores Laboratoriais Prioritários</span>
+            </h3>
+            <button
+              type="button"
+              className="text-xs px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-200 border border-emerald-400/20 hover:bg-emerald-500/15 transition-colors"
+              onClick={() => navigate('/app/clinica/profissional/pacientes?filter=renal')}
+            >
+              Filtrar Pacientes com Risco Renal
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm text-slate-200">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-[0.3em] text-slate-400 border-b border-white/5">
+                  <th className="py-3 pr-6">Biomarcador</th>
+                  <th className="py-3 pr-6">Último Resultado</th>
+                  <th className="py-3 pr-6">Variação (30 dias)</th>
+                  <th className="py-3 pr-6">Periodicidade</th>
+                  <th className="py-3 pr-6">Status / Alerta</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {renalMonitoringMatrix.map(row => (
+                  <tr key={row.biomarker} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="py-3 pr-6 font-semibold text-white">{row.biomarker}</td>
+                    <td className="py-3 pr-6">{row.last}</td>
+                    <td className={`py-3 pr-6 ${row.variation.startsWith('-') ? 'text-emerald-300' : 'text-amber-300'}`}>{row.variation}</td>
+                    <td className="py-3 pr-6 text-slate-400">{row.cadence}</td>
+                    <td className="py-3 pr-6 text-slate-300">{row.alert}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/70 rounded-2xl border border-slate-700/60 p-6">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-3">
+            <span>Protocolos Prioritários para DRC</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80 border border-white/10">
+              Alinhado à diretriz KDIGO 2024
+            </span>
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 text-xs text-slate-300">
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
+              <p className="text-white font-semibold mb-1">Tripé Cardiometabólico</p>
+              <ul className="space-y-1 list-disc list-inside">
+                <li>iSGLT2 como base ● HbA1c meta 6,8%</li>
+                <li>Controle pressórico integrado ao wearable</li>
+                <li>Intervalo nutracêutico anti-inflamatório</li>
+              </ul>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
+              <p className="text-white font-semibold mb-1">Foco em Proteinúria</p>
+              <ul className="space-y-1 list-disc list-inside">
+                <li>Bloqueio dual do SRAA quando tolerado</li>
+                <li>Canabinoides para modulação inflamatória</li>
+                <li>Reposição de bicarbonato se TFG &lt; 45</li>
+              </ul>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
+              <p className="text-white font-semibold mb-1">Estratégia LRA &amp; recuperação</p>
+              <ul className="space-y-1 list-disc list-inside">
+                <li>Checklist de nefrotoxicidade medicamentosa</li>
+                <li>Fluxo rápido de hidratação guiada por IA</li>
+                <li>Alertas cross-clínica para queda de TFG</li>
+              </ul>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
+              <p className="text-white font-semibold mb-1">Determinantes não tradicionais</p>
+              <ul className="space-y-1 list-disc list-inside">
+                <li>Dashboard socioambiental (“Cidade Amiga dos Rins”)</li>
+                <li>Triagem de exposomas + suporte desintoxicante</li>
+                <li>Protocolo de sono reparador individualizado</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -3463,7 +4051,7 @@ const RicardoValencaDashboard: React.FC = () => {
           return renderAulas()
         }
         if (currentEixo === 'pesquisa') {
-          return renderAvaliacao()
+          return renderPesquisaDashboard()
         }
         return renderAtendimento()
       case 'admin-usuarios':
@@ -3480,8 +4068,6 @@ const RicardoValencaDashboard: React.FC = () => {
         return renderAgendamentos()
       case 'financeiro':
         return renderFinanceiro()
-      case 'prescricoes':
-        return renderPrescricoes()
       case 'relatorios-clinicos':
         return renderRelatoriosClinicos()
       case 'chat-profissionais':
@@ -3504,7 +4090,7 @@ const RicardoValencaDashboard: React.FC = () => {
           return renderAulas()
         }
         if (currentEixo === 'pesquisa') {
-          return renderAvaliacao()
+          return renderPesquisaDashboard()
         }
         return renderAtendimento()
     }
@@ -3524,36 +4110,21 @@ const RicardoValencaDashboard: React.FC = () => {
     })
   }, [appointments])
 
-  const upcomingAppointments = useMemo(() => {
-    const now = Date.now()
-    return [...appointments]
-      .filter(appointment => new Date(appointment.appointment_date).getTime() >= now)
-      .sort(
-        (a, b) =>
-          new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime()
-      )
-      .slice(0, 4)
-  }, [appointments])
+  const upcomingAppointments = useMemo(() => appointments.slice(0, 4), [appointments])
 
-  const upcoming24hCount = useMemo(() => {
-    const limit = Date.now() + 24 * 60 * 60 * 1000
-    return upcomingAppointments.filter(appointment => new Date(appointment.appointment_date).getTime() <= limit).length
-  }, [upcomingAppointments])
+  const {
+    totalToday: totalTodayCount,
+    confirmedToday,
+    waitingRoomToday,
+    completedToday,
+    next24h,
+    unreadMessages
+  } = doctorDashboardStats
 
-  const waitingCount = useMemo(() => {
-    return todaysAppointments.filter(appointment => statusToKey(appointment.status) === 'scheduled').length
-  }, [todaysAppointments, statusToKey])
-
-  const inProgressCount = useMemo(() => {
-    return todaysAppointments.filter(appointment => {
-      const status = statusToKey(appointment.status)
-      return status === 'confirmed' || status === 'in_progress' || status === 'in-session'
-    }).length
-  }, [todaysAppointments, statusToKey])
-
-  const completedCount = useMemo(() => {
-    return todaysAppointments.filter(appointment => statusToKey(appointment.status) === 'completed').length
-  }, [todaysAppointments, statusToKey])
+  const inProgressCount = confirmedToday
+  const waitingCount = waitingRoomToday
+  const completedCount = completedToday
+  const upcoming24hCount = next24h
 
   const getStatusBadge = useCallback(
     (status?: string | null): { label: string; className: string } => {
@@ -3882,6 +4453,75 @@ const RicardoValencaDashboard: React.FC = () => {
       data-page="ricardo-valenca-dashboard"
     >
       <div className="max-w-7xl mx-auto px-2 md:px-4 lg:px-6 py-4 md:py-6 lg:py-8 w-full overflow-x-hidden">
+        {sectionNavOptions && sectionNavOptions.length > 0 && (
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">
+                  {normalizedEffectiveType === 'admin'
+                    ? 'Painel Administrativo • Eixos Integrados'
+                    : currentEixo === 'ensino'
+                    ? 'Eixo Ensino'
+                    : currentEixo === 'pesquisa'
+                    ? 'Eixo Pesquisa'
+                    : 'Eixo Clínica'}
+                </p>
+                <h1 className="text-xl md:text-2xl font-semibold text-white">
+                  {sectionNavOptions.find(option => option.id === resolvedSection)?.label || 'Resumo'}
+                </h1>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {sectionNavOptions.map(option => {
+                const OptionIcon = option.icon
+                const isActive = resolvedSection === option.id
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => goToSection(option.id)}
+                    className={[
+                      'group text-left rounded-xl border transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400',
+                      isActive
+                        ? 'bg-emerald-600/20 border-emerald-500/40 shadow-lg shadow-emerald-900/30'
+                        : 'bg-slate-900/60 border-slate-700/60 hover:border-emerald-400/40 hover:bg-slate-900/80'
+                    ].join(' ')}
+                  >
+                    <div className="p-4 flex items-start gap-3">
+                      <div
+                        className={[
+                          'w-10 h-10 rounded-lg flex items-center justify-center transition-colors',
+                          isActive
+                            ? 'bg-emerald-500/20 text-emerald-200'
+                            : 'bg-slate-800/80 text-slate-300 group-hover:text-emerald-300'
+                        ].join(' ')}
+                      >
+                        <OptionIcon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={[
+                            'text-sm font-semibold truncate transition-colors',
+                            isActive ? 'text-white' : 'text-slate-200 group-hover:text-emerald-100'
+                          ].join(' ')}
+                        >
+                          {option.label}
+                        </p>
+                        <p className="text-xs text-slate-400/90 leading-relaxed mt-1 line-clamp-2">
+                          {option.description}
+                        </p>
+                      </div>
+                    </div>
+                    {isActive && (
+                      <div className="h-1 rounded-b-xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400" />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {renderActiveSection(resolvedSection)}
 
         {/* Modal de Seleção de Dashboard Profissional */}

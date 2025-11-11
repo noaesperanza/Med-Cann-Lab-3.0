@@ -64,6 +64,25 @@ interface SpeechQueueState {
   timer?: number
 }
 
+interface NoaCommandDetail {
+  type: 'navigate-section' | 'navigate-route'
+  target: string
+  label?: string
+  fallbackRoute?: string
+  rawMessage: string
+  source: 'voice' | 'text'
+  timestamp: string
+}
+
+type VoiceNavigationCommand = {
+  id: string
+  type: 'navigate-section' | 'navigate-route'
+  target: string
+  label: string
+  patterns: RegExp[]
+  fallbackRoute?: string
+}
+
 export const useMedCannLabConversation = () => {
   const { user } = useAuth()
   const residentRef = useRef<NoaResidentAI | null>(null)
@@ -113,6 +132,117 @@ export const useMedCannLabConversation = () => {
   const speechEnabledRef = useRef(true)
   const speechQueueRef = useRef<SpeechQueueState | null>(null)
   const [voicesReady, setVoicesReady] = useState(false)
+  const voiceNavigationCommandsRef = useRef<VoiceNavigationCommand[]>([
+    {
+      id: 'library-section',
+      type: 'navigate-section',
+      target: 'admin-upload',
+      label: 'Biblioteca Compartilhada',
+      fallbackRoute: '/app/library',
+      patterns: [
+        /biblioteca compartilhada/,
+        /abrir biblioteca/,
+        /abrir a biblioteca/,
+        /base de conhecimento/,
+        /acessar biblioteca/,
+        /acessar a biblioteca/
+      ]
+    },
+    {
+      id: 'renal-section',
+      type: 'navigate-section',
+      target: 'admin-renal',
+      label: 'Função Renal',
+      patterns: [
+        /funcao renal/,
+        /função renal/,
+        /abrir funcao renal/,
+        /abrir função renal/
+      ]
+    },
+    {
+      id: 'attendance-section',
+      type: 'navigate-section',
+      target: 'atendimento',
+      label: 'Atendimento',
+      patterns: [
+        /abrir atendimento/,
+        /area de atendimento/,
+        /área de atendimento/,
+        /ir para atendimento/,
+        /fluxo de atendimento/
+      ]
+    },
+    {
+      id: 'agenda-section',
+      type: 'navigate-section',
+      target: 'agendamentos',
+      label: 'Agenda',
+      patterns: [
+        /abrir agenda/,
+        /minha agenda/,
+        /agenda clinica/,
+        /agenda da clinica/,
+        /ver agenda/
+      ]
+    },
+    {
+      id: 'patients-section',
+      type: 'navigate-section',
+      target: 'pacientes',
+      label: 'Pacientes',
+      patterns: [
+        /abrir pacientes/,
+        /meus pacientes/,
+        /lista de pacientes/,
+        /area de pacientes/,
+        /área de pacientes/,
+        /gestao de pacientes/
+      ]
+    },
+    {
+      id: 'reports-section',
+      type: 'navigate-section',
+      target: 'relatorios-clinicos',
+      label: 'Relatórios',
+      patterns: [
+        /abrir relatorios/,
+        /relatorios clinicos/,
+        /relatórios clínicos/,
+        /meus relatorios/,
+        /area de relatorios/,
+        /área de relatórios/
+      ]
+    },
+    {
+      id: 'team-section',
+      type: 'navigate-section',
+      target: 'chat-profissionais',
+      label: 'Equipe Clínica',
+      patterns: [
+        /abrir equipe/,
+        /equipe clinica/,
+        /equipe clínica/,
+        /chat clinico/,
+        /chat clínico/,
+        /colaboracao clinica/,
+        /colaboração clínica/
+      ]
+    },
+    {
+      id: 'knowledge-route',
+      type: 'navigate-route',
+      target: '/app/library',
+      label: 'Base de Conhecimento',
+      patterns: [
+        /base cientifica/,
+        /base científica/,
+        /base de conhecimento/,
+        /biblioteca cientifica/,
+        /biblioteca científica/
+      ]
+    }
+  ])
 
   const updateMessageContent = useCallback((messageId: string, content: string) => {
     setMessages(prev => {
@@ -197,6 +327,51 @@ export const useMedCannLabConversation = () => {
       window.removeEventListener('noaStopSpeech', handleExternalStop)
     }
   }, [stopSpeech])
+
+  const normalizeCommandText = useCallback((text: string) => {
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+  }, [])
+
+  const detectVoiceNavigationCommand = useCallback(
+    (text: string): VoiceNavigationCommand | null => {
+      const normalized = normalizeCommandText(text)
+      const commands = voiceNavigationCommandsRef.current
+
+      for (const command of commands) {
+        if (command.patterns.some(pattern => pattern.test(normalized))) {
+          return command
+        }
+      }
+
+      return null
+    },
+    [normalizeCommandText]
+  )
+
+  const dispatchVoiceNavigationCommand = useCallback(
+    (command: VoiceNavigationCommand, rawMessage: string, source: 'voice' | 'text') => {
+      const detail: NoaCommandDetail = {
+        type: command.type,
+        target: command.target,
+        label: command.label,
+        fallbackRoute: command.fallbackRoute,
+        rawMessage,
+        source,
+        timestamp: new Date().toISOString()
+      }
+
+      try {
+        window.dispatchEvent(new CustomEvent<NoaCommandDetail>('noaCommand', { detail }))
+        console.log('📡 Comando de navegação enviado para interface:', detail)
+      } catch (error) {
+        console.warn('⚠️ Falha ao despachar comando de navegação da Nôa:', error)
+      }
+    },
+    []
+  )
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -434,6 +609,16 @@ export const useMedCannLabConversation = () => {
     setError(null)
     stopSpeech()
 
+    let navigationCommand: VoiceNavigationCommand | null = null
+    try {
+      navigationCommand = detectVoiceNavigationCommand(trimmed)
+      if (navigationCommand) {
+        dispatchVoiceNavigationCommand(navigationCommand, trimmed, options.preferVoice ? 'voice' : 'text')
+      }
+    } catch (commandError) {
+      console.warn('⚠️ Erro ao processar comando de navegação local:', commandError)
+    }
+
     const userMessage: ConversationMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -445,7 +630,12 @@ export const useMedCannLabConversation = () => {
 
     try {
       console.log('📨 Processando mensagem para IA:', trimmed.substring(0, 50) + '...')
-      const response = await residentRef.current.processMessage(trimmed, user.id, user.email)
+      const contextualizedMessage =
+        navigationCommand && navigationCommand.label
+          ? `${trimmed}\n\n[contexto_da_plataforma]: A navegação para "${navigationCommand.label}" foi executada com sucesso na interface ativa.`
+          : trimmed
+
+      const response = await residentRef.current.processMessage(contextualizedMessage, user.id, user.email)
       console.log('✅ Resposta da IA recebida:', response.content.substring(0, 100) + '...')
 
       const intent = mapResponseToIntent(response)

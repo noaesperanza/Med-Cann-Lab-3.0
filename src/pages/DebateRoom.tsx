@@ -81,18 +81,41 @@ const DebateRoom: React.FC = () => {
 
     try {
       // Buscar post do fórum (debate)
-      const { data: forumPost, error: postError } = await supabase
+      let forumPost: any = null
+      let postError: any = null
+
+      const { data: postById, error: errorById } = await supabase
         .from('forum_posts')
         .select('*')
         .eq('id', debateId)
-        .single()
+        .maybeSingle()
 
-      if (postError) {
+      if (postById) {
+        forumPost = postById
+      } else {
+        postError = errorById
+        // Tentar buscar por slug amigável (ex.: "canna-matrix")
+        const { data: postBySlug, error: errorBySlug } = await supabase
+          .from('forum_posts')
+          .select('*')
+          .eq('slug', debateId)
+          .maybeSingle()
+
+        if (postBySlug) {
+          forumPost = postBySlug
+          postError = null
+        } else if (!postBySlug) {
+          postError = errorBySlug || errorById
+        }
+      }
+
+      if (!forumPost) {
         console.error('Erro ao buscar debate:', postError)
         return
       }
 
       if (forumPost) {
+        const chatKey = forumPost.id
         // Buscar dados do autor
         const { data: authorData } = await supabase
           .from('users')
@@ -128,10 +151,10 @@ const DebateRoom: React.FC = () => {
         setIsModerator(user?.id === forumPost.author_id)
 
         // Carregar mensagens do chat relacionadas a este debate
-        await loadMessages(debateId)
+        await loadMessages(chatKey)
 
         // Carregar participantes
-        await loadParticipants(debateId, forumPost.author_id)
+        await loadParticipants(chatKey, forumPost.author_id)
       }
     } catch (error) {
       console.error('Erro ao carregar debate:', error)
@@ -234,14 +257,17 @@ const DebateRoom: React.FC = () => {
   }, [messages])
 
   const handleSendMessage = async () => {
-    if (!message.trim() || !debateId || !user) return
+    if (!message.trim() || !debate || !user) return
+
+    const targetChatId = debate.id || debateId
+    if (!targetChatId) return
 
     try {
       // Salvar mensagem no Supabase
       const { data: newMessage, error: messageError } = await supabase
         .from('chat_messages')
         .insert({
-          chat_id: debateId,
+          chat_id: targetChatId,
           sender_id: user.id,
           message: message.trim(),
           message_type: 'text'
@@ -279,10 +305,12 @@ const DebateRoom: React.FC = () => {
 
         // Atualizar contador de participantes
         if (debate) {
+          const targetChatId = debate.id || debateId
+          if (!targetChatId) return
           const { error: updateError } = await supabase
             .from('forum_posts')
             .update({ current_participants: participants.length + 1 })
-            .eq('id', debateId)
+            .eq('id', targetChatId)
 
           if (updateError) {
             console.error('Erro ao atualizar participantes:', updateError)

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -68,6 +68,7 @@ const ChatGlobal: React.FC = () => {
   const [friendRequests, setFriendRequests] = useState<any[]>([])
   const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   const headerGradient = 'linear-gradient(135deg, #0A192F 0%, #1a365d 55%, #2d5a3d 100%)'
   const accentGradient = 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)'
@@ -461,11 +462,16 @@ const ChatGlobal: React.FC = () => {
     }
   }
 
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, 100)
-  }
+  const scrollToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        })
+      }
+    })
+  }, [])
 
 
   const loadModeratorRequests = async () => {
@@ -994,7 +1000,10 @@ const ChatGlobal: React.FC = () => {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-3 md:space-y-4">
+              <div
+                ref={messagesContainerRef}
+                className="flex-1 overflow-y-auto p-2 md:p-4 space-y-3 md:space-y-4"
+              >
                 {/* Indicador de tempo real */}
                 <div className="text-center mb-4">
                   <div className="inline-flex items-center space-x-2 bg-green-500/20 border border-green-500/30 rounded-full px-4 py-2">

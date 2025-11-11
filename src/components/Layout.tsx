@@ -34,6 +34,17 @@ const Layout: React.FC = () => {
   }, [])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    requestAnimationFrame(() => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: 'auto'
+      })
+    })
+  }, [location.pathname, location.search])
+
+  useEffect(() => {
     if (!user) {
       localStorage.removeItem('platformData')
       return
