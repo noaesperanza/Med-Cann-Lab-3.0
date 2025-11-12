@@ -34,6 +34,8 @@ import {
   MessageSquarePlus
 } from 'lucide-react'
 
+const INTEGRATED_PROTOCOL_TOPIC = 'Protocolos Clínicos Integrados - Integração Cannabis & Nefrologia'
+
 const MedCannLab: React.FC = () => {
   const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState<string>('sobre')
@@ -247,6 +249,13 @@ const MedCannLab: React.FC = () => {
                   <Brain className="w-4 h-4" />
                   Aplicar com IA residente
                 </button>
+                <button
+                  onClick={() => handleOpenForum(INTEGRATED_PROTOCOL_TOPIC)}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-green-100 border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 transition-colors"
+                >
+                  <MessageSquarePlus className="w-4 h-4" />
+                  Participar da construção no fórum
+                </button>
               </div>
             </article>
 
@@ -289,9 +298,7 @@ const MedCannLab: React.FC = () => {
                   Abrir documento base
                 </button>
                 <button
-                  onClick={() =>
-                    handleOpenForum('Protocolo MedCannLab de saúde renal com cannabis medicinal')
-                  }
+                  onClick={() => handleOpenForum(INTEGRATED_PROTOCOL_TOPIC)}
                   className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-blue-100 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
                 >
                   <MessageSquarePlus className="w-4 h-4" />

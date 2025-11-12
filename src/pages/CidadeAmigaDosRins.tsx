@@ -226,6 +226,8 @@ const AgendamentoStatus: React.FC = () => {
   )
 }
 
+const INTEGRATED_PROTOCOL_TOPIC = 'Protocolos Clínicos Integrados - Integração Cannabis & Nefrologia'
+
 const CidadeAmigaDosRins: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -329,6 +331,7 @@ const CidadeAmigaDosRins: React.FC = () => {
           'Planos terapêuticos individualizados com monitoramento contínuo.'
         ],
         knowledgeRoute: '/app/pesquisa/profissional/cidade-amiga-dos-rins',
+        forumTopic: INTEGRATED_PROTOCOL_TOPIC,
         iaPrompt:
           'Nôa, aplicar o protocolo Cidade Amiga dos Rins para uma triagem comunitária e gerar o plano terapêutico correspondente.'
       },
@@ -345,6 +348,7 @@ const CidadeAmigaDosRins: React.FC = () => {
           'Base de conhecimento alinhada às diretrizes MedCannLab para cannabis medicinal.'
         ],
         knowledgeRoute: '/app/clinica/paciente/avaliacao-clinica',
+        forumTopic: INTEGRATED_PROTOCOL_TOPIC,
         iaPrompt:
           'Nôa, iniciar a avaliação clínica inicial IMRE focada em cannabis medicinal e preparar o relatório para revisão.'
       },
@@ -384,7 +388,7 @@ const CidadeAmigaDosRins: React.FC = () => {
           { label: 'Publicação da versão 1.0 no diretório de protocolos', due: 'Janeiro/2026' }
         ],
         knowledgeDraft: '/app/library?draft=protocolo-renal-medcannlab',
-        forumTopic: 'Protocolo MedCannLab de saúde renal com cannabis medicinal',
+        forumTopic: INTEGRATED_PROTOCOL_TOPIC,
         iaPrompt:
           'Nôa, registrar minha contribuição no protocolo de saúde renal com cannabis medicinal do MedCannLab e listar os pontos em aberto.'
       },
@@ -401,7 +405,7 @@ const CidadeAmigaDosRins: React.FC = () => {
           { label: 'Integração com avaliações IMRE e chat clínico', due: 'Fevereiro/2026' }
         ],
         knowledgeDraft: '/app/library?draft=onboarding-cannabis-profissionais',
-        forumTopic: 'Criação de protocolo de onboarding de profissionais em cannabis medicinal',
+        forumTopic: INTEGRATED_PROTOCOL_TOPIC,
         iaPrompt:
           'Nôa, anotar minha sugestão para o protocolo de onboarding de profissionais em cannabis medicinal e direcionar para revisão do conselho clínico.'
       }
@@ -523,6 +527,15 @@ const CidadeAmigaDosRins: React.FC = () => {
                       <BookOpen className="w-4 h-4" />
                       Visualizar protocolo
                     </button>
+                    {protocol.forumTopic && (
+                      <button
+                        onClick={() => handleParticipateForum(protocol.forumTopic)}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-blue-100 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
+                      >
+                        <MessageSquarePlus className="w-4 h-4" />
+                        Contribuir no fórum
+                      </button>
+                    )}
                   </div>
                 </article>
               ))}

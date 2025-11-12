@@ -49,6 +49,22 @@ import {
   Flag
 } from 'lucide-react'
 
+type CommunityPanelId = 'news' | 'partnerships' | 'sponsors' | 'supporters'
+
+type CommunityPanelConfig = {
+  title: string
+  icon: React.ElementType
+  iconColor: string
+  content: React.ReactNode
+}
+
+const COMMUNITY_PANEL_TABS: { id: CommunityPanelId; label: string }[] = [
+  { id: 'news', label: 'Notícias' },
+  { id: 'partnerships', label: 'Parcerias' },
+  { id: 'sponsors', label: 'Patrocinadores' },
+  { id: 'supporters', label: 'Apoiadores' }
+]
+
 type ChannelPermissionConfig = {
   id: string
   name: string
@@ -228,8 +244,13 @@ const ChatGlobal: React.FC = () => {
   const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const [preselectedForumTopic, setPreselectedForumTopic] = useState<string | null>(null)
+  const [preselectedForumTopic, setPreselectedForumTopic] = useState<string | null>(
+    'Protocolos Clínicos Integrados - Integração Cannabis & Nefrologia'
+  )
   const promptHandledRef = useRef(false)
+  const [showGuidelines, setShowGuidelines] = useState(false)
+  const [showCommunityColumn, setShowCommunityColumn] = useState(true)
+  const [activeCommunityPanel, setActiveCommunityPanel] = useState<CommunityPanelId>('news')
 
   const headerGradient = 'linear-gradient(135deg, #0A192F 0%, #1a365d 55%, #2d5a3d 100%)'
   const accentGradient = 'linear-gradient(135deg, #00C16A 0%, #13794f 100%)'
@@ -245,6 +266,121 @@ const ChatGlobal: React.FC = () => {
     BASE_CHANNELS.map(channel => ({ ...channel }))
   )
   const userType: UserType = user?.type ?? 'paciente'
+
+  const gridColumnsClass = useMemo(() => {
+    if (showModeration && isAdmin) {
+      return 'grid-cols-1 lg:grid-cols-3'
+    }
+    return showCommunityColumn ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-3'
+  }, [showModeration, isAdmin, showCommunityColumn])
+
+  const communityPanelConfig = useMemo<CommunityPanelConfig>(() => {
+    switch (activeCommunityPanel) {
+      case 'partnerships':
+        return {
+          title: '🤝 Parcerias',
+          icon: Users,
+          iconColor: 'text-green-400',
+          content: (
+            <div className="space-y-3">
+              <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg p-4 border border-green-500/30">
+                <h4 className="text-white font-medium text-sm mb-1">Associação Brasileira de Cannabis Medicinal</h4>
+                <p className="text-slate-400 text-xs">Parceria estratégica para desenvolvimento de protocolos clínicos</p>
+              </div>
+              <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-lg p-4 border border-blue-500/30">
+                <h4 className="text-white font-medium text-sm mb-1">Sociedade Brasileira de Neurologia</h4>
+                <p className="text-slate-400 text-xs">Colaboração em pesquisas sobre epilepsia e TEA</p>
+              </div>
+              <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg p-4 border border-purple-500/30">
+                <h4 className="text-white font-medium text-sm mb-1">Instituto de Pesquisa em Cannabis</h4>
+                <p className="text-slate-400 text-xs">Programa conjunto de estudos clínicos</p>
+              </div>
+            </div>
+          )
+        }
+      case 'sponsors':
+        return {
+          title: '⭐ Patrocinadores',
+          icon: Award,
+          iconColor: 'text-yellow-400',
+          content: (
+            <div className="space-y-3">
+              <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg p-4 border border-yellow-500/30">
+                <div className="flex items-center space-x-3 mb-1">
+                  <div className="w-10 h-10 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">P1</span>
+                  </div>
+                  <div>
+                    <h4 className="text-white font-medium text-sm">Patrocinador Platinum</h4>
+                    <p className="text-slate-400 text-xs">Apoio ao desenvolvimento da plataforma</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-lg p-4 border border-blue-500/30">
+                <div className="flex items-center space-x-3 mb-1">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">P2</span>
+                  </div>
+                  <div>
+                    <h4 className="text-white font-medium text-sm">Patrocinador Gold</h4>
+                    <p className="text-slate-400 text-xs">Suporte à pesquisa e desenvolvimento</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+      case 'supporters':
+        return {
+          title: '❤️ Apoiadores',
+          icon: Heart,
+          iconColor: 'text-red-400',
+          content: (
+            <div className="space-y-3">
+              <div className="bg-gradient-to-r from-red-500/20 to-pink-500/20 rounded-lg p-4 border border-red-500/30">
+                <h4 className="text-white font-medium text-sm mb-1">Fundação de Apoio à Pesquisa</h4>
+                <p className="text-slate-400 text-xs">Apoio institucional</p>
+              </div>
+              <div className="bg-gradient-to-r from-purple-500/20 to-violet-500/20 rounded-lg p-4 border border-purple-500/30">
+                <h4 className="text-white font-medium text-sm mb-1">Associação de Pacientes</h4>
+                <p className="text-slate-400 text-xs">Comunidade de apoio</p>
+              </div>
+              <div className="bg-gradient-to-r from-teal-500/20 to-cyan-500/20 rounded-lg p-4 border border-teal-500/30">
+                <h4 className="text-white font-medium text-sm mb-1">Instituto de Tecnologia em Saúde</h4>
+                <p className="text-slate-400 text-xs">Suporte tecnológico</p>
+              </div>
+            </div>
+          )
+        }
+      case 'news':
+      default:
+        return {
+          title: '📰 Notícias',
+          icon: BookOpen,
+          iconColor: 'text-primary-400',
+          content: (
+            <div className="space-y-3">
+              <article className="bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700/70 transition-colors">
+                <h4 className="text-white font-medium text-sm mb-1">Novo protocolo de Cannabis Medicinal aprovado pela ANVISA</h4>
+                <p className="text-slate-400 text-xs mb-1">A ANVISA aprovou um novo protocolo para uso de cannabis medicinal em pacientes com epilepsia refratária...</p>
+                <span className="text-slate-500 text-xs">15/01/2025</span>
+              </article>
+              <article className="bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700/70 transition-colors">
+                <h4 className="text-white font-medium text-sm mb-1">Pesquisa mostra eficácia do CBD em casos de TEA</h4>
+                <p className="text-slate-400 text-xs mb-1">Estudo publicado na Nature Medicine mostra resultados promissores...</p>
+                <span className="text-slate-500 text-xs">12/01/2025</span>
+              </article>
+              <article className="bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700/70 transition-colors">
+                <h4 className="text-white font-medium text-sm mb-1">Curso de Pós-graduação em Cannabis Medicinal - Novas Turmas</h4>
+                <p className="text-slate-400 text-xs mb-1">Inscrições abertas para a próxima turma do curso de especialização...</p>
+                <span className="text-slate-500 text-xs">10/01/2025</span>
+              </article>
+            </div>
+          )
+        }
+    }
+  }, [activeCommunityPanel])
+  const PanelIcon = communityPanelConfig.icon
 
   const channelsWithAccess: ChannelWithAccess[] = useMemo(() => {
     return channels.map(channel => {
@@ -293,8 +429,6 @@ const ChatGlobal: React.FC = () => {
     )
   }, [debatesForUser, searchTerm])
 
-  const canStartDebate = userType === 'admin' || userType === 'profissional'
-
   // Verificar se é admin
   useEffect(() => {
     if (user?.type === 'admin') {
@@ -339,33 +473,35 @@ const ChatGlobal: React.FC = () => {
   // Carregar usuários online
   const loadOnlineUsers = async () => {
     try {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
       const { data, error } = await supabase
         .from('chat_messages')
-        .select('user_id, user_name, user_avatar, crm, specialty')
-        .eq('is_online', true)
-        .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()) // Últimos 5 minutos
+        .select('user_id, user_name, user_avatar, crm, specialty, is_online, created_at')
+        .gte('created_at', fiveMinutesAgo)
+        .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Erro ao carregar usuários online:', error)
+        console.warn('Erro ao carregar usuários online (fallback para modo offline):', error)
+        loadOnlineUsersOffline()
         return
       }
 
-      // Remover duplicatas e criar lista de usuários únicos
-      const uniqueUsers = data?.reduce((acc, msg) => {
-        if (!acc.find(user => user.user_id === msg.user_id)) {
-          acc.push({
-            id: msg.user_id,
-            name: msg.user_name,
-            avatar: msg.user_avatar,
-            crm: msg.crm,
-            specialty: msg.specialty,
-            status: 'online'
-          })
-        }
-        return acc
-      }, [] as any[]) || []
+      const uniqueUsers = (data || [])
+        .filter(msg => msg.is_online !== false)
+        .reduce((acc, msg) => {
+          if (!acc.find(user => user.id === msg.user_id)) {
+            acc.push({
+              id: msg.user_id,
+              name: msg.user_name,
+              avatar: msg.user_avatar,
+              crm: msg.crm,
+              specialty: msg.specialty,
+              status: 'online'
+            })
+          }
+          return acc
+        }, [] as any[])
 
-      // Adicionar usuário atual se não estiver na lista
       if (user && !uniqueUsers.find(u => u.id === user.id)) {
         uniqueUsers.unshift({
           id: user.id,
@@ -379,7 +515,8 @@ const ChatGlobal: React.FC = () => {
 
       setOnlineUsers(uniqueUsers)
     } catch (error) {
-      console.error('Erro ao carregar usuários online:', error)
+      console.error('Erro ao carregar usuários online (fallback para offline):', error)
+      loadOnlineUsersOffline()
     }
   }
 
@@ -405,7 +542,7 @@ const ChatGlobal: React.FC = () => {
     if (topicParam) {
       setPreselectedForumTopic(topicParam)
     } else {
-      setPreselectedForumTopic(null)
+      setPreselectedForumTopic('Protocolos Clínicos Integrados - Integração Cannabis & Nefrologia')
     }
 
     const promptParam = params.get('prompt')
@@ -1000,73 +1137,123 @@ const ChatGlobal: React.FC = () => {
         </div>
       </div>
 
-      {/* Banner de Avisos - Como Participar e Limitações por Tipo */}
+      {/* Banner de Orientações */}
       <div
         className="rounded-xl p-3 md:p-4 mb-4 md:mb-6 overflow-hidden"
         style={{ background: bannerGradient, border: '1px solid rgba(0,193,106,0.16)' }}
       >
-        <div className="rounded-xl p-4 md:p-6" style={bannerSurface}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 rounded-lg" style={{ background: secondaryGradient }}>
-                  <BookOpen className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-lg md:text-xl font-semibold text-white">📖 Como Participar</h3>
+        <div className="rounded-xl p-4 md:p-6 space-y-4" style={bannerSurface}>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg" style={{ background: secondaryGradient }}>
+                <BookOpen className="w-5 h-5 text-white" />
               </div>
-              <ul className="space-y-2 text-sm md:text-base text-slate-200/85">
-                <li className="flex items-start space-x-2">
-                  <span className="text-[#00F5A0] mt-0.5">•</span>
-                  <span>Escolha o canal que melhor corresponde ao tema que deseja discutir.</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <span className="text-[#00F5A0] mt-0.5">•</span>
-                  <span>Mantenha a comunicação colaborativa e siga o código de conduta.</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <span className="text-[#00F5A0] mt-0.5">•</span>
-                  <span>Compartilhe evidências, referências científicas e experiências clínicas relevantes.</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <span className="text-[#00F5A0] mt-0.5">•</span>
-                  <span>Respeite as permissões do seu perfil ao interagir em debates especializados.</span>
-                </li>
-              </ul>
+              <div className="space-y-2">
+                <div>
+                  <h3 className="text-lg md:text-xl font-semibold text-white">Participação responsável</h3>
+                  <p className="text-slate-200/80 text-sm md:text-base">
+                    Mantenha o fórum objetivo, baseado em evidências e no canal certo antes de abrir novas discussões.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs md:text-sm text-slate-200/80">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-900/50 border border-slate-700/50">
+                    <Check className="w-3 h-3 text-[#00F5A0]" />
+                    Etiqueta clínica
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-900/50 border border-slate-700/50">
+                    <Check className="w-3 h-3 text-[#00F5A0]" />
+                    Evidências primeiro
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-900/50 border border-slate-700/50">
+                    <Check className="w-3 h-3 text-[#00F5A0]" />
+                    Respeito às permissões
+                  </span>
+                </div>
+              </div>
             </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 rounded-lg" style={{ background: accentGradient }}>
-                  <Award className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-lg md:text-xl font-semibold text-white">⚠️ Limitações por Perfil</h3>
-              </div>
-              <div className="space-y-3 text-sm md:text-base text-slate-200/85">
-                <div className="flex items-start space-x-2">
-                  <Users className="w-4 h-4 flex-shrink-0" style={{ color: '#4FE0C1' }} />
-                  <span><strong className="text-white">Profissional:</strong> acesso completo, pode abrir debates clínicos, conduzir mentorias e moderar discussões especializadas.</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Award className="w-4 h-4 flex-shrink-0" style={{ color: '#FFD33D' }} />
-                  <span><strong className="text-white">Admin:</strong> gestão total da comunidade, incluindo curadoria de conteúdos, permissões e acompanhamento de métricas.</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <BookOpen className="w-4 h-4 flex-shrink-0" style={{ color: '#86E3CE' }} />
-                  <span><strong className="text-white">Aluno:</strong> foco em canais formativos e de pesquisa; debates clínicos avançados exigem mediação docente.</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Heart className="w-4 h-4 flex-shrink-0" style={{ color: '#FF8E72' }} />
-                  <span><strong className="text-white">Paciente:</strong> participação orientada em canais de suporte e bem-estar; discussões técnicas requerem acompanhamento profissional.</span>
-                </div>
-              </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setShowGuidelines(prev => !prev)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-700/60 ${
+                  showGuidelines ? 'bg-slate-800/80 text-white' : 'bg-slate-900/40 text-slate-200 hover:text-white'
+                }`}
+                aria-expanded={showGuidelines}
+              >
+                {showGuidelines ? 'Ocultar orientações' : 'Ver orientações'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCommunityColumn(prev => !prev)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-700/60 ${
+                  showCommunityColumn ? 'bg-slate-900/40 text-slate-200 hover:text-white' : 'bg-primary-600 text-white'
+                }`}
+                aria-pressed={showCommunityColumn}
+              >
+                {showCommunityColumn ? 'Ocultar painel lateral' : 'Mostrar painel lateral'}
+              </button>
             </div>
           </div>
+
+          {showGuidelines && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-lg border border-slate-700/60 bg-slate-900/40 p-4 space-y-2">
+                <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-[#00F5A0]" />
+                  Como participar
+                </h4>
+                <ul className="space-y-2 text-sm text-slate-200/85">
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 mt-0.5 text-[#00F5A0]" />
+                    <span>Escolha o canal que melhor corresponde ao tema antes de iniciar um debate.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 mt-0.5 text-[#00F5A0]" />
+                    <span>Compartilhe referências, casos documentados e experiências clínicas verificáveis.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 mt-0.5 text-[#00F5A0]" />
+                    <span>Use linguagem colaborativa e reporte desvios do código de conduta aos moderadores.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 mt-0.5 text-[#00F5A0]" />
+                    <span>Mencione especialistas quando precisar de revisão ou validação clínica.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="rounded-lg border border-slate-700/60 bg-slate-900/40 p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Award className="w-4 h-4 text-[#FFD33D]" />
+                  Limitações por perfil
+                </h4>
+                <div className="space-y-2 text-sm text-slate-200/85">
+                  <div className="flex items-start gap-2">
+                    <Users className="w-4 h-4 mt-0.5 text-[#4FE0C1]" />
+                    <p><strong className="text-white">Profissional:</strong> acesso completo; pode iniciar debates clínicos e mentorias.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Award className="w-4 h-4 mt-0.5 text-[#FFD33D]" />
+                    <p><strong className="text-white">Admin:</strong> curadoria da comunidade, permissões avançadas e métricas.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <BookOpen className="w-4 h-4 mt-0.5 text-[#86E3CE]" />
+                    <p><strong className="text-white">Aluno:</strong> interações mediadas por docentes em debates clínicos avançados.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Heart className="w-4 h-4 mt-0.5 text-[#FF8E72]" />
+                    <p><strong className="text-white">Paciente:</strong> participação orientada em canais de suporte com mediação profissional.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Chat Tab */}
       {activeTab === 'chat' && (
-        <div className={`grid gap-4 md:gap-6 lg:gap-10 ${showModeration && isAdmin ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-4'}`}>
+        <div className={`grid gap-4 md:gap-6 lg:gap-10 ${gridColumnsClass}`}>
           {/* Sidebar - Channels */}
           <div className="lg:col-span-1 order-2 lg:order-1">
             <div className="bg-slate-800/80 rounded-lg p-3 md:p-4 lg:p-6 border border-slate-700">
@@ -1316,109 +1503,42 @@ const ChatGlobal: React.FC = () => {
             </div>
           </div>
 
-          {/* Coluna de Notícias, Parcerias, Patrocinadores e Apoiadores */}
-          {!showModeration && (
+          {/* Painel lateral modular */}
+          {!showModeration && showCommunityColumn && (
             <div className="lg:col-span-1 order-3 hidden lg:block">
-              <div className="space-y-6">
-                {/* Notícias */}
-                <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-                    <BookOpen className="w-5 h-5 mr-2 text-primary-400" />
-                    📰 Notícias
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700/70 transition-colors cursor-pointer">
-                      <h4 className="text-white font-medium text-sm mb-2">Novo protocolo de Cannabis Medicinal aprovado pela ANVISA</h4>
-                      <p className="text-slate-400 text-xs mb-2">A ANVISA aprovou um novo protocolo para uso de cannabis medicinal em pacientes com epilepsia refratária...</p>
-                      <span className="text-slate-500 text-xs">15/01/2025</span>
-                    </div>
-                    <div className="bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700/70 transition-colors cursor-pointer">
-                      <h4 className="text-white font-medium text-sm mb-2">Pesquisa mostra eficácia do CBD em casos de TEA</h4>
-                      <p className="text-slate-400 text-xs mb-2">Estudo publicado na Nature Medicine mostra resultados promissores...</p>
-                      <span className="text-slate-500 text-xs">12/01/2025</span>
-                    </div>
-                    <div className="bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700/70 transition-colors cursor-pointer">
-                      <h4 className="text-white font-medium text-sm mb-2">Curso de Pós-graduação em Cannabis Medicinal - Novas Turmas</h4>
-                      <p className="text-slate-400 text-xs mb-2">Inscrições abertas para a próxima turma do curso de especialização...</p>
-                      <span className="text-slate-500 text-xs">10/01/2025</span>
-                    </div>
+              <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700 h-full">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <PanelIcon className={`w-5 h-5 ${communityPanelConfig.iconColor}`} />
+                    <h3 className="text-lg font-semibold text-white">{communityPanelConfig.title}</h3>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCommunityColumn(false)}
+                    className="text-xs text-slate-400 hover:text-white transition-colors"
+                  >
+                    Ocultar
+                  </button>
                 </div>
-
-                {/* Parcerias */}
-                <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-                    <Users className="w-5 h-5 mr-2 text-green-400" />
-                    🤝 Parcerias
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg p-4 border border-green-500/30">
-                      <h4 className="text-white font-medium text-sm mb-2">Associação Brasileira de Cannabis Medicinal</h4>
-                      <p className="text-slate-400 text-xs">Parceria estratégica para desenvolvimento de protocolos clínicos</p>
-                    </div>
-                    <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-lg p-4 border border-blue-500/30">
-                      <h4 className="text-white font-medium text-sm mb-2">Sociedade Brasileira de Neurologia</h4>
-                      <p className="text-slate-400 text-xs">Colaboração em pesquisas sobre epilepsia e TEA</p>
-                    </div>
-                    <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg p-4 border border-purple-500/30">
-                      <h4 className="text-white font-medium text-sm mb-2">Instituto de Pesquisa em Cannabis</h4>
-                      <p className="text-slate-400 text-xs">Programa conjunto de estudos clínicos</p>
-                    </div>
-                  </div>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {COMMUNITY_PANEL_TABS.map(tab => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveCommunityPanel(tab.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border border-slate-700/60 ${
+                        activeCommunityPanel === tab.id
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-slate-900/40 text-slate-300 hover:text-white'
+                      }`}
+                      aria-pressed={activeCommunityPanel === tab.id}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
-
-                {/* Patrocinadores */}
-                <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-                    <Award className="w-5 h-5 mr-2 text-yellow-400" />
-                    ⭐ Patrocinadores
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg p-4 border border-yellow-500/30">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-10 h-10 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">P1</span>
-                        </div>
-                        <div>
-                          <h4 className="text-white font-medium text-sm">Patrocinador Platinum</h4>
-                          <p className="text-slate-400 text-xs">Apoio ao desenvolvimento da plataforma</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-lg p-4 border border-blue-500/30">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">P2</span>
-                        </div>
-                        <div>
-                          <h4 className="text-white font-medium text-sm">Patrocinador Gold</h4>
-                          <p className="text-slate-400 text-xs">Suporte à pesquisa e desenvolvimento</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Apoiadores */}
-                <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-                    <Heart className="w-5 h-5 mr-2 text-red-400" />
-                    ❤️ Apoiadores
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="bg-gradient-to-r from-red-500/20 to-pink-500/20 rounded-lg p-4 border border-red-500/30">
-                      <h4 className="text-white font-medium text-sm mb-1">Fundação de Apoio à Pesquisa</h4>
-                      <p className="text-slate-400 text-xs">Apoio institucional</p>
-                    </div>
-                    <div className="bg-gradient-to-r from-purple-500/20 to-violet-500/20 rounded-lg p-4 border border-purple-500/30">
-                      <h4 className="text-white font-medium text-sm mb-1">Associação de Pacientes</h4>
-                      <p className="text-slate-400 text-xs">Comunidade de apoio</p>
-                    </div>
-                    <div className="bg-gradient-to-r from-teal-500/20 to-cyan-500/20 rounded-lg p-4 border border-teal-500/30">
-                      <h4 className="text-white font-medium text-sm mb-1">Instituto de Tecnologia em Saúde</h4>
-                      <p className="text-slate-400 text-xs">Suporte tecnológico</p>
-                    </div>
-                  </div>
+                <div className="space-y-3">
+                  {communityPanelConfig.content}
                 </div>
               </div>
             </div>
@@ -1514,28 +1634,12 @@ const ChatGlobal: React.FC = () => {
       {activeTab === 'forum' && (
         <div className="space-y-8">
           {/* Forum Header */}
-          <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-2">🏛️ Fórum Profissional</h2>
-                <p className="text-slate-300">Debates, discussões e troca de conhecimento entre profissionais</p>
-              </div>
-              <button
-                onClick={() => {
-                  if (!canStartDebate) {
-                    alert('Abertura de debates é restrita a profissionais e administradores. Solicite uma mediação.')
-                  }
-                }}
-                disabled={!canStartDebate}
-                className={`px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors ${
-                  canStartDebate
-                    ? 'bg-primary-600 hover:bg-primary-700 text-white'
-                    : 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
-                }`}
-              >
-                <Plus className="w-5 h-5" />
-                <span>{canStartDebate ? 'Novo Debate' : 'Restrito a profissionais'}</span>
-              </button>
+          <div className="bg-slate-800/80 rounded-lg p-6 border border-slate-700 space-y-4">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2">🏛️ Fórum Profissional</h2>
+              <p className="text-slate-300">
+                Espaço colaborativo para acompanhar o desenvolvimento do protocolo integrado Med Cann Lab.
+              </p>
             </div>
 
             {/* Search and Filters */}
@@ -1559,33 +1663,26 @@ const ChatGlobal: React.FC = () => {
 
           {preselectedForumTopic && (
             <div className="bg-slate-800/80 border border-blue-500/30 rounded-lg p-5 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs text-blue-300 uppercase tracking-[0.32em]">Protocolo em discussão</p>
-                  <h3 className="text-lg font-semibold text-white">{preselectedForumTopic}</h3>
-                  <p className="text-sm text-slate-300 mt-2">
-                    Tema encaminhado pela área de protocolos clínicos. Contribua com evidências, ajustes metodológicos e relatos de aplicação prática.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setPreselectedForumTopic(null)}
-                  className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
-                >
-                  Fechar
-                </button>
+              <div>
+                <p className="text-xs text-blue-300 uppercase tracking-[0.32em]">Tema central</p>
+                <h3 className="text-lg font-semibold text-white">{preselectedForumTopic}</h3>
+                <p className="text-sm text-slate-300 mt-2">
+                  Estamos estruturando o protocolo clínico integrado do Med Cann Lab para unir cannabis medicinal e nefrologia.
+                  Compartilhe dados clínicos, experiências assistidas por IA e sugestões metodológicas para fortalecer o documento.
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setSearchTerm(preselectedForumTopic)}
                   className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors"
                 >
-                  Buscar debates relacionados
+                  Buscar discussões relacionadas
                 </button>
                 <button
                   onClick={() => navigate('/app/chat?tab=forum')}
                   className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-blue-100 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
                 >
-                  Ver fórum completo
+                  Atualizar quadro do fórum
                 </button>
               </div>
             </div>
