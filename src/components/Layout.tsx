@@ -6,9 +6,8 @@ import Header from './Header'
 import Footer from './Footer'
 import Sidebar from './Sidebar'
 import NoaConversationalInterface from './NoaConversationalInterface'
-import Breadcrumbs from './Breadcrumbs'
-import NavegacaoIndividualizada from './NavegacaoIndividualizada'
 import MobileResponsiveWrapper from './MobileResponsiveWrapper'
+import MobileDock from './MobileDock'
 import { normalizeUserType } from '../lib/userTypes'
 import { useUserView } from '../contexts/UserViewContext'
 
@@ -43,6 +42,11 @@ const Layout: React.FC = () => {
       })
     })
   }, [location.pathname, location.search])
+
+  useEffect(() => {
+    if (!isMobile) return
+    setIsSidebarOpen(false)
+  }, [isMobile, location.pathname, location.search])
 
   useEffect(() => {
     if (!user) {
@@ -95,7 +99,7 @@ const Layout: React.FC = () => {
   // Normalizar tipo de usuário
   const effectiveType = user ? getEffectiveUserType(user.type) : null
   const normalizedUserType = effectiveType ? normalizeUserType(effectiveType) : null
-  
+
   // Verificar se o email não foi confirmado
   if (user?.type === 'unconfirmed') {
     return (
@@ -117,13 +121,13 @@ const Layout: React.FC = () => {
             Se não encontrar o email, verifique a pasta de spam.
           </p>
           <div className="space-y-4">
-            <button 
+            <button
               onClick={() => window.location.href = '/'}
               className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
             >
               Voltar ao Início
             </button>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="w-full bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
             >
@@ -139,7 +143,7 @@ const Layout: React.FC = () => {
   if (normalizedUserType === 'paciente') {
     return (
       <ProtectedRoute>
-        <MobileResponsiveWrapper>
+        <MobileResponsiveWrapper showMobileMenu={false}>
           <div
             className="min-h-screen"
             style={{ background: landingGradient }}
@@ -149,19 +153,25 @@ const Layout: React.FC = () => {
               <Header />
               {/* NavegacaoIndividualizada removida - botões dos eixos já estão na sidebar */}
               <main
-                className={`flex-1 ${isMobile ? 'px-2 py-2' : 'px-4 py-4'}`}
-                style={{ backgroundColor: surfaceColor }}
+                className={`flex-1 mobile-main-area ${isMobile ? 'px-4 py-4' : 'px-6 py-6'}`}
+                style={{
+                  backgroundColor: surfaceColor,
+                  paddingBottom: isMobile ? 'calc(6rem + env(safe-area-inset-bottom))' : undefined
+                }}
               >
                 <Outlet />
               </main>
               <Footer />
             </div>
-            
+
             {/* Interface Conversacional Nôa Esperança */}
-            <NoaConversationalInterface 
+            <NoaConversationalInterface
               userName={user?.name || 'Usuário'}
               userCode={user?.id || 'USER-001'}
             />
+            {isMobile && (
+              <MobileDock userType={normalizedUserType} />
+            )}
           </div>
         </MobileResponsiveWrapper>
       </ProtectedRoute>
@@ -177,16 +187,16 @@ const Layout: React.FC = () => {
           style={{ background: landingGradient }}
         >
           {/* Sidebar */}
-          <Sidebar 
-            userType={viewAsType ?? user?.type} 
+          <Sidebar
+            userType={viewAsType ?? user?.type}
             isMobile={isMobile}
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
             onCollapseChange={setIsSidebarCollapsed}
           />
-          
+
           {/* Main Content */}
-          <div 
+          <div
             className="flex flex-col min-h-screen transition-all duration-300"
             style={{
               marginLeft: isMobile ? '0' : isSidebarCollapsed ? '80px' : '320px'
@@ -195,19 +205,25 @@ const Layout: React.FC = () => {
             <Header />
             {/* NavegacaoIndividualizada removida - botões dos eixos já estão na sidebar */}
             <main
-              className={`flex-1 ${isMobile ? 'px-2 py-2' : 'px-4 py-4 lg:ml-4'}`}
-              style={{ backgroundColor: surfaceColor }}
+              className={`flex-1 mobile-main-area ${isMobile ? 'px-3 py-4' : 'px-4 py-6 lg:ml-4'}`}
+              style={{
+                backgroundColor: surfaceColor,
+                paddingBottom: isMobile ? 'calc(6rem + env(safe-area-inset-bottom))' : undefined
+              }}
             >
               <Outlet />
             </main>
             <Footer />
           </div>
-          
+
           {/* Interface Conversacional Nôa Esperança */}
-          <NoaConversationalInterface 
+          <NoaConversationalInterface
             userName={user?.name || 'Usuário'}
             userCode={user?.id || 'USER-001'}
           />
+          {isMobile && (
+            <MobileDock userType={normalizedUserType} />
+          )}
         </div>
       </MobileResponsiveWrapper>
     </ProtectedRoute>
