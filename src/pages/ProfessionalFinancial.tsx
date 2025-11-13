@@ -97,7 +97,10 @@ export function ProfessionalFinancial() {
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: false })
 
-      if (transError) console.error('Erro ao buscar transações:', transError)
+      if (transError) {
+        console.warn('⚠️ Erro ao buscar transações (tabela pode não existir ou sem acesso):', transError.message)
+        // Continua com dados vazios em caso de erro
+      }
 
       const { data: subscriptionsData, error: subsError } = await supabase
         .from('user_subscriptions')
@@ -105,7 +108,10 @@ export function ProfessionalFinancial() {
         .eq('user_id', user?.id)
         .eq('status', 'active')
 
-      if (subsError) console.error('Erro ao buscar assinaturas:', subsError)
+      if (subsError) {
+        console.warn('⚠️ Erro ao buscar assinaturas (tabela pode não existir ou sem acesso):', subsError.message)
+        // Continua com dados vazios em caso de erro
+      }
 
       const { data: appointmentsData, error: apptError } = await supabase
         .from('appointments')

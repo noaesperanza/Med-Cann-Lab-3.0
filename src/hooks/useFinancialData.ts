@@ -65,27 +65,39 @@ export const useFinancialData = () => {
       const currentMonth = new Date()
       currentMonth.setDate(1)
       
-      // Buscar receitas do mês atual
-      const { data: revenueData } = await supabase
+      // Buscar receitas do mês atual (com tratamento de erro)
+      const { data: revenueData, error: revenueError } = await supabase
         .from('transactions')
         .select('amount, type, created_at')
         .eq('type', 'revenue')
         .gte('created_at', currentMonth.toISOString())
         .eq('status', 'completed')
       
-      // Buscar despesas do mês atual
-      const { data: expenseData } = await supabase
+      if (revenueError) {
+        console.warn('⚠️ Erro ao buscar receitas:', revenueError.message)
+      }
+      
+      // Buscar despesas do mês atual (com tratamento de erro)
+      const { data: expenseData, error: expenseError } = await supabase
         .from('transactions')
         .select('amount, type, created_at')
         .eq('type', 'expense')
         .gte('created_at', currentMonth.toISOString())
         .eq('status', 'completed')
       
-      // Buscar assinaturas ativas
-      const { count: activeSubscriptions } = await supabase
+      if (expenseError) {
+        console.warn('⚠️ Erro ao buscar despesas:', expenseError.message)
+      }
+      
+      // Buscar assinaturas ativas (com tratamento de erro)
+      const { count: activeSubscriptions, error: subscriptionsError } = await supabase
         .from('subscriptions')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active')
+      
+      if (subscriptionsError) {
+        console.warn('⚠️ Erro ao buscar assinaturas:', subscriptionsError.message)
+      }
       
       const monthlyRevenue = revenueData?.reduce((sum, transaction) => sum + transaction.amount, 0) || 0
       const monthlyExpenses = expenseData?.reduce((sum, transaction) => sum + transaction.amount, 0) || 0
@@ -96,7 +108,7 @@ export const useFinancialData = () => {
       lastMonth.setMonth(lastMonth.getMonth() - 1)
       lastMonth.setDate(1)
       
-      const { data: lastMonthRevenue } = await supabase
+      const { data: lastMonthRevenue, error: lastMonthRevenueError } = await supabase
         .from('transactions')
         .select('amount')
         .eq('type', 'revenue')
@@ -104,13 +116,21 @@ export const useFinancialData = () => {
         .lt('created_at', currentMonth.toISOString())
         .eq('status', 'completed')
       
-      const { data: lastMonthExpenses } = await supabase
+      if (lastMonthRevenueError) {
+        console.warn('⚠️ Erro ao buscar receitas do mês anterior:', lastMonthRevenueError.message)
+      }
+      
+      const { data: lastMonthExpenses, error: lastMonthExpensesError } = await supabase
         .from('transactions')
         .select('amount')
         .eq('type', 'expense')
         .gte('created_at', lastMonth.toISOString())
         .lt('created_at', currentMonth.toISOString())
         .eq('status', 'completed')
+      
+      if (lastMonthExpensesError) {
+        console.warn('⚠️ Erro ao buscar despesas do mês anterior:', lastMonthExpensesError.message)
+      }
       
       const lastMonthRevenueTotal = lastMonthRevenue?.reduce((sum, transaction) => sum + transaction.amount, 0) || 0
       const lastMonthExpensesTotal = lastMonthExpenses?.reduce((sum, transaction) => sum + transaction.amount, 0) || 0
@@ -147,12 +167,24 @@ export const useFinancialData = () => {
 
   const loadRevenueHistory = async () => {
     try {
-      const { data: revenueData } = await supabase
+      const { data: revenueData, error: revenueError } = await supabase
         .from('transactions')
         .select('amount, created_at')
         .eq('type', 'revenue')
         .eq('status', 'completed')
         .order('created_at', { ascending: true })
+      
+      if (revenueError) {
+        console.warn('⚠️ Erro ao buscar histórico de receita:', revenueError.message)
+        // Usa dados padrão em caso de erro
+        setRevenueHistory([
+          { period: 'Out 2023', revenue: 35640 },
+          { period: 'Nov 2023', revenue: 38920 },
+          { period: 'Dez 2023', revenue: 40180 },
+          { period: 'Jan 2024', revenue: 45230 }
+        ])
+        return
+      }
       
       if (revenueData && revenueData.length > 0) {
         // Agrupar por mês
@@ -193,10 +225,22 @@ export const useFinancialData = () => {
 
   const loadPaymentMethods = async () => {
     try {
-      const { data: paymentData } = await supabase
+      const { data: paymentData, error: paymentError } = await supabase
         .from('transactions')
         .select('amount, payment_method')
         .eq('status', 'completed')
+      
+      if (paymentError) {
+        console.warn('⚠️ Erro ao buscar métodos de pagamento:', paymentError.message)
+        // Usa dados padrão em caso de erro
+        setPaymentMethods([
+          { method: 'Cartão de Crédito', percentage: 65, amount: 29400 },
+          { method: 'PIX', percentage: 25, amount: 11300 },
+          { method: 'Boleto', percentage: 8, amount: 3620 },
+          { method: 'Outros', percentage: 2, amount: 910 }
+        ])
+        return
+      }
       
       if (paymentData && paymentData.length > 0) {
         const totalAmount = paymentData.reduce((sum, transaction) => sum + transaction.amount, 0)
@@ -235,11 +279,18 @@ export const useFinancialData = () => {
 
   const loadRecentTransactions = async () => {
     try {
-      const { data: transactions } = await supabase
+      const { data: transactions, error: transactionsError } = await supabase
         .from('transactions')
         .select('id, amount, created_at, status, payment_method, client_name')
         .order('created_at', { ascending: false })
         .limit(10)
+      
+      if (transactionsError) {
+        console.warn('⚠️ Erro ao buscar transações recentes:', transactionsError.message)
+        // Usa dados padrão em caso de erro
+        setRecentTransactions([])
+        return
+      }
       
       if (transactions && transactions.length > 0) {
         const recentTransactions = transactions.map(transaction => ({

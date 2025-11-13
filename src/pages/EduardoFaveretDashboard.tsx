@@ -25,7 +25,8 @@ import {
   Heart,
   Brain,
   Activity,
-  Stethoscope
+  Stethoscope,
+  LayoutDashboard
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { ClinicalAssessmentService } from '../lib/clinicalAssessmentService'
@@ -551,47 +552,74 @@ const EduardoFaveretDashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <button
               onClick={() => navigate('/app/pesquisa/profissional/dashboard')}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+              className="bg-gradient-to-r from-purple-700 to-indigo-700 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium opacity-90">🔬 Dashboard de Pesquisa</h3>
-                <Search className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-3">
+                <LayoutDashboard className="w-6 h-6 opacity-90" />
+                <span className="text-xs uppercase tracking-[0.28em] text-white/70">Resumo</span>
               </div>
-              <p className="text-xs opacity-75 mt-1">Centro de pesquisa AEC</p>
+              <h3 className="text-base font-semibold text-white mb-1">Resumo Administrativo</h3>
+              <p className="text-xs opacity-75">Visão consolidada da plataforma</p>
             </button>
-            
+
+            <button
+              onClick={() => navigate('/app/library?module=research')}
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <BookOpen className="w-6 h-6 opacity-90" />
+                <span className="text-xs uppercase tracking-[0.28em] text-white/70">Documentos</span>
+              </div>
+              <h3 className="text-base font-semibold text-white mb-1">Base de Conhecimento</h3>
+              <p className="text-xs opacity-75">Protocolos, manuais e arquivos estratégicos</p>
+            </button>
+
+            <button
+              onClick={() => navigate('/app/pesquisa/profissional/medcann-lab')}
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <BarChart3 className="w-6 h-6 opacity-90" />
+                <span className="text-xs uppercase tracking-[0.28em] text-white/70">Integração</span>
+              </div>
+              <h3 className="text-base font-semibold text-white mb-1">Protocolos Integrados</h3>
+              <p className="text-xs opacity-75">Cannabis &amp; Nefrologia • MedCannLab</p>
+            </button>
+
             <button
               onClick={() => setActiveSection('research')}
               className="bg-gradient-to-r from-violet-600 to-purple-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium opacity-90">📊 Pesquisa AEC</h3>
-                <Search className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-3">
+                <Search className="w-6 h-6 opacity-90" />
+                <span className="text-xs uppercase tracking-[0.28em] text-white/70">Estudos</span>
               </div>
-              <p className="text-xs opacity-75 mt-1">Estudos e publicações</p>
+              <h3 className="text-base font-semibold text-white mb-1">Pesquisas em andamento</h3>
+              <p className="text-xs opacity-75">Estudos clínicos, publicações e evidências</p>
             </button>
-            
+
             <button
               onClick={() => navigate('/app/pesquisa/profissional/cidade-amiga-dos-rins')}
               className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left border-2 border-cyan-400"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium opacity-90">🌍 Cidade Amiga dos Rins</h3>
-                <Heart className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-3">
+                <Heart className="w-6 h-6 opacity-90" />
+                <span className="text-xs uppercase tracking-[0.28em] text-white/70">Projeto</span>
               </div>
-              <p className="text-xs opacity-75 mt-1">Coordenador: Dr. Ricardo Valença</p>
-              <p className="text-xs opacity-60 mt-1">Interconexão: Cannabis + Função Renal</p>
+              <h3 className="text-base font-semibold text-white mb-1">Cidade Amiga dos Rins</h3>
+              <p className="text-xs opacity-75">Interligando clínica, ensino e pesquisa</p>
             </button>
-            
+
             <button
               onClick={() => setActiveSection('newsletter')}
               className="bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-6 text-white hover:shadow-lg hover:scale-105 transition-all text-left"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium opacity-90">📰 Publicações</h3>
-                <BookOpen className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-3">
+                <BookOpen className="w-6 h-6 opacity-90" />
+                <span className="text-xs uppercase tracking-[0.28em] text-white/70">Atualizações</span>
               </div>
-              <p className="text-xs opacity-75 mt-1">Newsletter científico</p>
+              <h3 className="text-base font-semibold text-white mb-1">Newsletter Científico</h3>
+              <p className="text-xs opacity-75">Resultados e comunicados oficiais</p>
             </button>
           </div>
         </div>

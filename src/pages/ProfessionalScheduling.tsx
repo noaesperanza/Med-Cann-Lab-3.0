@@ -174,14 +174,18 @@ const ProfessionalScheduling: React.FC = () => {
         ? ratings.reduce((a, b) => a + b, 0) / ratings.length
         : 0
 
-      // Buscar transações para calcular receita
-      const { data: transactions } = await supabase
+      // Buscar transações para calcular receita (com tratamento de erro)
+      const { data: transactions, error: transactionsError } = await supabase
         .from('transactions')
         .select('amount')
         .eq('user_id', user.id)
         .eq('status', 'completed')
 
-      const totalRevenue = transactions?.reduce((sum, t) => sum + parseFloat(t.amount), 0) || 0
+      if (transactionsError) {
+        console.warn('⚠️ Erro ao buscar transações (tabela pode não existir ou sem acesso):', transactionsError.message)
+      }
+
+      const totalRevenue = transactions?.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0) || 0
 
       setAnalyticsData({
         totalAppointments,

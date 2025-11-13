@@ -286,7 +286,21 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const pesquisaSections: AxisSection[] = [
     {
-      id: 'avaliacao',
+      id: 'dashboard',
+      label: 'Dashboard de Pesquisa',
+      description: 'Gestão de projetos de pesquisa',
+      icon: LayoutDashboard,
+      href: '/app/pesquisa/profissional/dashboard'
+    },
+    {
+      id: 'forum-casos',
+      label: 'Fórum de Casos Clínicos',
+      description: 'Discussão de casos e pesquisas',
+      icon: MessageCircle,
+      href: '/app/pesquisa/profissional/forum-casos'
+    },
+    {
+      id: 'protocolos',
       label: 'Protocolos',
       description: 'Gestão de estudos e métricas de pesquisa',
       icon: Activity,
@@ -432,8 +446,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                     pesquisa: 'bg-purple-600 text-white'
                   }
 
+                  // Adicionar seções administrativas para profissionais e admins em todos os eixos
                   const combinedSections: AxisSection[] = []
-                  if (normalizedType === 'admin') {
+                  if (normalizedType === 'admin' || normalizedType === 'profissional') {
                     adminSections.forEach((section) => {
                       if (!combinedSections.some(existing => existing.id === section.id)) {
                         combinedSections.push(section)

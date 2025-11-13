@@ -72,12 +72,16 @@ const SistemaFinanceiroStatus: React.FC = () => {
 
       // Buscar receita total (se houver transações)
       if (user) {
-        const { data: transactionsData } = await supabase
+        const { data: transactionsData, error: transactionsError } = await supabase
           .from('transactions')
           .select('amount, type')
           .eq('status', 'completed')
 
-        if (transactionsData) {
+        // Se a tabela não existir ou houver erro de RLS, ignora silenciosamente
+        if (transactionsError) {
+          console.warn('⚠️ Tabela transactions não disponível ou sem acesso:', transactionsError.message)
+          setTotalRevenue(0)
+        } else if (transactionsData && transactionsData.length > 0) {
           const revenue = transactionsData
             .filter(t => t.type === 'consultation' || t.type === 'course')
             .reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0)
@@ -170,26 +174,48 @@ const AgendamentoStatus: React.FC = () => {
   const loadAppointmentData = async () => {
     try {
       // Buscar profissionais disponíveis (Dr. Ricardo Valença)
-      const { data: doctorsData } = await supabase
+      const { data: doctorsData, error: doctorsError } = await supabase
         .from('users')
         .select('id, name, email')
         .or('email.eq.rrvalenca@gmail.com,email.eq.consultoriodosvalenca@gmail.com')
         .eq('type', 'professional')
 
+      // Se houver erro (tabela não existe, RLS bloqueando, etc.), usa dados padrão
+      if (doctorsError) {
+        console.warn('⚠️ Erro ao buscar profissionais ou tabela users não disponível:', doctorsError.message)
+        // Usa dados padrão para não quebrar a interface
+        setAvailableDoctors(['Dr. Ricardo Valença'])
+        setAppointmentsCount(0)
+        setLoading(false)
+        return
+      }
+
       if (doctorsData && doctorsData.length > 0) {
         setAvailableDoctors(doctorsData.map(d => d.name || d.email))
         
-        // Contar agendamentos futuros
-        const { count } = await supabase
+        // Contar agendamentos futuros (com tratamento de erro)
+        const { count, error: appointmentsError } = await supabase
           .from('appointments')
           .select('*', { count: 'exact', head: true })
           .in('doctor_id', doctorsData.map(d => d.id))
           .gte('appointment_date', new Date().toISOString())
 
-        setAppointmentsCount(count || 0)
+        if (appointmentsError) {
+          console.warn('⚠️ Erro ao buscar agendamentos:', appointmentsError.message)
+          setAppointmentsCount(0)
+        } else {
+          setAppointmentsCount(count || 0)
+        }
+      } else {
+        // Se não encontrar dados, usa valores padrão
+        setAvailableDoctors(['Dr. Ricardo Valença'])
+        setAppointmentsCount(0)
       }
     } catch (error) {
       console.error('Erro ao carregar dados de agendamento:', error)
+      // Em caso de erro geral, usa dados padrão
+      setAvailableDoctors(['Dr. Ricardo Valença'])
+      setAppointmentsCount(0)
     } finally {
       setLoading(false)
     }

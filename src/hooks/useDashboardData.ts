@@ -80,22 +80,29 @@ export const useDashboardData = () => {
       let monthlyRevenue = 0
       
       try {
-        const { data: revenueData } = await supabase
+        const { data: revenueData, error: revenueError } = await supabase
           .from('transactions')
           .select('amount, created_at')
           .eq('status', 'completed')
         
-        if (revenueData) {
-          totalRevenue = revenueData.reduce((sum, transaction) => sum + transaction.amount, 0)
+        if (revenueError) {
+          console.warn('⚠️ Erro ao buscar transações (tabela pode não existir ou sem acesso):', revenueError.message)
+          totalRevenue = 0
+          monthlyRevenue = 0
+        } else if (revenueData && revenueData.length > 0) {
+          totalRevenue = revenueData.reduce((sum, transaction) => sum + (transaction.amount || 0), 0)
           
           const currentMonth = new Date()
           currentMonth.setDate(1)
           monthlyRevenue = revenueData
             .filter(transaction => new Date(transaction.created_at) >= currentMonth)
-            .reduce((sum, transaction) => sum + transaction.amount, 0)
+            .reduce((sum, transaction) => sum + (transaction.amount || 0), 0)
+        } else {
+          totalRevenue = 0
+          monthlyRevenue = 0
         }
       } catch (error) {
-        console.log('Tabela de transações não encontrada, usando valores padrão')
+        console.warn('⚠️ Erro ao processar transações:', error)
         totalRevenue = 0
         monthlyRevenue = 0
       }
