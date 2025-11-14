@@ -55,6 +55,30 @@ const ensureDate = (value: Date | string | undefined) => {
   return value instanceof Date ? value : new Date(value)
 }
 
+const detectFollowUpQuestion = (text: string) => {
+  if (!text) return false
+  const normalized = text.toLowerCase()
+  if (normalized.includes('?')) return true
+  const questionHints = [
+    /pode me dizer/,
+    /pode informar/,
+    /pode detalhar/,
+    /me fale/,
+    /me conte/,
+    /qual (é|seria)/,
+    /como est[aá]/,
+    /quer continuar/,
+    /pode atualizar/,
+    /pode listar/,
+    /me descreva/,
+    /me informe/,
+    /preciso que/,
+    /pode confirmar/,
+    /me responda/
+  ]
+  return questionHints.some(pattern => pattern.test(normalized))
+}
+
 interface SpeechQueueState {
   messageId: string
   fullContent: string
@@ -62,13 +86,15 @@ interface SpeechQueueState {
   displayIndex: number
   cancelled: boolean
   timer?: number
+  requestImmediateReply?: boolean
 }
 
 interface NoaCommandDetail {
-  type: 'navigate-section' | 'navigate-route'
+  type: 'navigate-section' | 'navigate-route' | 'show-prescription' | 'filter-patients'
   target: string
   label?: string
   fallbackRoute?: string
+  payload?: Record<string, any>
   rawMessage: string
   source: 'voice' | 'text'
   timestamp: string
@@ -76,11 +102,12 @@ interface NoaCommandDetail {
 
 type VoiceNavigationCommand = {
   id: string
-  type: 'navigate-section' | 'navigate-route'
+  type: 'navigate-section' | 'navigate-route' | 'show-prescription' | 'filter-patients'
   target: string
   label: string
   patterns: RegExp[]
   fallbackRoute?: string
+  payload?: Record<string, any>
 }
 
 export const useMedCannLabConversation = () => {
@@ -184,6 +211,50 @@ export const useMedCannLabConversation = () => {
         /agenda clinica/,
         /agenda da clinica/,
         /ver agenda/
+      ]
+    },
+    {
+      id: 'show-prescription',
+      type: 'show-prescription',
+      target: 'latest',
+      label: 'Mostrar última prescrição',
+      patterns: [
+        /mostrar prescri[cç][aã]o/,
+        /mostrar a prescri[cç][aã]o/,
+        /abrir prescri[cç][aã]o/,
+        /ver prescri[cç][aã]o/,
+        /mostrar protocolo terap[eê]utico/,
+        /mostrar protocolo/,
+        /onde est[aá] a prescri[cç][aã]o/,
+        /quero ver a prescri[cç][aã]o/
+      ]
+    },
+    {
+      id: 'filter-patients-active',
+      type: 'filter-patients',
+      target: 'active',
+      label: 'Filtrar pacientes ativos',
+      payload: { filter: 'active' },
+      patterns: [
+        /pacientes ativos/,
+        /mostrar pacientes ativos/,
+        /listar pacientes ativos/,
+        /filtrar pacientes ativos/,
+        /pacientes em atendimento/
+      ]
+    },
+    {
+      id: 'filter-patients-rio-bonito',
+      type: 'filter-patients',
+      target: 'clinic:rio-bonito',
+      label: 'Pacientes Rio Bonito',
+      payload: { clinic: 'rio bonito' },
+      patterns: [
+        /pacientes de rio bonito/,
+        /pacientes da cl[ií]nica de rio bonito/,
+        /filtrar rio bonito/,
+        /mostrar (a )?cl[ií]nica de rio bonito/,
+        /pacientes rio bonito/
       ]
     },
     {
@@ -358,6 +429,7 @@ export const useMedCannLabConversation = () => {
         target: command.target,
         label: command.label,
         fallbackRoute: command.fallbackRoute,
+        payload: command.payload,
         rawMessage,
         source,
         timestamp: new Date().toISOString()
@@ -429,15 +501,38 @@ export const useMedCannLabConversation = () => {
     }
 
     const sanitized = sanitizeForSpeech(fullContent)
+    const requiresImmediateReply = detectFollowUpQuestion(fullContent)
     const queue: SpeechQueueState = {
       messageId: lastMessage.id,
       fullContent,
       sanitized,
       displayIndex: 0,
-      cancelled: false
+      cancelled: false,
+      requestImmediateReply: requiresImmediateReply
     }
 
     speechQueueRef.current = queue
+
+    const normalizedResponse = fullContent.toLowerCase()
+    const autoCommandIds = new Set<string>()
+    if (normalizedResponse.includes('prescri') && normalizedResponse.includes('mostrar')) {
+      autoCommandIds.add('show-prescription')
+    }
+    if (normalizedResponse.includes('pacientes ativos')) {
+      autoCommandIds.add('filter-patients-active')
+    }
+    if (normalizedResponse.includes('rio bonito') && normalizedResponse.includes('paciente')) {
+      autoCommandIds.add('filter-patients-rio-bonito')
+    }
+
+    if (autoCommandIds.size > 0) {
+      autoCommandIds.forEach(commandId => {
+        const command = voiceNavigationCommandsRef.current.find(cmd => cmd.id === commandId)
+        if (command) {
+          dispatchVoiceNavigationCommand(command, fullContent, 'text')
+        }
+      })
+    }
 
     const revealStep = () => {
       const current = speechQueueRef.current
@@ -493,7 +588,17 @@ export const useMedCannLabConversation = () => {
       utterance.pitch = 0.78 // Padrão se não houver vozes
     }
 
-    utterance.onstart = () => setIsSpeaking(true)
+    utterance.onstart = () => {
+      setIsSpeaking(true)
+      if (queue.requestImmediateReply) {
+        const estimatedDelay = Math.min(Math.max(sanitized.length * 15, 600), 4000)
+        window.dispatchEvent(
+          new CustomEvent<{ delay?: number }>('noaImmediateListeningRequest', {
+            detail: { delay: estimatedDelay }
+          })
+        )
+      }
+    }
     utterance.onend = () => {
       const current = speechQueueRef.current
       if (current && current.messageId === lastMessage.id) {

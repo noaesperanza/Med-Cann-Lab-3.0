@@ -67,6 +67,7 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
   const [isExpanded, setIsExpanded] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [isListening, setIsListening] = useState(false)
+  const [shouldAutoResume, setShouldAutoResume] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -87,6 +88,8 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const isListeningRef = useRef(false) // Ref para verificar estado atual de isListening
+  const immediateListenTimeoutRef = useRef<number | null>(null)
+  const autoResumeRequestedRef = useRef(false)
   const { user } = useAuth()
 
   const {
@@ -320,14 +323,17 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
       recognition.start()
       setIsListening(true)
       isListeningRef.current = true // Atualizar ref
+      autoResumeRequestedRef.current = false
       console.log('✅ Escuta de voz iniciada com sucesso')
     } catch (error: any) {
       console.error('❌ Erro ao iniciar escuta:', error)
       setIsListening(false)
       isListeningRef.current = false
       recognitionRef.current = null
+      autoResumeRequestedRef.current = false
+      setShouldAutoResume(false)
     }
-  }, [sendMessage, stopListening, isListening])
+  }, [sendMessage, stopListening, isListening, setShouldAutoResume])
 
   // Parar microfone quando a IA começar a processar
   useEffect(() => {
@@ -338,6 +344,78 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
     }
   }, [isProcessing, isListening, stopListening])
 
+  useEffect(() => {
+    if (!shouldAutoResume) {
+      autoResumeRequestedRef.current = false
+      return
+    }
+
+    if (!isOpen) return
+    if (isProcessing || isSpeaking) return
+    if (isRecordingConsultation || showPatientSelector) return
+    if (isListening || isListeningRef.current) return
+    if (autoResumeRequestedRef.current) return
+
+    autoResumeRequestedRef.current = true
+    startListening()
+  }, [
+    shouldAutoResume,
+    isOpen,
+    isProcessing,
+    isSpeaking,
+    isRecordingConsultation,
+    showPatientSelector,
+    isListening,
+    startListening
+  ])
+
+  useEffect(() => {
+    if (isListening) {
+      autoResumeRequestedRef.current = false
+    }
+  }, [isListening])
+
+  useEffect(() => {
+    const handleImmediateListening = (event: Event) => {
+      if (isRecordingConsultation || showPatientSelector) {
+        return
+      }
+      const custom = event as CustomEvent<{ delay?: number }>
+      const delay = custom.detail?.delay ?? 0
+      setShouldAutoResume(true)
+
+      const triggerListening = () => {
+        if (isProcessing || isListening || isListeningRef.current) {
+          return
+        }
+        startListening()
+      }
+
+      if (delay <= 0) {
+        triggerListening()
+        return
+      }
+
+      if (immediateListenTimeoutRef.current) {
+        window.clearTimeout(immediateListenTimeoutRef.current)
+      }
+
+      immediateListenTimeoutRef.current = window.setTimeout(() => {
+        triggerListening()
+        immediateListenTimeoutRef.current = null
+      }, delay)
+    }
+
+    window.addEventListener('noaImmediateListeningRequest', handleImmediateListening as EventListener)
+    return () => {
+      window.removeEventListener('noaImmediateListeningRequest', handleImmediateListening as EventListener)
+      if (immediateListenTimeoutRef.current) {
+        window.clearTimeout(immediateListenTimeoutRef.current)
+        immediateListenTimeoutRef.current = null
+      }
+    }
+  }, [isRecordingConsultation, showPatientSelector, isProcessing, isListening, startListening])
+
   // REMOVIDO: Auto-iniciar microfone e detecção de voz contínua
   // O microfone agora só funciona quando o usuário clica no botão manualmente
 
@@ -345,6 +423,7 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
     if (!inputValue.trim()) return
     // Parar microfone quando enviar mensagem manualmente
     if (isListening) {
+      setShouldAutoResume(false)
       stopListening()
     }
     sendMessage(inputValue)
@@ -360,11 +439,13 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
 
   const toggleListening = useCallback(() => {
     if (isListening) {
+      setShouldAutoResume(false)
       stopListening()
     } else {
+      setShouldAutoResume(true)
       startListening()
     }
-  }, [isListening, startListening, stopListening])
+  }, [isListening, startListening, stopListening, setShouldAutoResume])
 
   // Carregar pacientes disponíveis
   const loadPatients = useCallback(async () => {
@@ -798,6 +879,7 @@ const NoaConversationalInterface: React.FC<NoaConversationalInterfaceProps> = ({
                   setIsOpen(false)
                   setIsExpanded(false)
                   closeChat()
+                  setShouldAutoResume(false)
                   stopListening()
                   window.dispatchEvent(new Event('noaChatClosed'))
                 }}

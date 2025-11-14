@@ -38,7 +38,8 @@ import {
   UserPlus,
   GraduationCap,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  X
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { getAllPatients, isAdmin } from '../lib/adminPermissions'
@@ -85,6 +86,30 @@ interface EnrichedAppointment extends Appointment {
   isPast: boolean
 }
 
+interface VoicePrescriptionPreview {
+  id: string
+  title: string
+  summary: string | null
+  rationality: string | null
+  status: string
+  issuedAt: string
+  dosage: string | null
+  frequency: string | null
+  duration: string | null
+  instructions: string | null
+  professionalName: string | null
+  templateName: string | null
+  patientName: string | null
+}
+
+const VOICE_RATIONALITY_LABELS: Record<string, string> = {
+  biomedical: 'Biomédica',
+  traditional_chinese: 'Medicina Tradicional Chinesa',
+  ayurvedic: 'Ayurvédica',
+  homeopathic: 'Homeopática',
+  integrative: 'Integrativa'
+}
+
 type SectionId =
   | 'dashboard'
   | 'admin-usuarios'
@@ -111,10 +136,11 @@ type SectionOption = {
 }
 
 interface NoaCommandDetail {
-  type: 'navigate-section' | 'navigate-route'
+  type: 'navigate-section' | 'navigate-route' | 'show-prescription' | 'filter-patients'
   target: string
   label?: string
   fallbackRoute?: string
+  payload?: Record<string, any>
   rawMessage?: string
   source?: 'voice' | 'text'
   timestamp?: string
@@ -214,6 +240,10 @@ const RicardoValencaDashboard: React.FC = () => {
   const [isAudioCallOpen, setIsAudioCallOpen] = useState(false)
   const [callType, setCallType] = useState<'video' | 'audio'>('video')
   const [showProfessionalModal, setShowProfessionalModal] = useState(false)
+  const [showVoicePrescriptionModal, setShowVoicePrescriptionModal] = useState(false)
+  const [voicePrescriptionLoading, setVoicePrescriptionLoading] = useState(false)
+  const [voicePrescriptionError, setVoicePrescriptionError] = useState<string | null>(null)
+  const [voicePrescriptionPreview, setVoicePrescriptionPreview] = useState<VoicePrescriptionPreview | null>(null)
 
   const [knowledgeDocuments, setKnowledgeDocuments] = useState<KnowledgeDocument[]>([])
   const [knowledgeFilteredDocuments, setKnowledgeFilteredDocuments] = useState<KnowledgeDocument[]>([])
@@ -232,6 +262,10 @@ const RicardoValencaDashboard: React.FC = () => {
 
   const normalizedEffectiveType = normalizeUserType(effectiveType)
   const [localSectionOverride, setLocalSectionOverride] = useState<SectionId | null>(null)
+  const selectedPatientData = useMemo(
+    () => patients.find(patient => patient.id === selectedPatient) ?? null,
+    [patients, selectedPatient]
+  )
   const isProfessionalDashboard =
     normalizedEffectiveType === 'profissional' ||
     viewAsType === 'profissional' ||
@@ -441,6 +475,77 @@ const RicardoValencaDashboard: React.FC = () => {
     [localSectionOverride, sectionParam, searchParams, setSearchParams]
   )
 
+  const loadVoicePrescriptionPreview = useCallback(async () => {
+    setVoicePrescriptionLoading(true)
+    setVoicePrescriptionError(null)
+    try {
+      let query = supabase
+        .from('patient_prescriptions')
+        .select(
+          `
+          *,
+          template:integrative_prescription_templates (id, name, rationality, summary),
+          professional:users_compatible (id, name)
+        `
+        )
+        .order('issued_at', { ascending: false })
+        .limit(1)
+
+      if (selectedPatient) {
+        query = query.eq('patient_id', selectedPatient)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        throw error
+      }
+
+      if (!data || data.length === 0) {
+        setVoicePrescriptionPreview(null)
+        setVoicePrescriptionError(
+          selectedPatient
+            ? 'Ainda não há prescrições registradas para o paciente selecionado.'
+            : 'Nenhuma prescrição registrada recentemente.'
+        )
+        return
+      }
+
+      const entry = data[0] as any
+      setVoicePrescriptionPreview({
+        id: entry.id,
+        title: entry.title ?? entry.template?.name ?? 'Prescrição integrativa',
+        summary: entry.summary ?? entry.template?.summary ?? null,
+        rationality: entry.rationality ?? entry.template?.rationality ?? null,
+        status: entry.status ?? 'active',
+        issuedAt: entry.issued_at,
+        dosage: entry.dosage ?? null,
+        frequency: entry.frequency ?? null,
+        duration: entry.duration ?? null,
+        instructions: entry.instructions ?? null,
+        professionalName: entry.professional?.name ?? null,
+        templateName: entry.template?.name ?? null,
+        patientName: selectedPatientData?.name ?? null
+      })
+    } catch (error) {
+      console.error('❌ Erro ao recuperar prescrição solicitada por voz:', error)
+      setVoicePrescriptionPreview(null)
+      setVoicePrescriptionError('Erro ao carregar a prescrição solicitada. Tente novamente.')
+    } finally {
+      setVoicePrescriptionLoading(false)
+    }
+  }, [selectedPatient, selectedPatientData?.name])
+
+  const handleVoiceShowPrescription = useCallback(() => {
+    setShowVoicePrescriptionModal(true)
+    void loadVoicePrescriptionPreview()
+  }, [loadVoicePrescriptionPreview])
+
+  const handleCloseVoicePrescriptionModal = useCallback(() => {
+    setShowVoicePrescriptionModal(false)
+    setVoicePrescriptionError(null)
+  }, [])
+
   useEffect(() => {
     const handleNoaCommand = (event: Event) => {
       const custom = event as CustomEvent<NoaCommandDetail>
@@ -459,6 +564,27 @@ const RicardoValencaDashboard: React.FC = () => {
         return
       }
 
+      if (detail.type === 'filter-patients') {
+        goToSection('pacientes')
+        const filterValue =
+          (detail.payload?.clinic as string | undefined)?.trim() ||
+          (detail.payload?.filter as string | undefined)?.trim() ||
+          detail.target
+        if (filterValue) {
+          setPatientSearch(filterValue)
+        }
+        if (detail.payload?.filter === 'active' && filterValue?.toLowerCase() !== 'ativo') {
+          setPatientSearch('ativo')
+        }
+        return
+      }
+
+      if (detail.type === 'show-prescription') {
+        goToSection('prescricoes')
+        handleVoiceShowPrescription()
+        return
+      }
+
       if (detail.type === 'navigate-route' && typeof detail.target === 'string') {
         navigate(detail.target)
       }
@@ -466,7 +592,7 @@ const RicardoValencaDashboard: React.FC = () => {
 
     window.addEventListener('noaCommand', handleNoaCommand as EventListener)
     return () => window.removeEventListener('noaCommand', handleNoaCommand as EventListener)
-  }, [goToSection, navigate, sectionNavOptions])
+  }, [goToSection, navigate, sectionNavOptions, handleVoiceShowPrescription, setPatientSearch])
 
   const baseSection: SectionId = useMemo(() => {
     const defaultByContext: Record<string, SectionId> = {
@@ -4312,11 +4438,6 @@ const RicardoValencaDashboard: React.FC = () => {
 
   const upcomingAppointments = useMemo(() => appointments.slice(0, 4), [appointments])
 
-const selectedPatientData = useMemo(
-  () => patients.find(patient => patient.id === selectedPatient) ?? null,
-  [patients, selectedPatient]
-)
-
   const {
     totalToday: totalTodayCount,
     confirmedToday,
@@ -4809,6 +4930,134 @@ const selectedPatientData = useMemo(
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {showVoicePrescriptionModal && (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm px-4">
+            <div className="w-full max-w-2xl bg-slate-900 border border-emerald-500/30 rounded-2xl shadow-2xl p-6 relative">
+              <button
+                type="button"
+                onClick={handleCloseVoicePrescriptionModal}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+                aria-label="Fechar visualização da prescrição"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <div className="mb-5 pr-10">
+                <p className="text-[11px] uppercase tracking-[0.4em] text-emerald-400">Comando de Voz • Prescrição</p>
+                <h3 className="text-2xl font-bold text-white mt-2">Última prescrição emitida</h3>
+                <p className="text-slate-300 text-sm mt-1">
+                  {voicePrescriptionPreview?.patientName || selectedPatientData?.name || 'Paciente selecionado no painel'}
+                </p>
+              </div>
+
+              {voicePrescriptionLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                  <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+                  <p className="text-slate-400 text-sm">Buscando a prescrição solicitada...</p>
+                </div>
+              ) : voicePrescriptionError ? (
+                <div className="py-10 text-center">
+                  <p className="text-slate-300">{voicePrescriptionError}</p>
+                </div>
+              ) : voicePrescriptionPreview ? (
+                <div className="space-y-6">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="px-3 py-1 rounded-full text-xs uppercase tracking-[0.3em] bg-emerald-500/10 text-emerald-200 border border-emerald-500/30">
+                      {voicePrescriptionPreview.status === 'active'
+                        ? 'Ativa'
+                        : voicePrescriptionPreview.status === 'completed'
+                        ? 'Concluída'
+                        : voicePrescriptionPreview.status === 'suspended'
+                        ? 'Suspensa'
+                        : voicePrescriptionPreview.status ?? 'Rascunho'}
+                    </span>
+                    {voicePrescriptionPreview.rationality && (
+                      <span className="text-sm text-slate-300">
+                        {VOICE_RATIONALITY_LABELS[voicePrescriptionPreview.rationality] ??
+                          voicePrescriptionPreview.rationality}
+                      </span>
+                    )}
+                    <span className="text-xs text-slate-500">
+                      Emitida em{' '}
+                      {new Date(voicePrescriptionPreview.issuedAt).toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xl font-semibold text-white">{voicePrescriptionPreview.title}</h4>
+                    {voicePrescriptionPreview.summary && (
+                      <p className="text-sm text-slate-300 mt-2">{voicePrescriptionPreview.summary}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-300">
+                    <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/60">
+                      <p className="text-xs uppercase tracking-[0.35em] text-slate-500 mb-2">Dosagem</p>
+                      <p className="text-white">
+                        {voicePrescriptionPreview.dosage ?? 'Definida com a equipe clínica'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/60">
+                      <p className="text-xs uppercase tracking-[0.35em] text-slate-500 mb-2">Frequência</p>
+                      <p className="text-white">
+                        {voicePrescriptionPreview.frequency ?? 'Frequência personalizada'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/60">
+                      <p className="text-xs uppercase tracking-[0.35em] text-slate-500 mb-2">Duração</p>
+                      <p className="text-white">
+                        {voicePrescriptionPreview.duration ?? 'Definida no plano terapêutico'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/60">
+                      <p className="text-xs uppercase tracking-[0.35em] text-slate-500 mb-2">Profissional</p>
+                      <p className="text-white">
+                        {voicePrescriptionPreview.professionalName ?? 'Equipe MedCannLab'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {voicePrescriptionPreview.instructions && (
+                    <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/60">
+                      <p className="text-xs uppercase tracking-[0.35em] text-slate-500 mb-2">Instruções</p>
+                      <p className="text-slate-200 whitespace-pre-wrap">{voicePrescriptionPreview.instructions}</p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+                    <span>
+                      Modelo:{' '}
+                      <span className="text-slate-200">
+                        {voicePrescriptionPreview.templateName ?? 'Personalizado pela equipe'}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 transition-colors"
+                      onClick={() => {
+                        handleCloseVoicePrescriptionModal()
+                        goToSection('prescricoes')
+                      }}
+                    >
+                      <FileText className="w-4 h-4" />
+                      Abrir painel de prescrições
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-10 text-center">
+                  <p className="text-slate-300">Nenhuma prescrição encontrada.</p>
+                </div>
+              )}
             </div>
           </div>
         )}
