@@ -1,0 +1,317 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { encryptMessage, decryptMessage } from '../lib/encryption'
+
+export interface ChatRoomSummary {
+  id: string
+  name: string | null
+  type: string | null
+  lastMessageAt: string | null
+  unreadCount: number
+}
+
+export interface RoomMessage {
+  id: string
+  roomId: string
+  senderId: string
+  senderName: string
+  senderEmail: string
+  message: string
+  createdAt: string
+  messageType: string
+  fileUrl?: string | null
+  readAt?: string | null
+}
+
+export interface ChatSystemState {
+  inbox: ChatRoomSummary[]
+  inboxLoading: boolean
+  messages: RoomMessage[]
+  messagesLoading: boolean
+  isOnline: boolean
+  sendMessage: (roomId: string, senderId: string, content: string) => Promise<void>
+  markRoomAsRead: (roomId: string) => Promise<void>
+  reloadInbox: () => Promise<void>
+}
+
+interface UseChatSystemOptions {
+  enabled?: boolean
+}
+
+interface ChatMessageRow {
+  id: string | number
+  room_id: string
+  sender_id: string
+  message: string | null
+  message_type: string | null
+  file_url?: string | null
+  created_at: string
+  read_at?: string | null
+}
+
+interface ChatProfile {
+  user_id: string
+  name?: string | null
+  email?: string | null
+}
+
+const mapRoomSummary = (entry: any): ChatRoomSummary => ({
+  id: entry.id,
+  name: entry.name,
+  type: entry.type,
+  lastMessageAt: entry.last_message_at ?? null,
+  unreadCount: entry.unread_count ?? 0
+})
+
+export const useChatSystem = (activeRoomId?: string, options?: UseChatSystemOptions): ChatSystemState => {
+  const enabled = options?.enabled ?? true
+
+  const [inbox, setInbox] = useState<ChatRoomSummary[]>([])
+  const [inboxLoading, setInboxLoading] = useState(true)
+  const [messages, setMessages] = useState<RoomMessage[]>([])
+  const [messagesLoading, setMessagesLoading] = useState(false)
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof window !== 'undefined' ? navigator.onLine : true
+  )
+
+  const loadInbox = useCallback(async () => {
+    if (!enabled) return
+
+    setInboxLoading(true)
+    setInboxLoading(true)
+
+    // ✅ OTIMIZAÇÃO: Usar RPC para buscar apenas as salas do usuário
+    // Isso evita carregar todas as salas do banco (que causa travamento) e bypasses problemas de RLS
+    try {
+      const { data, error } = await supabase.rpc('get_my_rooms')
+
+      if (!error && data) {
+        // Mapear retorno da RPC para ChatRoomSummary
+        const mapped = data.map((room: any) => ({
+          id: room.id,
+          name: room.name,
+          type: room.type,
+          lastMessageAt: room.last_message_at,
+          unreadCount: room.unread_count ?? 0
+        }))
+
+        setInbox(mapped)
+        console.log(`✅ Chat System: ${mapped.length} salas carregadas via RPC`)
+      } else {
+        if (error) {
+          console.warn('Falha ao carregar inbox via RPC:', error)
+          // Fallback silencioso ou retry se necessário, mas por enquanto logar e limpar
+          if (error.code === '42883') {
+            console.error('⚠️ Função RPC get_my_rooms não encontrada! Execute scripts/OPTIMIZE_CHAT_PERFORMANCE.sql')
+          }
+        }
+        setInbox([])
+      }
+    } catch (err) {
+      console.error('Erro inesperado ao carregar inbox:', err)
+      setInbox([])
+    } finally {
+      setInboxLoading(false)
+    }
+  }, [enabled])
+
+  const loadMessages = useCallback(async (roomId: string) => {
+    if (!enabled) return
+
+    setMessagesLoading(true)
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('id, room_id, sender_id, message, message_type, file_url, created_at, read_at')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: true })
+      .limit(500)
+
+    if (error || !data) {
+      if (error) {
+        console.warn('Falha ao carregar mensagens:', error)
+      }
+      setMessages([])
+      setMessagesLoading(false)
+      return
+    }
+
+    const rows = (data ?? []) as ChatMessageRow[]
+    const senderIds = Array.from(new Set(rows.map(row => row.sender_id).filter(Boolean)))
+    let profileMap = new Map<string, { name: string; email: string | null }>()
+
+    if (senderIds.length > 0) {
+      const { data: profileRows, error: profileError } = await supabase.rpc(
+        'get_chat_user_profiles',
+        { p_user_ids: senderIds }
+      )
+
+      if (profileError || !profileRows) {
+        if (profileError) {
+          console.warn('Falha ao carregar perfis de remetentes:', profileError)
+        }
+      } else {
+        const profiles = profileRows as ChatProfile[]
+        profileMap = new Map(
+          profiles.map(profile => [
+            profile.user_id,
+            { name: profile.name ?? 'Usuário', email: profile.email ?? null }
+          ])
+        )
+      }
+    }
+
+    // Decrypt messages concurrently
+    const normalized: RoomMessage[] = await Promise.all(rows.map(async row => {
+      const meta = profileMap.get(row.sender_id) ?? { name: 'Usuário', email: null }
+
+      const decryptedContent = await decryptMessage(row.message ?? '')
+
+      return {
+        id: String(row.id),
+        roomId: row.room_id,
+        senderId: row.sender_id,
+        senderName: meta.name,
+        senderEmail: meta.email ?? '',
+        message: decryptedContent,
+        createdAt: row.created_at,
+        messageType: row.message_type ?? 'text',
+        fileUrl: row.file_url ?? null,
+        readAt: row.read_at ?? null
+      }
+    }))
+
+    setMessages(normalized)
+    setMessagesLoading(false)
+  }, [enabled])
+
+  const markRoomAsRead = useCallback(
+    async (roomId: string) => {
+      if (!enabled) return
+
+      // Validação básica de UUID para evitar erro 400
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (!uuidRegex.test(roomId)) {
+        console.warn('markRoomAsRead ignorado: ID de sala inválido (não é UUID):', roomId)
+        return
+      }
+
+      try {
+        await supabase.rpc('mark_room_read', { p_room_id: roomId })
+      } catch (error) {
+        console.warn('Não foi possível marcar mensagens como lidas:', error)
+      } finally {
+        await loadInbox()
+      }
+    },
+    [enabled, loadInbox]
+  )
+
+  const sendMessage = useCallback(
+    async (roomId: string, senderId: string, content: string) => {
+      if (!enabled) return
+
+      const trimmed = content.trim()
+      if (!trimmed) return
+
+      const encryptedContent = await encryptMessage(trimmed)
+
+      await supabase.from('chat_messages').insert({
+        room_id: roomId,
+        sender_id: senderId,
+        message: encryptedContent,
+        message_type: 'text'
+      })
+    },
+    [enabled]
+  )
+
+  useEffect(() => {
+    if (!enabled) return
+    loadInbox()
+  }, [loadInbox, enabled])
+
+  useEffect(() => {
+    if (!enabled) return
+
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [enabled])
+
+  useEffect(() => {
+    if (!enabled) return
+
+    const channel = supabase
+      .channel('chat-inbox-watch')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        () => {
+          loadInbox()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [loadInbox, enabled])
+
+  useEffect(() => {
+    if (!enabled) {
+      setMessages([])
+      return
+    }
+
+    if (!activeRoomId) {
+      setMessages([])
+      return
+    }
+
+    loadMessages(activeRoomId)
+    void markRoomAsRead(activeRoomId)
+
+    const channel = supabase
+      .channel(`chat-room-${activeRoomId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `room_id=eq.${activeRoomId}`
+        },
+        () => {
+          loadMessages(activeRoomId)
+          loadInbox()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [activeRoomId, loadInbox, loadMessages, markRoomAsRead, enabled])
+
+  return useMemo(
+    () => ({
+      inbox,
+      inboxLoading,
+      messages,
+      messagesLoading,
+      isOnline,
+      sendMessage,
+      markRoomAsRead,
+      reloadInbox: loadInbox
+    }),
+    [inbox, inboxLoading, isOnline, loadInbox, markRoomAsRead, messages, messagesLoading, sendMessage]
+  )
+}
+

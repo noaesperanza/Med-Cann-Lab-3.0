@@ -1,0 +1,281 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MedCannLab Nôa Esperança API",
+    "version": "1.0.0",
+    "description": "API para integração da IA Residente Nôa Esperança com o editor de GPTs da OpenAI. Permite acesso ao sistema de treinamento, contexto da plataforma, e simulações de pacientes.",
+    "contact": {
+      "name": "Dr. Ricardo Valença",
+      "email": "rrvalenca@gmail.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://medcannlab.com/api",
+      "description": "Produção"
+    },
+    {
+      "url": "http://localhost:3001/api",
+      "description": "Desenvolvimento (Local)"
+    }
+  ],
+  "paths": {
+    "/platform/status": {
+      "get": {
+        "operationId": "getPlatformStatus",
+        "summary": "Obter status da plataforma",
+        "description": "Retorna informações sobre o status atual da plataforma MedCannLab 3.0, incluindo funcionalidades, estatísticas e métricas.",
+        "responses": {
+          "200": {
+            "description": "Status da plataforma",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "platformName": {
+                      "type": "string",
+                      "example": "MedCannLab 3.0"
+                    },
+                    "version": {
+                      "type": "string",
+                      "example": "3.0.0"
+                    },
+                    "totalUsers": {
+                      "type": "integer",
+                      "example": 156
+                    },
+                    "features": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": [
+                        "Avaliação Clínica IMRE Triaxial (28 blocos especializados)",
+                        "Chat com IA Residente Nôa Esperança"
+                      ]
+                    },
+                    "systemHealth": {
+                      "type": "string",
+                      "enum": ["excellent", "good", "moderate", "poor"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/context": {
+      "get": {
+        "operationId": "getTrainingContext",
+        "summary": "Obter contexto de treinamento",
+        "description": "Retorna o contexto completo da conversa e treinamento da Nôa, incluindo histórico, simulações ativas e estatísticas.",
+        "parameters": [
+          {
+            "name": "userCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Código único do usuário",
+            "required": false
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            },
+            "description": "Número máximo de mensagens a retornar",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contexto de treinamento",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "activeSimulations": {
+                      "type": "integer"
+                    },
+                    "totalConversations": {
+                      "type": "integer"
+                    },
+                    "recentMessages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/patients/simulations": {
+      "get": {
+        "operationId": "getPatientSimulations",
+        "summary": "Listar simulações de pacientes",
+        "description": "Retorna todas as simulações de pacientes ativas no sistema, incluindo seus dados clínicos e status.",
+        "responses": {
+          "200": {
+            "description": "Lista de simulações",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "simulations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "age": {
+                            "type": "integer"
+                          },
+                          "condition": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPatientSimulation",
+        "summary": "Criar simulação de paciente",
+        "description": "Cria uma nova simulação de paciente com dados clínicos específicos para treinamento e testes.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Nome do paciente",
+                    "example": "Maria Silva"
+                  },
+                  "age": {
+                    "type": "integer",
+                    "description": "Idade do paciente",
+                    "example": 56
+                  },
+                  "condition": {
+                    "type": "string",
+                    "description": "Condição clínica principal",
+                    "example": "Dor Crônica em Joelho Direito"
+                  },
+                  "symptoms": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Lista de sintomas"
+                  },
+                  "medicalHistory": {
+                    "type": "string",
+                    "description": "Histórico médico"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Simulação criada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/knowledge/library": {
+      "get": {
+        "operationId": "getLibraryInfo",
+        "summary": "Informações sobre biblioteca médica",
+        "description": "Retorna informações sobre a biblioteca médica, incluindo número de documentos, tipos de conteúdo e recursos disponíveis.",
+        "responses": {
+          "200": {
+            "description": "Informações da biblioteca",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalArticles": {
+                      "type": "integer",
+                      "example": 500
+                    },
+                    "categories": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "description": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Chave de API do MedCannLab"
+      }
+    }
+  },
+  "security": [
+    {
+      "apiKey": []
+    }
+  ]
+}

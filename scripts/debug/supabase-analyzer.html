@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Análise Supabase - MedCannLab</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #e2e8f0;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #60a5fa;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .summary {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #334155;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+    .summary-card {
+      background: #0f172a;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+    }
+    .summary-card h3 {
+      margin: 0 0 5px 0;
+      color: #60a5fa;
+      font-size: 14px;
+    }
+    .summary-card .value {
+      font-size: 28px;
+      font-weight: bold;
+      color: #34d399;
+    }
+    .table-section {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #334155;
+    }
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .table-name {
+      font-size: 20px;
+      font-weight: bold;
+      color: #60a5fa;
+    }
+    .record-count {
+      background: #34d399;
+      color: #0f172a;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-weight: bold;
+    }
+    .empty {
+      background: #64748b;
+    }
+    .error {
+      background: #ef4444;
+    }
+    .columns {
+      background: #0f172a;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .sample-data {
+      background: #0f172a;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    pre {
+      margin: 0;
+      font-size: 12px;
+      color: #e2e8f0;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 18px;
+    }
+    .spinner {
+      border: 3px solid #334155;
+      border-top: 3px solid #60a5fa;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    button {
+      background: #60a5fa;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #3b82f6;
+    }
+    .export-section {
+      text-align: center;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🗄️ Análise Completa do Banco Supabase</h1>
+    
+    <div class="export-section">
+      <button onclick="startAnalysis()">🔄 Iniciar Análise</button>
+      <button onclick="exportToJSON()">💾 Exportar JSON</button>
+      <button onclick="copyToClipboard()">📋 Copiar para Clipboard</button>
+    </div>
+
+    <div id="summary" class="summary" style="display:none;">
+      <h2>📊 Resumo Geral</h2>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <h3>Total de Tabelas</h3>
+          <div class="value" id="total-tables">0</div>
+        </div>
+        <div class="summary-card">
+          <h3>Tabelas com Dados</h3>
+          <div class="value" id="tables-with-data">0</div>
+        </div>
+        <div class="summary-card">
+          <h3>Total de Registros</h3>
+          <div class="value" id="total-records">0</div>
+        </div>
+        <div class="summary-card">
+          <h3>Tabelas Vazias</h3>
+          <div class="value" id="empty-tables">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Clique em "Iniciar Análise" para começar...</p>
+    </div>
+
+    <div id="results"></div>
+  </div>
+
+  <script type="module">
+    // Importar configuração do Supabase
+    const SUPABASE_URL = 'https://itdjkfubfzmvmuxxjoae.supabase.co'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0ZGprZnViZnptdm11eHhqb2FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjUyOTAsImV4cCI6MjA3Njc0MTI5MH0.j9Kfff56O2cWs5ocInVHaUFcaNTS7lrUNwsKBh2KIFM'
+
+    const { createClient } = supabase
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+    let analysisData = null
+
+    const knownTables = [
+      'users', 'profiles', 'chat_messages', 'chat_rooms', 'documents',
+      'knowledge_base', 'noa_knowledge_documents', 'imre_assessments',
+      'clinical_reports', 'clinical_assessments', 'appointments',
+      'prescriptions', 'courses', 'course_modules', 'enrollments',
+      'gamification_points', 'badges', 'notifications', 'user_interactions',
+      'moderator_requests', 'patient_health_history', 'subscriptions',
+      'financial_transactions', 'prescription_templates', 'newsletter_items',
+      'assignments', 'patient_professional_links'
+    ]
+
+    window.startAnalysis = async function() {
+      const loading = document.getElementById('loading')
+      const results = document.getElementById('results')
+      const summary = document.getElementById('summary')
+      
+      loading.innerHTML = '<div class="spinner"></div><p>Analisando banco de dados...</p>'
+      results.innerHTML = ''
+      summary.style.display = 'none'
+
+      const analysis = {
+        tables: [],
+        totalRecords: 0,
+        tablesWithData: 0,
+        emptyTables: 0,
+        errors: []
+      }
+
+      for (const tableName of knownTables) {
+        try {
+          loading.innerHTML = `<div class="spinner"></div><p>Analisando ${tableName}...</p>`
+
+          const { count, error: countError } = await supabaseClient
+            .from(tableName)
+            .select('*', { count: 'exact', head: true })
+
+          if (countError) {
+            analysis.errors.push({ table: tableName, error: countError.message })
+            continue
+          }
+
+          if (count > 0) {
+            const { data, error } = await supabaseClient
+              .from(tableName)
+              .select('*')
+              .limit(3)
+
+            if (!error && data) {
+              analysis.tables.push({
+                name: tableName,
+                count: count,
+                sample: data,
+                columns: Object.keys(data[0] || {})
+              })
+              analysis.totalRecords += count
+              analysis.tablesWithData++
+            }
+          } else {
+            analysis.tables.push({
+              name: tableName,
+              count: 0,
+              sample: [],
+              columns: []
+            })
+            analysis.emptyTables++
+          }
+        } catch (error) {
+          analysis.errors.push({ table: tableName, error: error.message })
+        }
+      }
+
+      analysisData = analysis
+      displayResults(analysis)
+    }
+
+    function displayResults(analysis) {
+      const loading = document.getElementById('loading')
+      const results = document.getElementById('results')
+      const summary = document.getElementById('summary')
+
+      loading.style.display = 'none'
+      summary.style.display = 'block'
+
+      document.getElementById('total-tables').textContent = analysis.tables.length
+      document.getElementById('tables-with-data').textContent = analysis.tablesWithData
+      document.getElementById('total-records').textContent = analysis.totalRecords.toLocaleString()
+      document.getElementById('empty-tables').textContent = analysis.emptyTables
+
+      let html = ''
+
+      // Tabelas com dados
+      analysis.tables.filter(t => t.count > 0).forEach(table => {
+        html += `
+          <div class="table-section">
+            <div class="table-header">
+              <div class="table-name">📊 ${table.name}</div>
+              <div class="record-count">${table.count} registros</div>
+            </div>
+            <div class="columns">
+              <strong>Colunas:</strong> ${table.columns.join(', ')}
+            </div>
+            <div class="sample-data">
+              <strong>Exemplo de dados:</strong>
+              <pre>${JSON.stringify(table.sample, null, 2)}</pre>
+            </div>
+          </div>
+        `
+      })
+
+      // Tabelas vazias
+      analysis.tables.filter(t => t.count === 0).forEach(table => {
+        html += `
+          <div class="table-section">
+            <div class="table-header">
+              <div class="table-name">⚠️ ${table.name}</div>
+              <div class="record-count empty">Vazia</div>
+            </div>
+          </div>
+        `
+      })
+
+      // Erros
+      if (analysis.errors.length > 0) {
+        html += '<div class="table-section"><h3>❌ Tabelas com Erros:</h3>'
+        analysis.errors.forEach(err => {
+          html += `
+            <div class="table-header">
+              <div class="table-name">${err.table}</div>
+              <div class="record-count error">${err.error}</div>
+            </div>
+          `
+        })
+        html += '</div>'
+      }
+
+      results.innerHTML = html
+    }
+
+    window.exportToJSON = function() {
+      if (!analysisData) {
+        alert('Execute a análise primeiro!')
+        return
+      }
+      
+      const dataStr = JSON.stringify(analysisData, null, 2)
+      const dataBlob = new Blob([dataStr], { type: 'application/json' })
+      const url = URL.createObjectURL(dataBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'supabase-analysis.json'
+      link.click()
+    }
+
+    window.copyToClipboard = function() {
+      if (!analysisData) {
+        alert('Execute a análise primeiro!')
+        return
+      }
+      
+      const dataStr = JSON.stringify(analysisData, null, 2)
+      navigator.clipboard.writeText(dataStr).then(() => {
+        alert('✅ Dados copiados para o clipboard!')
+      })
+    }
+  </script>
+</body>
+</html>

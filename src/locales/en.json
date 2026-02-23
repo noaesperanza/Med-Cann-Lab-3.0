@@ -1,0 +1,23 @@
+{
+    "header": {
+        "login": "Login",
+        "logout": "Logout",
+        "profile": "My Profile",
+        "settings": "Settings",
+        "welcome": "Welcome",
+        "dashboard_student": "🎓 Student Dashboard",
+        "my_courses": "📚 My Courses",
+        "library": "📖 Library",
+        "points_program": "🏆 Points Program",
+        "admin": "Admin",
+        "professional": "Professional",
+        "patient": "Patient",
+        "student": "Student"
+    },
+    "roles": {
+        "admin": "Admin",
+        "professional": "Professional",
+        "patient": "Patient",
+        "student": "Student"
+    }
+}

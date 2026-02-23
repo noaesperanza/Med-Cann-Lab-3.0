@@ -1,0 +1,23 @@
+{
+    "header": {
+        "login": "Entrar",
+        "logout": "Sair",
+        "profile": "Meu Perfil",
+        "settings": "Configurações",
+        "welcome": "Bem-vindo",
+        "dashboard_student": "🎓 Dashboard Estudante",
+        "my_courses": "📚 Meus Cursos",
+        "library": "📖 Biblioteca",
+        "points_program": "🏆 Programa de Pontos",
+        "admin": "Admin",
+        "professional": "Profissional",
+        "patient": "Paciente",
+        "student": "Aluno"
+    },
+    "roles": {
+        "admin": "Admin",
+        "professional": "Profissional",
+        "patient": "Paciente",
+        "student": "Aluno"
+    }
+}

@@ -1,0 +1,1389 @@
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { 
+  BookOpen, 
+  Clock, 
+  CheckCircle, 
+  Star,
+  Users,
+  Award,
+  FileText,
+  Video,
+  MessageCircle,
+  User,
+  Edit,
+  Save,
+  X
+} from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+
+interface Module {
+  id: string
+  title: string
+  description: string
+  duration: string
+  lessonCount: number
+  isCompleted: boolean
+  progress: number
+  lessons: Lesson[]
+}
+
+interface Lesson {
+  id: string
+  title: string
+  type: 'video' | 'reading' | 'quiz' | 'assignment'
+  duration: string
+  isCompleted: boolean
+  isLocked: boolean
+  points: number
+}
+
+interface Assignment {
+  id: string
+  title: string
+  description: string
+  dueDate: Date
+  points: number
+  isSubmitted: boolean
+  grade?: number
+  feedback?: string
+}
+
+const CursoEduardoFaveret: React.FC = () => {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [activeModule, setActiveModule] = useState<string | null>(null)
+  const [showAssignments, setShowAssignments] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [selectedLesson, setSelectedLesson] = useState<{ moduleId: string; lessonId: string; title: string } | null>(null)
+  const [lessonContent, setLessonContent] = useState<string>('')
+  const [isEditingLesson, setIsEditingLesson] = useState(false)
+  const [isSavingLesson, setIsSavingLesson] = useState(false)
+  const [courseInfo, setCourseInfo] = useState({
+    title: 'Pós-Graduação em Cannabis Medicinal',
+    instructor: 'Dr. Eduardo Faveret',
+    duration: '2 meses / 60 horas',
+    students: 0,
+    rating: 0,
+    level: 'Avançado',
+    language: 'Português',
+    certificate: true,
+    price: 'R$ 1.999',
+    originalPrice: 'R$ 2.999'
+  })
+  const [modules, setModules] = useState<Module[]>([])
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [userProgress, setUserProgress] = useState({
+    progress: 0,
+    completedModules: 0,
+    totalModules: 0,
+    points: 0,
+    completedLessons: 0,
+    totalLessons: 0
+  })
+
+  useEffect(() => {
+    loadCourseData()
+  }, [user])
+
+  // Carregar conteúdo da aula quando selecionada
+  useEffect(() => {
+    if (selectedLesson) {
+      loadLessonContent(selectedLesson.moduleId, selectedLesson.lessonId)
+    }
+  }, [selectedLesson])
+
+  const loadLessonContent = async (moduleId: string, lessonId: string) => {
+    try {
+      // Primeiro verificar localStorage como fallback
+      const storageKey = `lesson_${moduleId}_${lessonId}`
+      const localContent = localStorage.getItem(storageKey)
+      
+      // Tentar buscar do banco de dados
+      const { data: lessonData, error } = await supabase
+        .from('course_modules')
+        .select('content, lesson_content, description')
+        .eq('id', moduleId)
+        .single()
+
+      if (!error && lessonData) {
+        // Se houver conteúdo específico da aula, usar ele
+        const lessonContentData = (lessonData as any).lesson_content
+        const content = lessonContentData?.[lessonId] || (lessonData as any).content || (lessonData as any).description || ''
+        
+        // Se não houver conteúdo no banco mas houver no localStorage, usar localStorage
+        if (!content && localContent) {
+          setLessonContent(localContent)
+          return
+        }
+        
+        setLessonContent(content || `# ${selectedLesson?.title || 'Aula'}\n\nConteúdo da aula será exibido aqui.\n\nVocê pode editar este conteúdo clicando no botão "Editar" abaixo.`)
+      } else {
+        // Se não houver no banco, tentar localStorage
+        if (localContent) {
+          setLessonContent(localContent)
+        } else {
+          // Usar conteúdo padrão
+          const defaultContent = `# ${selectedLesson?.title || 'Aula'}\n\nConteúdo da aula será exibido aqui.\n\nVocê pode editar este conteúdo clicando no botão "Editar" abaixo.`
+          setLessonContent(defaultContent)
+        }
+      }
+
+      // Também tentar buscar de noa_lessons
+      if (selectedLesson) {
+        const module = displayModules.find(m => m.id === moduleId)
+        if (module) {
+          try {
+            const { data: noaLesson, error: noaError } = await supabase
+              .from('noa_lessons')
+              .select('content')
+              .eq('course_title', courseInfo.title)
+              .eq('module_title', module.title)
+              .eq('lesson_title', selectedLesson.title)
+              .single()
+
+            if (!noaError && noaLesson?.content) {
+              setLessonContent(noaLesson.content)
+            }
+          } catch (e) {
+            // Ignorar erro se tabela não existir
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar conteúdo da aula:', error)
+      // Tentar localStorage como último recurso
+      const storageKey = `lesson_${moduleId}_${lessonId}`
+      const localContent = localStorage.getItem(storageKey)
+      if (localContent) {
+        setLessonContent(localContent)
+      } else {
+        const defaultContent = `# ${selectedLesson?.title || 'Aula'}\n\nConteúdo da aula será exibido aqui.\n\nVocê pode editar este conteúdo clicando no botão "Editar" abaixo.`
+        setLessonContent(defaultContent)
+      }
+    }
+  }
+
+  const saveLessonContent = async () => {
+    if (!selectedLesson || !user) return
+
+    setIsSavingLesson(true)
+    try {
+      const moduleId = selectedLesson.moduleId
+      
+      // Buscar módulo atual
+      const { data: moduleData, error: fetchError } = await supabase
+        .from('course_modules')
+        .select('*')
+        .eq('id', moduleId)
+        .single()
+
+      if (fetchError) {
+        // Se o módulo não existir, tentar salvar apenas em noa_lessons
+        console.warn('Módulo não encontrado, salvando apenas em noa_lessons:', fetchError)
+      } else {
+        // Atualizar conteúdo da aula no módulo
+        const lessonContentData = {
+          ...((moduleData as any).lesson_content || {}),
+          [selectedLesson.lessonId]: lessonContent
+        }
+
+        const { error: updateError } = await supabase
+          .from('course_modules')
+          .update({
+            lesson_content: lessonContentData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', moduleId)
+
+        if (updateError) {
+          console.warn('Aviso ao atualizar course_modules:', updateError)
+          // Continuar para salvar em noa_lessons mesmo se falhar aqui
+        }
+      }
+
+      // Sempre tentar salvar na tabela noa_lessons
+      const module = displayModules.find(m => m.id === moduleId)
+      if (module) {
+        try {
+          // Primeiro tentar atualizar se existir
+          const { data: existingLesson, error: checkError } = await supabase
+            .from('noa_lessons')
+            .select('id')
+            .eq('course_title', courseInfo.title)
+            .eq('module_title', module.title)
+            .eq('lesson_title', selectedLesson.title)
+            .single()
+
+          if (existingLesson && !checkError) {
+            // Atualizar registro existente
+            const { error: updateError } = await supabase
+              .from('noa_lessons')
+              .update({
+                content: lessonContent,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingLesson.id)
+
+            if (updateError) {
+              throw updateError
+            }
+          } else {
+            // Criar novo registro
+            const { error: insertError } = await supabase
+              .from('noa_lessons')
+              .insert({
+                course_title: courseInfo.title,
+                module_title: module.title,
+                lesson_title: selectedLesson.title,
+                content: lessonContent
+              })
+
+            if (insertError) {
+              throw insertError
+            }
+          }
+        } catch (e: any) {
+          // Se a tabela não existir ou houver erro, apenas avisar mas não bloquear
+          console.warn('Aviso ao salvar em noa_lessons:', e)
+          // Salvar no localStorage como fallback
+          const storageKey = `lesson_${moduleId}_${selectedLesson.lessonId}`
+          localStorage.setItem(storageKey, lessonContent)
+        }
+      }
+
+      setIsEditingLesson(false)
+      alert('Conteúdo da aula salvo com sucesso!')
+    } catch (error) {
+      console.error('Erro ao salvar conteúdo da aula:', error)
+      // Tentar salvar no localStorage como fallback
+      if (selectedLesson) {
+        const storageKey = `lesson_${selectedLesson.moduleId}_${selectedLesson.lessonId}`
+        localStorage.setItem(storageKey, lessonContent)
+        alert('Conteúdo salvo localmente. Alguns dados podem não ter sido sincronizados com o servidor.')
+      } else {
+        alert('Erro ao salvar conteúdo. Tente novamente.')
+      }
+    } finally {
+      setIsSavingLesson(false)
+    }
+  }
+
+  const loadCourseData = async () => {
+    if (!user) return
+
+    try {
+      setLoading(true)
+
+      // Buscar curso do Dr. Eduardo (pode ser identificado por título ou instructor)
+      // Assumindo que o curso tem um título específico ou pode ser buscado por categoria
+      const { data: courses, error: coursesError } = await supabase
+        .from('courses')
+        .select('*')
+        .or('title.ilike.%cannabis medicinal%,title.ilike.%eduardo%')
+        .eq('is_published', true)
+        .limit(1)
+
+      if (coursesError) {
+        console.error('Erro ao buscar curso:', coursesError)
+        return
+      }
+
+      const course = courses && courses.length > 0 ? courses[0] : null
+
+      if (course) {
+        // Buscar número de alunos
+        const { count: studentsCount } = await supabase
+          .from('course_enrollments')
+          .select('*', { count: 'exact', head: true })
+          .eq('course_id', course.id)
+
+        // Buscar progresso do usuário atual
+        const { data: enrollment, error: enrollmentError } = await supabase
+          .from('course_enrollments')
+          .select('*')
+          .eq('course_id', course.id)
+          .eq('user_id', user.id)
+          .single()
+
+        // Buscar módulos do curso
+        const { data: courseModules, error: modulesError } = await supabase
+          .from('course_modules')
+          .select('*')
+          .eq('course_id', course.id)
+          .order('order_index', { ascending: true })
+
+        if (modulesError) {
+          console.error('Erro ao buscar módulos:', modulesError)
+        }
+
+        // Atualizar courseInfo
+        const durationHours = course.duration || 60
+        const months = Math.round((durationHours / 30) * 10) / 10
+        setCourseInfo({
+          title: course.title || 'Pós-Graduação em Cannabis Medicinal',
+          instructor: 'Dr. Eduardo Faveret',
+          duration: `${months} meses / ${durationHours} horas`,
+          students: studentsCount || 0,
+          rating: 4.9, // Pode ser calculado depois com avaliações
+          level: course.difficulty === 'advanced' ? 'Avançado' : course.difficulty === 'intermediate' ? 'Intermediário' : 'Iniciante',
+          language: 'Português',
+          certificate: true,
+          price: course.price ? `R$ ${course.price.toFixed(2).replace('.', ',')}` : 'R$ 1.999',
+          originalPrice: 'R$ 2.999'
+        })
+
+        // Calcular progresso baseado no índice do módulo e progresso geral
+        const totalModules = courseModules?.length || 1
+        const completedModules = enrollment ? Math.floor((enrollment.progress || 0) / 100 * totalModules) : 0
+
+        // Converter módulos para o formato esperado
+        const formattedModules: Module[] = (courseModules || []).map((module: any, index: number) => {
+          const isCompleted = index < completedModules
+          const moduleProgress = isCompleted ? 100 : (index === completedModules ? (enrollment?.progress || 0) % (100 / totalModules) * (totalModules / 100) : 0)
+          const isLocked = index > completedModules // Bloquear se módulo anterior não estiver completo
+
+          return {
+            id: module.id,
+            title: module.title,
+            description: module.description || '',
+            duration: module.duration ? `${Math.round(module.duration / 60)}h` : '0h',
+            lessonCount: 1, // Cada módulo pode ter múltiplas lições, mas por enquanto 1
+            isCompleted: isCompleted,
+            progress: moduleProgress,
+            lessons: [{
+              id: module.id,
+              title: module.title,
+              type: (module.content_type as 'video' | 'reading' | 'quiz' | 'assignment') || 'video',
+              duration: module.duration ? `${module.duration}min` : '0min',
+              isCompleted: isCompleted,
+              isLocked: isLocked,
+              points: 50 // Pontos padrão, pode ser ajustado
+            }]
+          }
+        })
+
+        setModules(formattedModules)
+
+        // Calcular progresso do usuário
+        if (enrollment) {
+          const completedModules = formattedModules.filter(m => m.isCompleted).length
+          const totalPoints = formattedModules.reduce((acc, m) => {
+            return acc + m.lessons.filter(l => l.isCompleted).reduce((sum, l) => sum + l.points, 0)
+          }, 0)
+
+          setUserProgress({
+            progress: enrollment.progress || 0,
+            completedModules: completedModules,
+            totalModules: formattedModules.length,
+            points: totalPoints,
+            completedLessons: (enrollment as any).completed_lessons || 0,
+            totalLessons: (enrollment as any).total_lessons || formattedModules.length
+          })
+        } else {
+          // Se não está inscrito, criar inscrição
+          const { data: newEnrollment, error: createError } = await supabase
+            .from('course_enrollments')
+            .insert({
+              user_id: user.id,
+              course_id: course.id,
+              progress: 0,
+              completed_lessons: 0,
+              total_lessons: formattedModules.length,
+              status: 'enrolled'
+            })
+            .select()
+            .single()
+
+          if (!createError && newEnrollment) {
+            setUserProgress({
+              progress: 0,
+              completedModules: 0,
+              totalModules: formattedModules.length,
+              points: 0,
+              completedLessons: 0,
+              totalLessons: formattedModules.length
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do curso:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Dados mockados originais (mantidos como fallback se não houver curso no banco)
+  const mockModules: Module[] = [
+    {
+      id: '1',
+      title: 'Introdução à Cannabis Medicinal',
+      description: 'Fundamentos históricos, legais e científicos da cannabis medicinal',
+      duration: '8h',
+      lessonCount: 4,
+      isCompleted: true,
+      progress: 100,
+      lessons: [
+        {
+          id: '1-1',
+          title: 'História da Cannabis Medicinal',
+          type: 'video',
+          duration: '45min',
+          isCompleted: true,
+          isLocked: false,
+          points: 50
+        },
+        {
+          id: '1-2',
+          title: 'Aspectos Legais e Regulamentação',
+          type: 'video',
+          duration: '60min',
+          isCompleted: true,
+          isLocked: false,
+          points: 50
+        },
+        {
+          id: '1-3',
+          title: 'Farmacologia Básica dos Canabinoides',
+          type: 'reading',
+          duration: '30min',
+          isCompleted: true,
+          isLocked: false,
+          points: 30
+        },
+        {
+          id: '1-4',
+          title: 'Quiz: Fundamentos',
+          type: 'quiz',
+          duration: '15min',
+          isCompleted: true,
+          isLocked: false,
+          points: 40
+        }
+      ]
+    },
+    {
+      id: '2',
+      title: 'Farmacologia e Biologia da Cannabis',
+      description: 'Mecanismos de ação, receptores e sistemas endocanabinoides',
+      duration: '12h',
+      lessonCount: 6,
+      isCompleted: false,
+      progress: 60,
+      lessons: [
+        {
+          id: '2-1',
+          title: 'Sistema Endocanabinoide',
+          type: 'video',
+          duration: '90min',
+          isCompleted: true,
+          isLocked: false,
+          points: 75
+        },
+        {
+          id: '2-2',
+          title: 'Receptores CB1 e CB2',
+          type: 'video',
+          duration: '75min',
+          isCompleted: true,
+          isLocked: false,
+          points: 75
+        },
+        {
+          id: '2-3',
+          title: 'CBD vs THC: Diferenças e Sinergias',
+          type: 'video',
+          duration: '60min',
+          isCompleted: false,
+          isLocked: false,
+          points: 60
+        },
+        {
+          id: '2-4',
+          title: 'Outros Canabinoides Importantes',
+          type: 'reading',
+          duration: '45min',
+          isCompleted: false,
+          isLocked: false,
+          points: 40
+        },
+        {
+          id: '2-5',
+          title: 'Interações Medicamentosas',
+          type: 'video',
+          duration: '50min',
+          isCompleted: false,
+          isLocked: false,
+          points: 50
+        },
+        {
+          id: '2-6',
+          title: 'Quiz: Farmacologia',
+          type: 'quiz',
+          duration: '20min',
+          isCompleted: false,
+          isLocked: false,
+          points: 50
+        }
+      ]
+    },
+    {
+      id: '3',
+      title: 'Aspectos Legais e Éticos',
+      description: 'Regulamentação, prescrição e aspectos éticos do uso medicinal',
+      duration: '6h',
+      lessonCount: 3,
+      isCompleted: false,
+      progress: 0,
+      lessons: [
+        {
+          id: '3-1',
+          title: 'Regulamentação no Brasil',
+          type: 'video',
+          duration: '60min',
+          isCompleted: false,
+          isLocked: true,
+          points: 60
+        },
+        {
+          id: '3-2',
+          title: 'Processo de Prescrição',
+          type: 'video',
+          duration: '45min',
+          isCompleted: false,
+          isLocked: true,
+          points: 45
+        },
+        {
+          id: '3-3',
+          title: 'Aspectos Éticos e Deontológicos',
+          type: 'reading',
+          duration: '30min',
+          isCompleted: false,
+          isLocked: true,
+          points: 30
+        }
+      ]
+    },
+    {
+      id: '4',
+      title: 'Aplicações Clínicas e Protocolos',
+      description: 'Indicações clínicas, protocolos de tratamento e monitoramento',
+      duration: '15h',
+      lessonCount: 8,
+      isCompleted: false,
+      progress: 0,
+      lessons: [
+        {
+          id: '4-1',
+          title: 'Dor Crônica e Neuropática',
+          type: 'video',
+          duration: '90min',
+          isCompleted: false,
+          isLocked: true,
+          points: 90
+        },
+        {
+          id: '4-2',
+          title: 'Epilepsia e Convulsões',
+          type: 'video',
+          duration: '75min',
+          isCompleted: false,
+          isLocked: true,
+          points: 75
+        },
+        {
+          id: '4-3',
+          title: 'Ansiedade e Depressão',
+          type: 'video',
+          duration: '60min',
+          isCompleted: false,
+          isLocked: true,
+          points: 60
+        },
+        {
+          id: '4-4',
+          title: 'Náusea e Vômitos',
+          type: 'video',
+          duration: '45min',
+          isCompleted: false,
+          isLocked: true,
+          points: 45
+        },
+        {
+          id: '4-5',
+          title: 'Protocolos de Dosagem',
+          type: 'reading',
+          duration: '60min',
+          isCompleted: false,
+          isLocked: true,
+          points: 60
+        },
+        {
+          id: '4-6',
+          title: 'Monitoramento de Pacientes',
+          type: 'video',
+          duration: '50min',
+          isCompleted: false,
+          isLocked: true,
+          points: 50
+        },
+        {
+          id: '4-7',
+          title: 'Casos Clínicos Práticos',
+          type: 'assignment',
+          duration: '120min',
+          isCompleted: false,
+          isLocked: true,
+          points: 100
+        },
+        {
+          id: '4-8',
+          title: 'Quiz: Aplicações Clínicas',
+          type: 'quiz',
+          duration: '30min',
+          isCompleted: false,
+          isLocked: true,
+          points: 60
+        }
+      ]
+    },
+    {
+      id: '5',
+      title: 'Avaliação e Monitoramento de Pacientes',
+      description: 'Ferramentas de avaliação, acompanhamento e ajuste de protocolos',
+      duration: '8h',
+      lessonCount: 4,
+      isCompleted: false,
+      progress: 0,
+      lessons: [
+        {
+          id: '5-1',
+          title: 'Escalas de Avaliação',
+          type: 'video',
+          duration: '60min',
+          isCompleted: false,
+          isLocked: true,
+          points: 60
+        },
+        {
+          id: '5-2',
+          title: 'Monitoramento de Efeitos Adversos',
+          type: 'video',
+          duration: '45min',
+          isCompleted: false,
+          isLocked: true,
+          points: 45
+        },
+        {
+          id: '5-3',
+          title: 'Ajuste de Protocolos',
+          type: 'video',
+          duration: '50min',
+          isCompleted: false,
+          isLocked: true,
+          points: 50
+        },
+        {
+          id: '5-4',
+          title: 'Relatórios e Documentação',
+          type: 'reading',
+          duration: '30min',
+          isCompleted: false,
+          isLocked: true,
+          points: 30
+        }
+      ]
+    },
+    {
+      id: '6',
+      title: 'Estudos de Caso e Práticas Clínicas',
+      description: 'Análise de casos reais e simulações práticas',
+      duration: '10h',
+      lessonCount: 5,
+      isCompleted: false,
+      progress: 0,
+      lessons: [
+        {
+          id: '6-1',
+          title: 'Caso 1: Dor Crônica',
+          type: 'video',
+          duration: '90min',
+          isCompleted: false,
+          isLocked: true,
+          points: 90
+        },
+        {
+          id: '6-2',
+          title: 'Caso 2: Epilepsia Refratária',
+          type: 'video',
+          duration: '75min',
+          isCompleted: false,
+          isLocked: true,
+          points: 75
+        },
+        {
+          id: '6-3',
+          title: 'Caso 3: Ansiedade Generalizada',
+          type: 'video',
+          duration: '60min',
+          isCompleted: false,
+          isLocked: true,
+          points: 60
+        },
+        {
+          id: '6-4',
+          title: 'Simulação de Consulta',
+          type: 'assignment',
+          duration: '120min',
+          isCompleted: false,
+          isLocked: true,
+          points: 100
+        },
+        {
+          id: '6-5',
+          title: 'Discussão de Casos',
+          type: 'video',
+          duration: '45min',
+          isCompleted: false,
+          isLocked: true,
+          points: 45
+        }
+      ]
+    },
+    {
+      id: '7',
+      title: 'Pesquisa Científica e Produção de Artigos',
+      description: 'Metodologia de pesquisa e publicação científica',
+      duration: '6h',
+      lessonCount: 3,
+      isCompleted: false,
+      progress: 0,
+      lessons: [
+        {
+          id: '7-1',
+          title: 'Metodologia de Pesquisa',
+          type: 'video',
+          duration: '90min',
+          isCompleted: false,
+          isLocked: true,
+          points: 90
+        },
+        {
+          id: '7-2',
+          title: 'Análise de Dados',
+          type: 'video',
+          duration: '60min',
+          isCompleted: false,
+          isLocked: true,
+          points: 60
+        },
+        {
+          id: '7-3',
+          title: 'Redação Científica',
+          type: 'reading',
+          duration: '45min',
+          isCompleted: false,
+          isLocked: true,
+          points: 45
+        }
+      ]
+    },
+    {
+      id: '8',
+      title: 'Avaliação Final e Certificação',
+      description: 'Prova final e obtenção do certificado',
+      duration: '5h',
+      lessonCount: 2,
+      isCompleted: false,
+      progress: 0,
+      lessons: [
+        {
+          id: '8-1',
+          title: 'Prova Final',
+          type: 'quiz',
+          duration: '120min',
+          isCompleted: false,
+          isLocked: true,
+          points: 200
+        },
+        {
+          id: '8-2',
+          title: 'Apresentação de Caso',
+          type: 'assignment',
+          duration: '180min',
+          isCompleted: false,
+          isLocked: true,
+          points: 150
+        }
+      ]
+    }
+  ]
+
+  // Se não houver módulos carregados, usar mock
+  const displayModules = modules.length > 0 ? modules : mockModules
+
+  const mockAssignments: Assignment[] = [
+    {
+      id: '1',
+      title: 'Análise de Caso Clínico - Dor Crônica',
+      description: 'Analise o caso fornecido e desenvolva um protocolo de tratamento com cannabis',
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      points: 100,
+      isSubmitted: false
+    },
+    {
+      id: '2',
+      title: 'Revisão de Literatura - CBD e Ansiedade',
+      description: 'Faça uma revisão sistemática sobre o uso de CBD para ansiedade',
+      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      points: 150,
+      isSubmitted: false
+    },
+    {
+      id: '3',
+      title: 'Protocolo de Prescrição',
+      description: 'Desenvolva um protocolo completo de prescrição de cannabis medicinal',
+      dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+      points: 200,
+      isSubmitted: false
+    }
+  ]
+
+  const displayAssignments = assignments.length > 0 ? assignments : mockAssignments
+
+  const getLessonIcon = (type: string) => {
+    switch (type) {
+      case 'video':
+        return <Video className="w-4 h-4" />
+      case 'reading':
+        return <FileText className="w-4 h-4" />
+      case 'quiz':
+        return <Award className="w-4 h-4" />
+      case 'assignment':
+        return <Award className="w-4 h-4" />
+      default:
+        return <BookOpen className="w-4 h-4" />
+    }
+  }
+
+  const getLessonColor = (type: string) => {
+    switch (type) {
+      case 'video':
+        return 'text-blue-600'
+      case 'reading':
+        return 'text-green-600'
+      case 'quiz':
+        return 'text-purple-600'
+      case 'assignment':
+        return 'text-orange-600'
+      default:
+        return 'text-gray-600'
+    }
+  }
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+
+  const totalProgress = displayModules.length > 0 
+    ? displayModules.reduce((acc, module) => acc + module.progress, 0) / displayModules.length 
+    : userProgress.progress
+
+  return (
+    <div className="min-h-screen bg-slate-900 text-white">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Course Header */}
+        <div className="bg-slate-800 rounded-xl p-8 mb-8">
+          <div className="flex flex-col lg:flex-row gap-8">
+            <div className="lg:w-2/3">
+              <div className="flex items-center space-x-2 mb-4">
+                <span className="px-3 py-1 bg-green-900/20 text-green-400 text-sm rounded-full">
+                  {courseInfo.level}
+                </span>
+                <span className="px-3 py-1 bg-green-900/20 text-green-400 text-sm rounded-full">
+                  Certificado
+                </span>
+              </div>
+              <h1 className="text-3xl font-bold text-white mb-4">
+                {courseInfo.title}
+              </h1>
+              <p className="text-gray-300 mb-6">
+                Curso completo de cannabis medicinal com metodologia prática e casos clínicos reais. 
+                Desenvolvido pelo Dr. Eduardo Faveret, especialista em medicina integrativa.
+              </p>
+              <div className="flex items-center space-x-6 text-sm text-gray-400">
+                <div className="flex items-center space-x-1">
+                  <User className="w-4 h-4" />
+                  <span>{courseInfo.instructor}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Clock className="w-4 h-4" />
+                  <span>{courseInfo.duration}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Users className="w-4 h-4" />
+                  <span>{courseInfo.students} alunos</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Star className="w-4 h-4 text-yellow-500" />
+                  <span>{courseInfo.rating}</span>
+                </div>
+              </div>
+            </div>
+            <div className="lg:w-1/3">
+              <div className="bg-gradient-to-br from-green-900/20 to-teal-900/20 p-6 rounded-lg">
+                <h3 className="text-lg font-semibold text-white mb-4">
+                  Progresso do Curso
+                </h3>
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm text-gray-300 mb-2">
+                    <span>Progresso Geral</span>
+                    <span>{Math.round(totalProgress)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-3">
+                    <div
+                      className="bg-green-600 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${totalProgress}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 text-sm text-gray-300">
+                  <div className="flex justify-between">
+                    <span>Módulos Concluídos:</span>
+                    <span>{userProgress.completedModules}/{userProgress.totalModules || displayModules.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Pontos Ganhos:</span>
+                    <span>{userProgress.points.toLocaleString('pt-BR')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Certificado:</span>
+                    <span className="text-green-400">Disponível</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Course Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Modules List */}
+          <div className="lg:col-span-2">
+            <div className="bg-slate-800 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-white">
+                  Módulos do Curso
+                </h2>
+                <button
+                  onClick={() => setShowAssignments(!showAssignments)}
+                  className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 text-sm transition-colors"
+                >
+                  {showAssignments ? 'Ver Módulos' : 'Ver Atividades'}
+                </button>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-8 text-gray-400">Carregando curso...</div>
+              ) : !showAssignments ? (
+                <div className="space-y-4">
+                  {displayModules.map((module) => (
+                    <div
+                      key={module.id}
+                      className={`p-4 border rounded-lg cursor-pointer transition-colors duration-200 ${
+                        activeModule === module.id
+                          ? 'border-green-500 bg-green-900/20'
+                          : 'border-slate-700 hover:border-slate-600'
+                      }`}
+                      onClick={() => setActiveModule(activeModule === module.id ? null : module.id)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-white">
+                          {module.title}
+                        </h3>
+                        <div className="flex items-center space-x-2">
+                          {module.isCompleted && (
+                            <CheckCircle className="w-5 h-5 text-green-500" />
+                          )}
+                          <span className="text-sm text-gray-400">
+                            {module.duration}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-300 mb-3">
+                        {module.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4 text-sm text-gray-400">
+                          <span>{module.lessonCount} aulas</span>
+                          <span>{module.lessons.filter(l => l.isCompleted).length} concluídas</span>
+                        </div>
+                        <div className="w-24 bg-gray-700 rounded-full h-2">
+                          <div
+                            className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${module.progress}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Module Lessons */}
+                      {activeModule === module.id && (
+                        <div className="mt-4 pt-4 border-t border-slate-700">
+                          <div className="space-y-2">
+                            {module.lessons.map((lesson) => (
+                              <div
+                                key={lesson.id}
+                                onClick={() => {
+                                  if (!lesson.isLocked) {
+                                    // Navegar para a página de detalhes da aula
+                                    navigate(`/app/ensino/profissional/aula/${module.id}/${lesson.id}`)
+                                  }
+                                }}
+                                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
+                                  lesson.isCompleted
+                                    ? 'bg-green-900/20'
+                                    : lesson.isLocked
+                                    ? 'bg-slate-700 opacity-60 cursor-not-allowed'
+                                    : 'bg-slate-700 hover:bg-slate-600'
+                                }`}
+                              >
+                                <div className="flex items-center space-x-3">
+                                  <div className={getLessonColor(lesson.type)}>
+                                    {getLessonIcon(lesson.type)}
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-medium text-white">
+                                      {lesson.title}
+                                    </h4>
+                                    <p className="text-xs text-gray-400">
+                                      {lesson.duration} • {lesson.points} pontos
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  {lesson.isCompleted && (
+                                    <CheckCircle className="w-4 h-4 text-green-500" />
+                                  )}
+                                  {lesson.isLocked && (
+                                    <span className="text-xs text-gray-400">Bloqueado</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white mb-4">
+                    Atividades e Atribuições
+                  </h3>
+                  {assignments.map((assignment) => (
+                    <div key={assignment.id} className="p-4 border border-slate-700 rounded-lg">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold text-white">
+                          {assignment.title}
+                        </h4>
+                        <span className="text-sm text-gray-400">
+                          {assignment.points} pontos
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-300 mb-3">
+                        {assignment.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4 text-sm text-gray-400">
+                          <span>Prazo: {formatDate(assignment.dueDate)}</span>
+                          <span className={assignment.isSubmitted ? 'text-green-400' : 'text-orange-400'}>
+                            {assignment.isSubmitted ? 'Entregue' : 'Pendente'}
+                          </span>
+                        </div>
+                        <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm transition-colors">
+                          {assignment.isSubmitted ? 'Ver Feedback' : 'Entregar'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Course Stats */}
+            <div className="bg-slate-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">
+                Estatísticas
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-300">Tempo Estudado:</span>
+                  <span className="text-sm font-medium text-white">24h 30min</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-300">Aulas Concluídas:</span>
+                  <span className="text-sm font-medium text-white">{userProgress.completedLessons}/{userProgress.totalLessons || displayModules.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-300">Pontos Ganhos:</span>
+                  <span className="text-sm font-medium text-white">{userProgress.points.toLocaleString('pt-BR')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-300">Ranking:</span>
+                  <span className="text-sm font-medium text-white">#45</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Resources */}
+            <div className="bg-slate-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">
+                Recursos
+              </h3>
+              <div className="space-y-3">
+                <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-slate-700 rounded-lg transition-colors duration-200">
+                  <FileText className="w-5 h-5 text-blue-400" />
+                  <span className="text-sm text-white">Material Didático</span>
+                </button>
+                <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-slate-700 rounded-lg transition-colors duration-200">
+                  <Video className="w-5 h-5 text-green-400" />
+                  <span className="text-sm text-white">Aulas Gravadas</span>
+                </button>
+                <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-slate-700 rounded-lg transition-colors duration-200">
+                  <MessageCircle className="w-5 h-5 text-purple-400" />
+                  <span className="text-sm text-white">Fórum de Discussão</span>
+                </button>
+                <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-slate-700 rounded-lg transition-colors duration-200">
+                  <Award className="w-5 h-5 text-orange-400" />
+                  <span className="text-sm text-white">Certificado</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Instructor */}
+            <div className="bg-slate-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">
+                Instrutor
+              </h3>
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-12 h-12 bg-green-900 rounded-full flex items-center justify-center">
+                  <User className="w-6 h-6 text-green-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-white">
+                    {courseInfo.instructor}
+                  </h4>
+                  <p className="text-sm text-gray-300">
+                    Especialista em Medicina Integrativa
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-300 mb-4">
+                Médico com mais de 15 anos de experiência em cannabis medicinal e medicina integrativa.
+              </p>
+              <button 
+              onClick={() => setShowProfileModal(true)}
+              className="w-full px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 text-sm transition-colors">
+                Ver Perfil
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal de Visualização/Edição de Aula */}
+      {selectedLesson && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl p-8 max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-700">
+            {/* Header */}
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  {selectedLesson.title}
+                </h2>
+                <p className="text-sm text-gray-400">
+                  {isEditingLesson ? 'Modo de Edição' : 'Visualização'}
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                {isEditingLesson ? (
+                  <>
+                    <button
+                      onClick={saveLessonContent}
+                      disabled={isSavingLesson}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>{isSavingLesson ? 'Salvando...' : 'Salvar'}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditingLesson(false)
+                        loadLessonContent(selectedLesson.moduleId, selectedLesson.lessonId)
+                      }}
+                      className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors flex items-center space-x-2"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>Cancelar</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setIsEditingLesson(true)}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center space-x-2"
+                    >
+                      <Edit className="w-4 h-4" />
+                      <span>Editar</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedLesson(null)
+                        setIsEditingLesson(false)
+                        setLessonContent('')
+                      }}
+                      className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
+              {isEditingLesson ? (
+                <textarea
+                  value={lessonContent}
+                  onChange={(e) => setLessonContent(e.target.value)}
+                  className="w-full h-full min-h-[400px] p-4 bg-slate-900 text-white rounded-lg border border-slate-700 focus:outline-none focus:border-blue-500 font-mono text-sm resize-none"
+                  placeholder="Digite o conteúdo da aula aqui..."
+                />
+              ) : (
+                <div className="p-4 bg-slate-900 rounded-lg border border-slate-700">
+                  <div className="whitespace-pre-wrap text-white text-sm leading-relaxed">
+                    {lessonContent || 'Nenhum conteúdo disponível. Clique em "Editar" para adicionar conteúdo.'}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Perfil do Dr. Eduardo Faveret */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-center space-x-4">
+                <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-teal-500 rounded-full flex items-center justify-center">
+                  <User className="w-10 h-10 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-1">Dr. Eduardo Faveret</h2>
+                  <p className="text-green-400 font-medium">Neuropediatra</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Formação */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-green-400" />
+                  Formação e Credenciais
+                </h3>
+                <div className="bg-slate-700 rounded-lg p-4 space-y-2 text-sm text-gray-300">
+                  <p><strong className="text-white">PhD em Epilepsia</strong></p>
+                  <p><strong className="text-white">Neuropediatra</strong></p>
+                  <p className="text-green-400 font-medium">Pioneiro na prescrição de cannabis medicinal no Brasil</p>
+                </div>
+              </div>
+
+              {/* Experiência */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-blue-400" />
+                  Experiência Profissional
+                </h3>
+                <div className="bg-slate-700 rounded-lg p-4 space-y-3 text-sm text-gray-300">
+                  <p>
+                    <strong className="text-white">Mais de 15 anos de experiência</strong> em cannabis medicinal e medicina integrativa.
+                  </p>
+                  <p>
+                    Especialista em tratamento de epilepsia com cannabis medicinal, com atuação pioneira no desenvolvimento 
+                    de protocolos terapêuticos e na formação de profissionais da saúde.
+                  </p>
+                  <p>
+                    Desenvolvedor de metodologias práticas para aplicação clínica de cannabis medicinal, com foco em casos 
+                    clínicos reais e resultados efetivos.
+                  </p>
+                </div>
+              </div>
+
+              {/* Contribuições */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-400" />
+                  Contribuições e Realizações
+                </h3>
+                <div className="bg-slate-700 rounded-lg p-4 space-y-2 text-sm text-gray-300">
+                  <p>• Pioneiro na prescrição de cannabis medicinal no Brasil</p>
+                  <p>• Criador do curso de Pós-Graduação em Cannabis Medicinal com metodologia prática</p>
+                  <p>• Desenvolvedor de protocolos de tratamento baseados em evidências</p>
+                  <p>• Formador de profissionais da saúde em cannabis medicinal</p>
+                  <p>• Especialista em casos clínicos complexos de epilepsia</p>
+                </div>
+              </div>
+
+              {/* Contato */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-purple-400" />
+                  Contato e Informações
+                </h3>
+                <div className="bg-slate-700 rounded-lg p-4 space-y-2 text-sm text-gray-300">
+                  <p><strong className="text-white">Área de Atuação:</strong> Neuropediatria, Epilepsia, Cannabis Medicinal</p>
+                  <p><strong className="text-white">Especialização:</strong> Medicina Integrativa</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default CursoEduardoFaveret

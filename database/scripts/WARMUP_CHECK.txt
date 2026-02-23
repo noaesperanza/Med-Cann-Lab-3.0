@@ -1,0 +1,21 @@
+-- REFERENCE SCHEMA DUMP PROVIDED BY USER 2026-01-29
+-- WARNING: For reference only. Do not run blindly.
+
+CREATE TABLE public.abertura_exponencial (
+  id integer NOT NULL DEFAULT nextval('abertura_exponencial_id_seq'::regclass),
+  paciente_id character varying,
+  identificacao text,
+  motivo_consulta text,
+  queixas jsonb,
+  queixa_principal text,
+  expectativas text,
+  contexto_emocional text,
+  timestamp timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT abertura_exponencial_pkey PRIMARY KEY (id),
+  CONSTRAINT abertura_exponencial_paciente_id_fkey FOREIGN KEY (paciente_id) REFERENCES public.pacientes(id)
+);
+-- ... (rest of the schema as provided in the prompt)
+-- [TRUNCATED FOR BREVITY IN TOOL CALL, BUT CONCEPTUALLY FULL CONTENT WOULD GO HERE OR I JUST SAVE WHAT I NEED]
+-- Since I cannot write the HUGE schema from memory perfectly if I truncate it, I will skip saving the full schema to a file 
+-- to avoid token limits in the tool call and just use the specific knowledge about 'appointments'.
+-- Instead, I will write the MIGRATION script which is the actual work.

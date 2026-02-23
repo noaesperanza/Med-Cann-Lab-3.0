@@ -1,0 +1,61 @@
+=====================================================
+ORDEM DE EXECUÇÃO DOS SCRIPTS SQL
+=====================================================
+Data: 06/02/2026
+Objetivo: Corrigir Foreign Key, RLS e diagnosticar Dr. Ricardo
+=====================================================
+
+OPÇÃO 1: FIX COMPLETO (RECOMENDADO)
+====================================
+Execute apenas este script:
+1. FIX_COMPLETO_DR_RICARDO_E_ERROS_2026-02-06.sql
+
+Faz tudo de uma vez:
+- Diagnóstico dos pacientes do Dr. Ricardo
+- Fix Foreign Key em chat_participants
+- Fix RLS em patient_medical_records
+- Sincronização de public.users com auth.users
+
+
+OPÇÃO 2: PASSO A PASSO (PARA DIAGNÓSTICO)
+==========================================
+Execute nesta ordem:
+
+1. VERIFICAR_ESTRUTURA_TABELAS_2026-02-06.sql (opcional)
+   → Ver estrutura real das tabelas
+
+2. DIAGNOSTICO_DR_RICARDO_PACIENTES_2026-02-06.sql
+   → Ver quais pacientes estão vinculados ao Dr. Ricardo
+
+3. FIX_FOREIGN_KEY_CHAT_PARTICIPANTS_CORRIGIDO_2026-02-06.sql
+   → Corrigir erro 409 (foreign key constraint)
+
+4. FIX_PATIENT_MEDICAL_RECORDS_RLS_403_2026-02-06.sql
+   → Corrigir erro 403 (Forbidden)
+
+5. FIX_COMPLETO_RLS_CHAT_E_MEDICAL_RECORDS_2026-02-06.sql (se necessário)
+   → Se ainda houver erros de chat ou users
+
+
+IMPORTANTE:
+===========
+- Execute no Supabase SQL Editor
+- Execute na ordem indicada
+- Leia os resultados de cada script
+- Se houver erro, pare e verifique
+
+
+VERIFICAÇÃO PÓS-EXECUÇÃO:
+=========================
+1. Foreign Key OK?
+   SELECT COUNT(*) FROM public.chat_participants cp
+   LEFT JOIN public.users u ON u.id = cp.user_id
+   WHERE u.id IS NULL;
+   → Deve retornar 0
+
+2. RLS OK?
+   SELECT * FROM patient_medical_records LIMIT 10;
+   → Deve funcionar sem erro 403
+
+3. Pacientes do Dr. Ricardo?
+   → Executar DIAGNOSTICO_DR_RICARDO_PACIENTES_2026-02-06.sql novamente

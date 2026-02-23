@@ -1,0 +1,186 @@
+{
+  "results": [
+    {
+      "table": "profiles",
+      "count": 0,
+      "columns": [],
+      "sample": []
+    },
+    {
+      "table": "chat_messages",
+      "count": 31,
+      "columns": [
+        "id",
+        "room_id",
+        "sender_id",
+        "message",
+        "message_type",
+        "file_url",
+        "created_at",
+        "read_at"
+      ],
+      "sample": [
+        {
+          "id": 2,
+          "room_id": "fa4c992b-4ea6-4613-8e89-27bb8dff0fd1",
+          "sender_id": "f4a62265-8982-44db-8282-78129c4d014a",
+          "message": "Bem-vindo ao chat com pacientes!",
+          "message_type": "text",
+          "file_url": null,
+          "created_at": "2025-11-11T05:31:55.330443+00:00",
+          "read_at": "2025-11-11T06:31:20.412475+00:00"
+        },
+        {
+          "id": 1,
+          "room_id": "9607e241-f157-4ca2-ac58-43929aa0302d",
+          "sender_id": "3d6b170c-9b36-4e0d-8364-1e9c5131cb17",
+          "message": "Bem-vindo à Discussão de Casos.",
+          "message_type": "text",
+          "file_url": null,
+          "created_at": "2025-11-11T05:31:55.330443+00:00",
+          "read_at": "2025-11-11T09:09:24.72204+00:00"
+        }
+      ]
+    },
+    {
+      "table": "chat_rooms",
+      "count": 0,
+      "columns": [],
+      "sample": []
+    },
+    {
+      "table": "documents",
+      "count": 280,
+      "columns": [
+        "id",
+        "title",
+        "content",
+        "summary",
+        "keywords",
+        "medical_terms",
+        "embeddings",
+        "file_url",
+        "file_type",
+        "file_size",
+        "uploaded_by",
+        "created_at",
+        "updated_at",
+        "category",
+        "tags",
+        "target_audience",
+        "author",
+        "isLinkedToAI",
+        "aiRelevance",
+        "type",
+        "downloads",
+        "is_published",
+        "is_featured"
+      ],
+      "sample": [
+        {
+          "id": "d41eda96-e49b-480a-9513-a8d91b01219c",
+          "title": "Status da Plataforma",
+          "content": "**Status da Plataforma**\n\n🏥 **MedCannLab 3.0** v3.0.0\n📊 Usuários: 156\n🤖 Simulações Ativas: 0\n📋 Avaliações Concluídas: 0\n⚡ Tempo Médio de Resposta: 1.2s\n💚 Satisfação: 4.7/5.0\n🔋 Sistema: 🟢 excellent\n\n**Funcionalidades Disponíveis:**\n- Avaliação Clínica IMRE Triaxial (28 blocos especializados)\n- Chat com IA Residente Nôa Esperança\n- Sistema de Gestão de Pacientes (Prontuário Eletrônico)\n- Biblioteca Médica (500+ artigos científicos)\n- Programa de Pontos e Certificações\n- Chat Global para Profissionais\n- Sistema Financeiro e Subscrições\n- Preparação de Aulas a partir de casos clínicos\n\nÚltima atualização: 11/11/2025, 06:47:41...",
+          "summary": "**Status da Plataforma**\n\n🏥 **MedCannLab 3.0** v3.0.0\n📊 Usuários: 156\n🤖 Simulações Ativas: 0\n📋 Avaliações Concluídas: 0\n⚡ Tempo Médio de Resposta: 1.2s\n💚 Satisfação: 4.7/5.0\n🔋 Sistema: 🟢 excell",
+          "keywords": [
+            "slide",
+            "presentation",
+            "ai"
+          ],
+          "medical_terms": [],
+          "embeddings": null,
+          "file_url": null,
+          "file_type": "slide",
+          "file_size": null,
+          "uploaded_by": null,
+          "created_at": "2025-11-11T09:47:41.587387+00:00",
+          "updated_at": "2025-11-11T09:47:41.587387+00:00",
+          "category": "slides",
+          "tags": [
+            "slide",
+            "aula",
+            "pedagogico",
+            "ai-generated"
+          ],
+          "target_audience": [
+            "student",
+            "professional"
+          ],
+          "author": "phpg69",
+          "isLinkedToAI": true,
+          "aiRelevance": 0,
+          "type": null,
+          "downloads": 0,
+          "is_published": false,
+          "is_featured": false
+        },
+        {
+          "id": "8947bdb8-94d3-4d74-9c6a-0b838435bfca",
+          "title": "1. Abertura e Identificação (Eixo Relacional)",
+          "content": "- \"Por favor, apresente-se e diga em que posso ajudar hoje.\"\n- Estabelecer vínculo com escuta ativa e empatia.\n- Exemplo: \"Meu nome é João, e estou preocupado com minha função renal.\"\n\n### 2. Levantamento da Queixa Principal e Lista Indiciária (Eixo Intelectual)\n- Perguntar: \"O que trouxe você para esta avaliação hoje?\"\n- Explorar outras queixas: \"O que mais?\"\n- Identificar a queixa que mais incomoda.\n- Exemplo: \"Tenho inchaço nas pernas e cansaço constante.\"\n\n### 3. Desenvolvimento Indiciário (Eixo Intelectual)\nPara cada queixa, explorar:\n- O que? (significado para o paciente)\n- Onde? (localização)\n- Quando? (início e evolução)\n- Como? (características)\n- Sintomas relacionados\n- Fatores que aliviam ou agravam\n\nExemplo para edema:\n- \"Onde você sente o inchaço?\"\n- \"Quando começou?\"\n- \"O que melhora ou piora?\"\n\n### 4. Avaliação dos Fatores de Risco para Doença Renal Crônica (Eixo Intelectual)\n- Listar fatores: hipertensão, diabetes, histórico familiar, uso prolongado de anti-inflamatórios, exposição a poluentes, dieta rica em sal.\n- Perguntar se o paciente tem exames recentes: creatinina, taxa de filtração glomerular (eGFR), albumina-creatinina na urina (ACR).\n- Solicitar valores dos exames, se disponíveis.\n\n### 5. Análise Moral e Existencial\n- Explorar o impacto da condição renal na vida do paciente: medos, expectativas, qualidade de vida.\n- Perguntar: \"Como essa condição tem afetado seu dia a dia e seus planos?\"\n- Identificar crenças e valores que possam influenciar o cuidado e adesão.\n\n### 6. Orientações e Educação (Eixo Relacional e Moral)\n- Explicar a importância dos exames e dos fatores de risco.\n- Recomendar mudanças de estilo de vida: redução do sal, controle da pressão arterial e diabetes, hidratação adequada, evitar uso indiscriminado de anti-inflamatórios.\n- Encorajar o paciente a manter hábitos saudáveis e acompanhamento regular.\n\n### 7. Fechamento Consensual\n- Revisar o entendimento: \"Você concorda com o que discutimos até aqui?\"\n- Planejar próximos passo...",
+          "summary": "- \"Por favor, apresente-se e diga em que posso ajudar hoje.\"\n- Estabelecer vínculo com escuta ativa e empatia.\n- Exemplo: \"Meu nome é João, e estou preocupado com minha função renal.\"\n\n### 2. Levantam",
+          "keywords": [
+            "slide",
+            "presentation",
+            "ai"
+          ],
+          "medical_terms": [],
+          "embeddings": null,
+          "file_url": null,
+          "file_type": "slide",
+          "file_size": null,
+          "uploaded_by": null,
+          "created_at": "2025-11-12T07:34:01.651706+00:00",
+          "updated_at": "2025-11-12T07:34:01.651706+00:00",
+          "category": "slides",
+          "tags": [
+            "slide",
+            "aula",
+            "pedagogico",
+            "ai-generated"
+          ],
+          "target_audience": [
+            "student",
+            "professional"
+          ],
+          "author": "Dr. Ricardo Valença",
+          "isLinkedToAI": true,
+          "aiRelevance": 0,
+          "type": null,
+          "downloads": 0,
+          "is_published": false,
+          "is_featured": false
+        }
+      ]
+    },
+    {
+      "table": "course_modules",
+      "count": 0,
+      "columns": [],
+      "sample": []
+    },
+    {
+      "table": "notifications",
+      "count": 0,
+      "columns": [],
+      "sample": []
+    },
+    {
+      "table": "user_interactions",
+      "count": 0,
+      "columns": [],
+      "sample": []
+    },
+    {
+      "table": "moderator_requests",
+      "count": 0,
+      "columns": [],
+      "sample": []
+    }
+  ],
+  "summary": {
+    "totalRecords": 311,
+    "tablesWithData": 2,
+    "emptyTables": 6
+  }
+}
