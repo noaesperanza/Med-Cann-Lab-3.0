@@ -33,7 +33,9 @@ export class NoaAssistantIntegration {
   constructor(config: Partial<AssistantConfig>) {
     this.config = {
       assistantId: config.assistantId || 'asst_CAW142M53uLBLbVzERZMa7HF',
-      apiKey: config.apiKey || (import.meta as any).env?.VITE_OPENAI_API_KEY || '',
+      // SECURITY: NÃO ler API key de variáveis de ambiente do frontend.
+      // Chamadas à OpenAI devem passar pela Edge Function tradevision-core.
+      apiKey: config.apiKey || '',
       timeout: config.timeout || 30000
     }
 
@@ -63,7 +65,7 @@ export class NoaAssistantIntegration {
       }
     } catch (error) {
       console.warn('Assistant API não disponível, usando fallback local:', error)
-      console.info('Verifique se VITE_OPENAI_API_KEY está definido com uma chave válida e se o assistant tem acesso aos arquivos necessários.')
+      console.info('Assistant API indisponível. Usando fallback local. Para IA completa, use a Edge Function tradevision-core.')
 
       // Fallback para sistema local
       return this.useLocalFallback(message, userCode, currentRoute)
