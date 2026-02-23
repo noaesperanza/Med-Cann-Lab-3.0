@@ -575,7 +575,7 @@ const EduardoFaveretDashboard: React.FC = () => {
                 <Terminal className="w-6 h-6 text-emerald-200" />
               </div>
               <h4 className="text-lg font-bold text-white mb-1">Terminal Clínico</h4>
-              <p className="text-xs text-emerald-100 opacity-90 mt-1">Mission Control, Prontuários e Relatórios</p>
+              <p className="text-xs text-emerald-100 opacity-90 mt-1">Governança Clínica, Prontuários e Relatórios</p>
             </button>
           </div>
         </div>

@@ -147,7 +147,7 @@ export default function ClinicalGovernanceAdmin() {
                         </div>
                         <div>
                             <h1 className="text-4xl font-black text-white tracking-tight">
-                                MISSION <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">CONTROL</span>
+                                GOVERNANÇA <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">CLÍNICA</span>
                             </h1>
                             <p className="text-slate-500 text-sm font-medium tracking-wide">MEDCANNLAB GOVERNANCE V3.0</p>
                         </div>
@@ -318,8 +318,8 @@ export default function ClinicalGovernanceAdmin() {
                                     {/* Type */}
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${user.type === 'admin' ? 'bg-indigo-500/20 text-indigo-400' :
-                                                user.type === 'profissional' ? 'bg-purple-500/20 text-purple-400' :
-                                                    'bg-slate-700/30 text-slate-400'
+                                            user.type === 'profissional' ? 'bg-purple-500/20 text-purple-400' :
+                                                'bg-slate-700/30 text-slate-400'
                                             }`}>
                                             {user.type}
                                         </span>
@@ -330,8 +330,8 @@ export default function ClinicalGovernanceAdmin() {
                                         <button
                                             onClick={() => handleTogglePayment(user.user_id, user.payment_status)}
                                             className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all text-xs font-bold ${user.payment_status === 'paid'
-                                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
-                                                    : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+                                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                                                : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
                                                 }`}
                                         >
                                             {user.payment_status === 'paid' ? <CheckCircle className="w-3.5 h-3.5" /> : <CreditCard className="w-3.5 h-3.5" />}
@@ -362,8 +362,8 @@ export default function ClinicalGovernanceAdmin() {
                                             <button
                                                 onClick={() => handleToggleBan(user.user_id, user.status)}
                                                 className={`p-2 rounded-lg transition-all ${user.status === 'banned'
-                                                        ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                                                        : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
+                                                    ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                                                    : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
                                                     }`}
                                                 title={user.status === 'banned' ? "Desbanir Usuário" : "Banir Usuário"}
                                             >
