@@ -209,6 +209,12 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
     const [exams, setExams] = useState<RenalExam[]>([])
     const [activeTab, setActiveTab] = useState<'calculator' | 'riskmap' | 'factors' | 'history'>('calculator')
 
+    // Patient demographics (fetched from DB)
+    const [patientName, setPatientName] = useState<string | null>(null)
+    const [resolvedAge, setResolvedAge] = useState<number>(patientAge)
+    const [resolvedGender, setResolvedGender] = useState<'male' | 'female'>(patientGender)
+    const [demographicsLoaded, setDemographicsLoaded] = useState(false)
+
     // Form
     const [creatinine, setCreatinine] = useState('')
     const [urea, setUrea] = useState('')
@@ -233,8 +239,8 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
     const previewEgfr = useMemo(() => {
         const val = parseFloat(creatinine)
         if (isNaN(val) || val <= 0) return null
-        return calculateEGFR({ creatinine: val, age: patientAge, sex: patientGender })
-    }, [creatinine, patientAge, patientGender])
+        return calculateEGFR({ creatinine: val, age: resolvedAge, sex: resolvedGender })
+    }, [creatinine, resolvedAge, resolvedGender])
 
     const previewGStage = previewEgfr ? classifyStage(previewEgfr) : null
     const previewAStage = useMemo(() => {
@@ -248,7 +254,7 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
         : null
 
     const kfre = previewEgfr && previewEgfr < 60 && previewAStage
-        ? calculateKFRE(patientAge, patientGender, previewEgfr, previewAStage.acr)
+        ? calculateKFRE(resolvedAge, resolvedGender, previewEgfr, previewAStage.acr)
         : null
 
     const riskAssessment = useMemo(() => assessRiskFactors(riskFactors), [riskFactors])
@@ -259,6 +265,69 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
     }, [exams])
 
     // ─── Effects ────────────────────────────────────────────────────────────
+    // Fetch patient demographics from users table
+    useEffect(() => {
+        if (!patientId) {
+            setPatientName(null)
+            setResolvedAge(patientAge)
+            setResolvedGender(patientGender)
+            setDemographicsLoaded(false)
+            return
+        }
+
+        const fetchDemographics = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('name, birth_date, gender')
+                    .eq('id', patientId)
+                    .single()
+
+                if (error || !data) {
+                    console.warn('Could not fetch patient demographics:', error)
+                    setDemographicsLoaded(true)
+                    return
+                }
+
+                setPatientName(data.name || null)
+
+                // Calculate age from birth_date
+                if (data.birth_date) {
+                    const birth = new Date(data.birth_date)
+                    const today = new Date()
+                    let age = today.getFullYear() - birth.getFullYear()
+                    const monthDiff = today.getMonth() - birth.getMonth()
+                    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                        age--
+                    }
+                    if (age > 0 && age < 150) {
+                        setResolvedAge(age)
+                        // Update ageOver60 risk factor automatically
+                        setRiskFactors(prev => ({ ...prev, ageOver60: age > 60 }))
+                    }
+                }
+
+                // Map gender string to 'male' | 'female'
+                if (data.gender) {
+                    const g = data.gender.toLowerCase().trim()
+                    if (['feminino', 'female', 'f', 'mulher'].includes(g)) {
+                        setResolvedGender('female')
+                    } else {
+                        setResolvedGender('male')
+                    }
+                }
+
+                setDemographicsLoaded(true)
+            } catch (err) {
+                console.warn('Error fetching patient demographics:', err)
+                setDemographicsLoaded(true)
+            }
+        }
+
+        fetchDemographics()
+    }, [patientId])
+
+    // Fetch exams when patient changes
     useEffect(() => {
         if (patientId) {
             loadExams()
@@ -388,6 +457,25 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Patient Demographics Banner */}
+            {patientId && (
+                <div className="px-6 py-2.5 bg-slate-800/40 border-b border-slate-700/30 flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-3 text-xs">
+                        <span className="text-slate-500 font-medium">Paciente:</span>
+                        <span className="text-white font-semibold">{patientName || 'Carregando...'}</span>
+                        <span className="text-slate-600">|</span>
+                        <span className="text-slate-400">
+                            {resolvedAge} anos • {resolvedGender === 'female' ? 'Feminino' : 'Masculino'}
+                        </span>
+                    </div>
+                    {demographicsLoaded && (
+                        <span className="text-[10px] text-emerald-400/60 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Dados reais do cadastro
+                        </span>
+                    )}
+                </div>
+            )}
 
             <div className="p-6">
                 {/* ════════════════ TAB: CALCULADORA ════════════════ */}
