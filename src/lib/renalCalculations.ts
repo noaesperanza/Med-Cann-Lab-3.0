@@ -495,3 +495,397 @@ export const generateComprehensiveAssessment = (
         timestamp: new Date().toISOString(),
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 9. PROTOCOLO MÍNIMO DE ESTRATIFICAÇÃO RENAL — NÔA ESPERANZA
+// ═══════════════════════════════════════════════════════════════════════════════
+/**
+ * Protocolo clínico viável, seguro, simples e de baixo custo para
+ * estratificação inicial de função renal.
+ *
+ * 🔬 LABORATÓRIO (10 exames):
+ *  1. Hemograma completo
+ *  2. Creatinina (com eGFR automático)
+ *  3. Glicose de jejum
+ *  4. Sódio
+ *  5. Potássio
+ *  6. Cálcio
+ *  7. Fósforo
+ *  8. Ácido úrico
+ *  9. ACR (Relação Albumina/Creatinina urinária)
+ * 10. EAS (Urina tipo 1)
+ *
+ * 🖥 IMAGEM (1 exame):
+ *  1. Ultrassom de vias urinárias
+ *
+ * Referências:
+ *  • KDIGO 2024 CKD Guideline
+ *  • Sociedade Brasileira de Nefrologia — Protocolo de Rastreamento
+ *  • Jha V et al., The Lancet 2013
+ */
+
+// ─── Interfaces ──────────────────────────────────────────────────────────────
+
+export interface StratificationLabPanel {
+    // Hemograma
+    hemoglobin?: number           // g/dL
+    hematocrit?: number           // %
+    // Função renal
+    creatinine?: number           // mg/dL  (alimenta eGFR)
+    // Metabólico
+    glucose?: number              // mg/dL  (jejum)
+    // Eletrólitos
+    sodium?: number               // mEq/L
+    potassium?: number            // mEq/L
+    calcium?: number              // mg/dL
+    phosphorus?: number           // mg/dL
+    uricAcid?: number            // mg/dL
+    // Urinário
+    acr?: number                  // mg/g   (Albumina/Creatinina urinária)
+    // EAS
+    easProtein?: 'ausente' | 'tracos' | '+' | '++' | '+++' | '++++' | null
+    easBlood?: 'ausente' | 'tracos' | '+' | '++' | '+++' | '++++' | null
+    easLeukocytes?: 'ausente' | 'tracos' | '+' | '++' | '+++' | '++++' | null
+    easGlucose?: 'ausente' | 'tracos' | '+' | '++' | '+++' | null
+    // Imagem
+    ultrasoundDone?: boolean
+    ultrasoundFindings?: string   // texto livre
+    ultrasoundNormal?: boolean
+}
+
+export type LabStatus = 'normal' | 'baixo' | 'alto' | 'critico'
+
+export interface LabResultEvaluation {
+    key: string
+    label: string
+    value: number | string | null
+    unit: string
+    status: LabStatus
+    refRange: string
+    clinicalNote: string
+    emoji: string
+}
+
+export interface ProtocolStratification {
+    labResults: LabResultEvaluation[]
+    imagingDone: boolean
+    imagingNormal: boolean | null
+    imagingFindings: string
+    totalAltered: number
+    totalCritical: number
+    totalEvaluated: number
+    overallGrade: 'A' | 'B' | 'C' | 'D'
+    gradeLabel: string
+    alerts: string[]
+    recommendation: string
+}
+
+// ─── Faixas de Referência ────────────────────────────────────────────────────
+
+interface RefRange {
+    low: number
+    high: number
+    critLow?: number
+    critHigh?: number
+}
+
+const getRefRanges = (sex: 'male' | 'female'): Record<string, RefRange & { label: string; unit: string; emoji: string }> => ({
+    hemoglobin: {
+        label: 'Hemoglobina',
+        unit: 'g/dL',
+        emoji: '🩸',
+        low: sex === 'female' ? 12.0 : 13.5,
+        high: sex === 'female' ? 16.0 : 17.5,
+        critLow: sex === 'female' ? 8.0 : 9.0,
+        critHigh: 20.0,
+    },
+    hematocrit: {
+        label: 'Hematócrito',
+        unit: '%',
+        emoji: '🩸',
+        low: sex === 'female' ? 36.0 : 41.0,
+        high: sex === 'female' ? 46.0 : 53.0,
+        critLow: sex === 'female' ? 25.0 : 28.0,
+    },
+    creatinine: {
+        label: 'Creatinina',
+        unit: 'mg/dL',
+        emoji: '🧪',
+        low: sex === 'female' ? 0.5 : 0.7,
+        high: sex === 'female' ? 1.1 : 1.3,
+        critHigh: 4.0,
+    },
+    glucose: {
+        label: 'Glicose (Jejum)',
+        unit: 'mg/dL',
+        emoji: '🍬',
+        low: 70,
+        high: 99,
+        critLow: 50,
+        critHigh: 250,
+    },
+    sodium: {
+        label: 'Sódio',
+        unit: 'mEq/L',
+        emoji: '🧂',
+        low: 136,
+        high: 145,
+        critLow: 120,
+        critHigh: 155,
+    },
+    potassium: {
+        label: 'Potássio',
+        unit: 'mEq/L',
+        emoji: '🍌',
+        low: 3.5,
+        high: 5.0,
+        critLow: 2.5,
+        critHigh: 6.5,
+    },
+    calcium: {
+        label: 'Cálcio',
+        unit: 'mg/dL',
+        emoji: '🦴',
+        low: 8.5,
+        high: 10.5,
+        critLow: 6.0,
+        critHigh: 13.0,
+    },
+    phosphorus: {
+        label: 'Fósforo',
+        unit: 'mg/dL',
+        emoji: '⚗️',
+        low: 2.5,
+        high: 4.5,
+        critHigh: 7.0,
+    },
+    uricAcid: {
+        label: 'Ácido Úrico',
+        unit: 'mg/dL',
+        emoji: '💎',
+        low: sex === 'female' ? 2.4 : 3.4,
+        high: sex === 'female' ? 6.0 : 7.0,
+        critHigh: 12.0,
+    },
+    acr: {
+        label: 'RAC (Albumina/Creatinina)',
+        unit: 'mg/g',
+        emoji: '🔬',
+        low: 0,
+        high: 30,
+        critHigh: 300,
+    },
+})
+
+// ─── Notas Clínicas CKD-Específicas ─────────────────────────────────────────
+
+const getClinicalNote = (key: string, status: LabStatus): string => {
+    const notes: Record<string, Record<LabStatus, string>> = {
+        hemoglobin: {
+            normal: 'Sem anemia. Reavaliação em 12 meses se DRC estável.',
+            baixo: 'Anemia: investigar deficiência de ferro e EPO em contexto de DRC (KDIGO recomenda a partir do estágio G3).',
+            alto: 'Policitemia relativa ou desidratação. Avaliar hemoconcentração.',
+            critico: '⚠️ ANEMIA GRAVE: considerar transfusão e investigação urgente. Avaliar EPO SE DRC G3-G5.',
+        },
+        hematocrit: {
+            normal: 'Dentro do esperado.',
+            baixo: 'Reduzido — correlacionar com hemoglobina e ferro sérico.',
+            alto: 'Elevado — avaliar desidratação ou policitemia.',
+            critico: '⚠️ CRÍTICO: risco cardiovascular aumentado.',
+        },
+        creatinine: {
+            normal: 'Função renal preservada (confirmar com eGFR).',
+            baixo: 'Valor baixo — pode indicar baixa massa muscular ou desnutrição.',
+            alto: 'Creatinina elevada — calcular eGFR e classificar estágio KDIGO.',
+            critico: '⚠️ CREATININA CRÍTICA: provável DRC avançada (G4-G5). Avaliação nefrológica URGENTE.',
+        },
+        glucose: {
+            normal: 'Glicemia de jejum normal. DM é fator de risco #1 para DRC.',
+            baixo: 'Hipoglicemia — avaliar uso de antidiabéticos.',
+            alto: 'Hiperglicemia: diabetes mellitus é a principal causa de DRC mundialmente. Controle glicêmico essencial.',
+            critico: '⚠️ GLICEMIA CRÍTICA: risco de cetoacidose/HHS. Controlar ANTES de estratificar função renal.',
+        },
+        sodium: {
+            normal: 'Equilíbrio hidroeletrolítico adequado.',
+            baixo: 'Hiponatremia: frequente na DRC avançada. Avaliar volemia e diuréticos.',
+            alto: 'Hipernatremia: avaliar hidratação. Em DRC, pode indicar dificuldade de concentração urinária.',
+            critico: '⚠️ DISTÚRBIO GRAVE DE SÓDIO: risco de edema cerebral ou desmielinização. Correção cuidadosa.',
+        },
+        potassium: {
+            normal: 'Potássio normal. Monitorar se eGFR < 45 (risco de hipercalemia).',
+            baixo: 'Hipocalemia: avaliar diuréticos e perdas GI. Risco de arritmia.',
+            alto: 'Hipercalemia: TÍPICA DA DRC avançada (G4-G5). Revisar IECAs/BRAs, espironolactona. ECG indicado.',
+            critico: '⚠️ HIPERCALEMIA SEVERA: risco de arritmia fatal. ECG URGENTE. Considerar Kayexalate/Patiromer.',
+        },
+        calcium: {
+            normal: 'Metabolismo cálcio-fósforo preservado.',
+            baixo: 'Hipocalcemia: investigar PTH e vitamina D. Comum em DRC ≥ G3b (distúrbio mineral-ósseo).',
+            alto: 'Hipercalcemia: investigar hiperparatireoidismo primário ou terciário.',
+            critico: '⚠️ DISTÚRBIO GRAVE DE CÁLCIO: risco de arritmia/tetania. Dosagem de PTH e vitamina D URGENTE.',
+        },
+        phosphorus: {
+            normal: 'Fósforo normal. Na DRC avançada, alvo < 4.5 mg/dL (KDIGO).',
+            baixo: 'Hipofosfatemia: geralmente sem significado clínico. Avaliar desnutrição.',
+            alto: 'Hiperfosfatemia: marcador de DRC avançada (G4-G5). Iniciar quelante de fósforo se persistente.',
+            critico: '⚠️ FÓSFORO MUITO ELEVADO: risco de calcificação vascular. Restrição dietética + quelante. Nefrologista.',
+        },
+        uricAcid: {
+            normal: 'Sem hiperuricemia.',
+            baixo: 'Valor baixo — sem significado clínico na maioria dos contextos.',
+            alto: 'Hiperuricemia: associada a progressão de DRC e risco cardiovascular. Considerar tratamento se sintomática.',
+            critico: '⚠️ HIPERURICEMIA SEVERA: risco de gota aguda e nefropatia por urato.',
+        },
+        acr: {
+            normal: 'A1 (< 30 mg/g) — albuminúria normal. Repetir anualmente se fatores de risco presentes.',
+            baixo: 'A1 (< 30 mg/g) — normal.',
+            alto: 'A2 (30-299 mg/g) — microalbuminúria. Sinal precoce de lesão glomerular. Tratar com IECA/BRA.',
+            critico: 'A3 (≥ 300 mg/g) — MACROALBUMINÚRIA. DRC confirmada. Referência ao nefrologista obrigatória.',
+        },
+    }
+    return notes[key]?.[status] || ''
+}
+
+// ─── Função Principal de Avaliação do Protocolo ──────────────────────────────
+
+export const evaluateStratificationProtocol = (
+    panel: StratificationLabPanel,
+    sex: 'male' | 'female'
+): ProtocolStratification => {
+    const refs = getRefRanges(sex)
+    const labResults: LabResultEvaluation[] = []
+    const alerts: string[] = []
+
+    // Avaliar cada exame numérico
+    const numericKeys: (keyof StratificationLabPanel & string)[] = [
+        'hemoglobin', 'hematocrit', 'creatinine', 'glucose',
+        'sodium', 'potassium', 'calcium', 'phosphorus', 'uricAcid', 'acr'
+    ]
+
+    for (const key of numericKeys) {
+        const ref = refs[key]
+        if (!ref) continue
+
+        const rawValue = panel[key as keyof StratificationLabPanel]
+        const value = typeof rawValue === 'number' ? rawValue : null
+
+        if (value === null || value === undefined) {
+            labResults.push({
+                key, label: ref.label, value: null, unit: ref.unit,
+                status: 'normal', refRange: `${ref.low}–${ref.high}`,
+                clinicalNote: 'Exame pendente.', emoji: ref.emoji,
+            })
+            continue
+        }
+
+        let status: LabStatus = 'normal'
+        if (ref.critLow !== undefined && value < ref.critLow) status = 'critico'
+        else if (ref.critHigh !== undefined && value > ref.critHigh) status = 'critico'
+        else if (value < ref.low) status = 'baixo'
+        else if (value > ref.high) status = 'alto'
+
+        const clinicalNote = getClinicalNote(key, status)
+
+        if (status === 'critico') {
+            alerts.push(`🚨 ${ref.label}: ${value} ${ref.unit} — VALOR CRÍTICO`)
+        } else if (status !== 'normal') {
+            alerts.push(`⚠️ ${ref.label}: ${value} ${ref.unit} — ${status === 'baixo' ? 'ABAIXO' : 'ACIMA'} do normal`)
+        }
+
+        labResults.push({
+            key, label: ref.label, value, unit: ref.unit, status,
+            refRange: `${ref.low}–${ref.high}`, clinicalNote, emoji: ref.emoji,
+        })
+    }
+
+    // EAS (qualitativo)
+    const easItems: { key: keyof StratificationLabPanel; label: string }[] = [
+        { key: 'easProtein', label: 'EAS — Proteína' },
+        { key: 'easBlood', label: 'EAS — Sangue' },
+        { key: 'easLeukocytes', label: 'EAS — Leucócitos' },
+        { key: 'easGlucose', label: 'EAS — Glicose' },
+    ]
+    for (const item of easItems) {
+        const val = panel[item.key] as string | null | undefined
+        if (!val || val === 'ausente') {
+            labResults.push({
+                key: item.key, label: item.label, value: val || null, unit: '',
+                status: 'normal', refRange: 'Ausente',
+                clinicalNote: val === 'ausente' ? 'Normal.' : 'Exame pendente.', emoji: '🧫',
+            })
+        } else {
+            const severity = val === 'tracos' || val === '+' ? 'alto' : 'critico'
+            labResults.push({
+                key: item.key, label: item.label, value: val, unit: '',
+                status: severity as LabStatus, refRange: 'Ausente',
+                clinicalNote: `Presença de ${item.label.replace('EAS — ', '').toLowerCase()} na urina: ${val}. Investigação necessária.`,
+                emoji: '🧫',
+            })
+            alerts.push(`⚠️ ${item.label}: ${val} — positivo na urina`)
+        }
+    }
+
+    // Imagem
+    const imagingDone = panel.ultrasoundDone ?? false
+    const imagingNormal = panel.ultrasoundNormal ?? null
+    if (imagingDone && imagingNormal === false) {
+        alerts.push(`🖥️ Ultrassom: alterações detectadas — ${panel.ultrasoundFindings || 'descrição pendente'}`)
+    }
+
+    // Contagem
+    const evaluated = labResults.filter(r => r.value !== null)
+    const altered = evaluated.filter(r => r.status !== 'normal')
+    const critical = evaluated.filter(r => r.status === 'critico')
+
+    // Grade de estratificação
+    let overallGrade: ProtocolStratification['overallGrade']
+    let gradeLabel: string
+    let recommendation: string
+
+    if (critical.length > 0) {
+        overallGrade = 'D'
+        gradeLabel = 'Estratificação D — Alerta Crítico'
+        recommendation = 'Valores críticos detectados. Avaliação nefrológica URGENTE. Iniciar monitoramento intensivo e correção imediata dos distúrbios.'
+    } else if (altered.length >= 4) {
+        overallGrade = 'C'
+        gradeLabel = 'Estratificação C — Múltiplas Alterações'
+        recommendation = '4+ exames alterados. Referência ao nefrologista indicada. Repetir painel em 30-90 dias. Avaliar causas secundárias.'
+    } else if (altered.length >= 2) {
+        overallGrade = 'B'
+        gradeLabel = 'Estratificação B — Alterações Moderadas'
+        recommendation = 'Atenção a alterações detectadas. Repetir painel em 3-6 meses. Controlar fatores de risco modificáveis.'
+    } else {
+        overallGrade = 'A'
+        gradeLabel = 'Estratificação A — Função Preservada'
+        recommendation = 'Sem alterações significativas. Repetir painel de estratificação anualmente se fatores de risco presentes.'
+    }
+
+    return {
+        labResults,
+        imagingDone,
+        imagingNormal,
+        imagingFindings: panel.ultrasoundFindings || '',
+        totalAltered: altered.length,
+        totalCritical: critical.length,
+        totalEvaluated: evaluated.length,
+        overallGrade,
+        gradeLabel,
+        alerts,
+        recommendation,
+    }
+}
+
+/** Retorna a lista completa de exames do protocolo (para renderizar checklist de pedidos) */
+export const getProtocolExamList = (): { id: string; category: 'lab' | 'imaging'; label: string; emoji: string; description: string }[] => [
+    { id: 'hemograma', category: 'lab', label: 'Hemograma Completo', emoji: '🩸', description: 'Rastreamento de anemia (DRC ≥ G3)' },
+    { id: 'creatinina', category: 'lab', label: 'Creatinina + eGFR', emoji: '🧪', description: 'Base do cálculo CKD-EPI 2021' },
+    { id: 'glicose', category: 'lab', label: 'Glicose de Jejum', emoji: '🍬', description: 'DM é causa #1 de DRC' },
+    { id: 'sodio', category: 'lab', label: 'Sódio', emoji: '🧂', description: 'Equilíbrio hidroeletrolítico' },
+    { id: 'potassio', category: 'lab', label: 'Potássio', emoji: '🍌', description: 'Hipercalemia ↑ na DRC avançada' },
+    { id: 'calcio', category: 'lab', label: 'Cálcio', emoji: '🦴', description: 'Distúrbio mineral-ósseo (DMO-DRC)' },
+    { id: 'fosforo', category: 'lab', label: 'Fósforo', emoji: '⚗️', description: 'Hiperfosfatemia na DRC G4-G5' },
+    { id: 'acido_urico', category: 'lab', label: 'Ácido Úrico', emoji: '💎', description: 'Associado à progressão de DRC' },
+    { id: 'acr', category: 'lab', label: 'RAC (Albumina/Creatinina Urinária)', emoji: '🔬', description: 'Classificação A1/A2/A3 — pilar KDIGO' },
+    { id: 'eas', category: 'lab', label: 'EAS (Urina Tipo 1)', emoji: '🧫', description: 'Hematúria, proteinúria, leucocitúria' },
+    { id: 'ultrassom', category: 'imaging', label: 'Ultrassom de Vias Urinárias', emoji: '🖥️', description: 'Forma, tamanho, obstrução, cistos' },
+]
+

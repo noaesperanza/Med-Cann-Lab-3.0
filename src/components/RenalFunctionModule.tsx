@@ -25,10 +25,14 @@ import {
     analyzeEGFRTrend,
     getStageDescription,
     getFullKDIGORiskMap,
+    evaluateStratificationProtocol,
+    getProtocolExamList,
     type RenalRiskFactors,
+    type StratificationLabPanel,
     type GFRStage,
     type AlbuminuriaStage,
     type KDIGORiskLevel,
+    type LabStatus,
 } from '../lib/renalCalculations'
 import {
     Activity,
@@ -44,6 +48,8 @@ import {
     Droplet,
     ChevronRight,
     BarChart3,
+    ClipboardList,
+    FileSearch,
 } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -207,7 +213,7 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
     // ─── State ──────────────────────────────────────────────────────────────
     const [loading, setLoading] = useState(false)
     const [exams, setExams] = useState<RenalExam[]>([])
-    const [activeTab, setActiveTab] = useState<'calculator' | 'riskmap' | 'factors' | 'history'>('calculator')
+    const [activeTab, setActiveTab] = useState<'calculator' | 'riskmap' | 'factors' | 'protocol' | 'history'>('calculator')
 
     // Patient demographics (fetched from DB)
     const [patientName, setPatientName] = useState<string | null>(null)
@@ -234,6 +240,13 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
         autoimmune: false,
         ageOver60: patientAge > 60,
     })
+
+    // Stratification Protocol Panel
+    const [labPanel, setLabPanel] = useState<StratificationLabPanel>({})
+
+    const updateLabPanel = (key: keyof StratificationLabPanel, value: any) => {
+        setLabPanel(prev => ({ ...prev, [key]: value }))
+    }
 
     // ─── Computed ───────────────────────────────────────────────────────────
     const previewEgfr = useMemo(() => {
@@ -263,6 +276,14 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
         if (exams.length < 2) return null
         return analyzeEGFRTrend(exams.map(e => ({ date: new Date(e.exam_date), egfr: e.egfr })))
     }, [exams])
+
+    const protocolResult = useMemo(() => {
+        const hasAnyValue = Object.entries(labPanel).some(
+            ([k, v]) => v !== undefined && v !== null && v !== '' && k !== 'ultrasoundFindings'
+        )
+        if (!hasAnyValue) return null
+        return evaluateStratificationProtocol(labPanel, resolvedGender)
+    }, [labPanel, resolvedGender])
 
     // ─── Effects ────────────────────────────────────────────────────────────
     // Fetch patient demographics from users table
@@ -439,7 +460,7 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
                         </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                        {(['calculator', 'riskmap', 'factors', 'history'] as const).map(tab => (
+                        {(['calculator', 'riskmap', 'factors', 'protocol', 'history'] as const).map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -450,7 +471,8 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
                             >
                                 {tab === 'calculator' && '🧮 Calculadora'}
                                 {tab === 'riskmap' && '🗺️ Mapa KDIGO'}
-                                {tab === 'factors' && '⚠️ Fatores de Risco'}
+                                {tab === 'factors' && '⚠️ Fatores'}
+                                {tab === 'protocol' && '📋 Protocolo Nôa'}
                                 {tab === 'history' && '📊 Histórico'}
                             </button>
                         ))}
@@ -865,6 +887,252 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
                                 </table>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* ════════════════ TAB: PROTOCOLO NÔA ════════════════ */}
+                {activeTab === 'protocol' && (
+                    <div className="space-y-6">
+                        <div>
+                            <h4 className="font-semibold text-white flex items-center gap-2 text-sm mb-1">
+                                <ClipboardList className="w-4 h-4 text-amber-400" /> Protocolo Mínimo de Estratificação Renal — Nôa Esperanza
+                            </h4>
+                            <p className="text-xs text-slate-400">
+                                10 exames laboratoriais + 1 exame de imagem. Protocolo viável, seguro, simples e de baixo custo.
+                            </p>
+                        </div>
+
+                        {/* Lab Inputs — Numeric */}
+                        <div>
+                            <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                🔬 Laboratório
+                            </h5>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                                {[
+                                    { key: 'hemoglobin' as const, label: 'Hemoglobina', unit: 'g/dL', step: '0.1', placeholder: '13.5', emoji: '🩸' },
+                                    { key: 'hematocrit' as const, label: 'Hematócrito', unit: '%', step: '0.1', placeholder: '42', emoji: '🩸' },
+                                    { key: 'creatinine' as const, label: 'Creatinina', unit: 'mg/dL', step: '0.01', placeholder: '0.9', emoji: '🧪' },
+                                    { key: 'glucose' as const, label: 'Glicose Jejum', unit: 'mg/dL', step: '1', placeholder: '92', emoji: '🍬' },
+                                    { key: 'sodium' as const, label: 'Sódio', unit: 'mEq/L', step: '1', placeholder: '140', emoji: '🧂' },
+                                    { key: 'potassium' as const, label: 'Potássio', unit: 'mEq/L', step: '0.1', placeholder: '4.2', emoji: '🍌' },
+                                    { key: 'calcium' as const, label: 'Cálcio', unit: 'mg/dL', step: '0.1', placeholder: '9.5', emoji: '🦴' },
+                                    { key: 'phosphorus' as const, label: 'Fósforo', unit: 'mg/dL', step: '0.1', placeholder: '3.5', emoji: '⚗️' },
+                                    { key: 'uricAcid' as const, label: 'Ácido Úrico', unit: 'mg/dL', step: '0.1', placeholder: '5.5', emoji: '💎' },
+                                    { key: 'acr' as const, label: 'RAC', unit: 'mg/g', step: '1', placeholder: '15', emoji: '🔬' },
+                                ].map(field => {
+                                    const v = labPanel[field.key]
+                                    const result = protocolResult?.labResults.find(r => r.key === field.key)
+                                    const statusColor = !result || result.value === null ? '' :
+                                        result.status === 'normal' ? 'border-green-600/50' :
+                                            result.status === 'critico' ? 'border-red-500 bg-red-900/10' :
+                                                'border-yellow-600/50 bg-yellow-900/5'
+                                    return (
+                                        <div key={field.key}>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                                {field.emoji} {field.label} <span className="text-slate-600">({field.unit})</span>
+                                            </label>
+                                            <input
+                                                type="number" step={field.step}
+                                                value={typeof v === 'number' ? v : ''}
+                                                onChange={e => updateLabPanel(field.key, e.target.value ? parseFloat(e.target.value) : undefined)}
+                                                className={`w-full bg-slate-800 rounded-lg border text-sm text-white px-2.5 py-2 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 placeholder-slate-600 ${statusColor || 'border-slate-700'}`}
+                                                placeholder={field.placeholder}
+                                            />
+                                            {result && result.value !== null && result.status !== 'normal' && (
+                                                <p className={`text-[9px] mt-0.5 ${result.status === 'critico' ? 'text-red-400 font-bold' : 'text-yellow-400'}`}>
+                                                    {result.status === 'critico' ? '🚨' : '⚠️'} {result.status === 'baixo' ? 'Baixo' : result.status === 'alto' ? 'Alto' : 'CRÍTICO'} (ref: {result.refRange})
+                                                </p>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        {/* EAS — Qualitative */}
+                        <div>
+                            <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                🧫 EAS (Urina Tipo 1)
+                            </h5>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {[
+                                    { key: 'easProtein' as const, label: 'Proteína' },
+                                    { key: 'easBlood' as const, label: 'Sangue' },
+                                    { key: 'easLeukocytes' as const, label: 'Leucócitos' },
+                                    { key: 'easGlucose' as const, label: 'Glicose' },
+                                ].map(item => (
+                                    <div key={item.key}>
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                            {item.label}
+                                        </label>
+                                        <select
+                                            value={labPanel[item.key] as string || ''}
+                                            onChange={e => updateLabPanel(item.key, e.target.value || null)}
+                                            className="w-full bg-slate-800 rounded-lg border border-slate-700 text-sm text-white px-2.5 py-2 focus:ring-1 focus:ring-cyan-500"
+                                        >
+                                            <option value="">Pendente</option>
+                                            <option value="ausente">Ausente</option>
+                                            <option value="tracos">Traços</option>
+                                            <option value="+">+</option>
+                                            <option value="++">++</option>
+                                            <option value="+++">+++</option>
+                                            <option value="++++">++++</option>
+                                        </select>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Imaging */}
+                        <div>
+                            <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                🖥️ Imagem
+                            </h5>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                        Ultrassom Realizado?
+                                    </label>
+                                    <select
+                                        value={labPanel.ultrasoundDone ? 'sim' : labPanel.ultrasoundDone === false ? 'nao' : ''}
+                                        onChange={e => updateLabPanel('ultrasoundDone', e.target.value === 'sim' ? true : e.target.value === 'nao' ? false : undefined)}
+                                        className="w-full bg-slate-800 rounded-lg border border-slate-700 text-sm text-white px-2.5 py-2 focus:ring-1 focus:ring-cyan-500"
+                                    >
+                                        <option value="">Pendente</option>
+                                        <option value="sim">Sim</option>
+                                        <option value="nao">Não</option>
+                                    </select>
+                                </div>
+                                {labPanel.ultrasoundDone && (
+                                    <>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                                Resultado
+                                            </label>
+                                            <select
+                                                value={labPanel.ultrasoundNormal === true ? 'normal' : labPanel.ultrasoundNormal === false ? 'alterado' : ''}
+                                                onChange={e => updateLabPanel('ultrasoundNormal', e.target.value === 'normal' ? true : e.target.value === 'alterado' ? false : undefined)}
+                                                className="w-full bg-slate-800 rounded-lg border border-slate-700 text-sm text-white px-2.5 py-2 focus:ring-1 focus:ring-cyan-500"
+                                            >
+                                                <option value="">Selecione</option>
+                                                <option value="normal">Normal</option>
+                                                <option value="alterado">Alterado</option>
+                                            </select>
+                                        </div>
+                                        {labPanel.ultrasoundNormal === false && (
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                                    Achados
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={labPanel.ultrasoundFindings || ''}
+                                                    onChange={e => updateLabPanel('ultrasoundFindings', e.target.value)}
+                                                    className="w-full bg-slate-800 rounded-lg border border-slate-700 text-sm text-white px-2.5 py-2 focus:ring-1 focus:ring-cyan-500 placeholder-slate-600"
+                                                    placeholder="Descreva os achados..."
+                                                />
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Protocol Results */}
+                        {protocolResult && (
+                            <div className="space-y-4">
+                                {/* Grade Card */}
+                                <div className={`rounded-xl border p-5 ${protocolResult.overallGrade === 'A' ? 'bg-green-900/10 border-green-800/40' :
+                                    protocolResult.overallGrade === 'B' ? 'bg-yellow-900/10 border-yellow-800/40' :
+                                        protocolResult.overallGrade === 'C' ? 'bg-orange-900/10 border-orange-800/40' :
+                                            'bg-red-900/10 border-red-800/40'
+                                    }`}>
+                                    <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-black ${protocolResult.overallGrade === 'A' ? 'bg-green-500/20 text-green-400' :
+                                                protocolResult.overallGrade === 'B' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                    protocolResult.overallGrade === 'C' ? 'bg-orange-500/20 text-orange-400' :
+                                                        'bg-red-500/20 text-red-400'
+                                                }`}>
+                                                {protocolResult.overallGrade}
+                                            </div>
+                                            <div>
+                                                <p className="text-base font-bold text-white">{protocolResult.gradeLabel}</p>
+                                                <p className="text-xs text-slate-400">
+                                                    {protocolResult.totalEvaluated} avaliados • {protocolResult.totalAltered} alterados • {protocolResult.totalCritical} críticos
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-slate-300">{protocolResult.recommendation}</p>
+                                </div>
+
+                                {/* Alerts */}
+                                {protocolResult.alerts.length > 0 && (
+                                    <div className="rounded-xl border border-red-800/40 bg-red-900/10 p-4">
+                                        <h5 className="text-xs font-bold text-red-300 flex items-center gap-1.5 mb-2">
+                                            <AlertTriangle className="w-3.5 h-3.5" /> Alertas Clínicos
+                                        </h5>
+                                        <ul className="space-y-1">
+                                            {protocolResult.alerts.map((alert, i) => (
+                                                <li key={i} className="text-[11px] text-slate-300">{alert}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {/* Individual Results Table */}
+                                <div>
+                                    <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <FileSearch className="w-3 h-3" /> Resultados Individuais com Interpretação Clínica
+                                    </h5>
+                                    <div className="space-y-1.5">
+                                        {protocolResult.labResults.filter(r => r.value !== null).map(result => (
+                                            <div key={result.key} className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${result.status === 'normal' ? 'border-slate-700/50 bg-slate-800/20' :
+                                                    result.status === 'critico' ? 'border-red-700/50 bg-red-900/15' :
+                                                        'border-yellow-700/50 bg-yellow-900/10'
+                                                }`}>
+                                                <span className="text-sm mt-0.5">{result.emoji}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-xs font-semibold text-white">{result.label}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-mono text-white">
+                                                                {typeof result.value === 'number' ? result.value : result.value} {result.unit}
+                                                            </span>
+                                                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${result.status === 'normal' ? 'bg-green-900/40 text-green-300' :
+                                                                    result.status === 'critico' ? 'bg-red-900/40 text-red-300' :
+                                                                        result.status === 'baixo' ? 'bg-blue-900/40 text-blue-300' :
+                                                                            'bg-yellow-900/40 text-yellow-300'
+                                                                }`}>
+                                                                {result.status === 'normal' ? '✓ Normal' :
+                                                                    result.status === 'critico' ? '🚨 Crítico' :
+                                                                        result.status === 'baixo' ? '↓ Baixo' : '↑ Alto'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <p className={`text-[10px] mt-0.5 ${result.status === 'critico' ? 'text-red-300' : 'text-slate-400'}`}>
+                                                        {result.clinicalNote}
+                                                    </p>
+                                                    {result.status !== 'normal' && (
+                                                        <p className="text-[9px] text-slate-500 mt-0.5">Ref: {result.refRange} {result.unit}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Protocol Reference */}
+                        <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                            <p className="text-[10px] text-slate-500">
+                                <strong>Protocolo:</strong> Estratificação Mínima de Função Renal — Nôa Esperanza / Med-Cann Lab 3.0.
+                                Baseado em KDIGO 2024, SBN, Jha V et al. (The Lancet 2013).
+                                Custo estimado: R$ 120–250 (SUS/UBS compatível).
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>
