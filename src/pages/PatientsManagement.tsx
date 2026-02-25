@@ -88,9 +88,11 @@ interface PatientsManagementProps {
   hideBackButton?: boolean
   /** Quando true, reduz espaçamento/tamanho para vista no Terminal Clínico (estilo aplicado via CSS no pai). */
   compact?: boolean
+  /** Callback disparado quando um paciente é selecionado (propaga o ID para o pai). */
+  onPatientSelect?: (patientId: string) => void
 }
 
-const PatientsManagement: React.FC<PatientsManagementProps> = ({ embedded = false, detailOnly = false, preselectedPatientId = null, onBack, hideBackButton = false, compact = false }) => {
+const PatientsManagement: React.FC<PatientsManagementProps> = ({ embedded = false, detailOnly = false, preselectedPatientId = null, onBack, hideBackButton = false, compact = false, onPatientSelect }) => {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -708,6 +710,8 @@ const PatientsManagement: React.FC<PatientsManagementProps> = ({ embedded = fals
     setActiveTab('overview')
     // Carregar evoluções do paciente selecionado
     loadEvolutions(patient.id)
+    // Propagar seleção para o pai (ex.: IntegratedWorkstation → activePatientId)
+    onPatientSelect?.(patient.id)
   }
 
   const handleOpenPatientChat = async () => {

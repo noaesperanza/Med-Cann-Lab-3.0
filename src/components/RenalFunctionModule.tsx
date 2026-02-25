@@ -68,6 +68,8 @@ interface RenalFunctionModuleProps {
     patientId?: string
     patientAge?: number
     patientGender?: 'male' | 'female'
+    /** Callback para propagar seleção de paciente ao pai (ex.: IntegratedWorkstation) */
+    onSelectPatient?: (patientId: string) => void
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -202,6 +204,103 @@ const RiskFactorChecklist = ({
     )
 }
 
+/** Inline patient selector shown when no patient is active */
+const PatientSelectorEmpty: React.FC<{ onSelectPatient?: (id: string) => void }> = ({ onSelectPatient }) => {
+    const [patients, setPatients] = useState<{ id: string; name: string; phone?: string }[]>([])
+    const [search, setSearch] = useState('')
+    const [loadingPats, setLoadingPats] = useState(true)
+
+    useEffect(() => {
+        const load = async () => {
+            setLoadingPats(true)
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('id, name, phone')
+                    .in('type', ['patient', 'paciente'])
+                    .order('name', { ascending: true })
+                    .limit(100)
+                if (!error && data) {
+                    setPatients(data.filter(u => u.name && u.name !== 'Paciente').map(u => ({
+                        id: u.id,
+                        name: u.name ?? 'Sem nome',
+                        phone: (u as any).phone ?? undefined,
+                    })))
+                }
+            } catch { /* ignore */ }
+            setLoadingPats(false)
+        }
+        load()
+    }, [])
+
+    const filtered = patients.filter(p =>
+        p.name.toLowerCase().includes(search.toLowerCase())
+    )
+
+    return (
+        <div className="bg-[#0f172a] rounded-xl border border-slate-700/50 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-cyan-900/30 to-emerald-900/30 border-b border-slate-700/50 px-6 py-5 text-center">
+                <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-4 mx-auto border border-emerald-500/20 shadow-lg shadow-emerald-500/5">
+                    <Activity className="w-8 h-8 text-emerald-400 opacity-80" />
+                </div>
+                <h3 className="text-xl font-bold text-white tracking-tight mb-1">Módulo de Função Renal</h3>
+                <p className="text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
+                    Selecione um paciente para acessar a avaliação completa de risco renal (KDIGO + KFRE + Protocolo Nôa).
+                </p>
+            </div>
+
+            {/* Search */}
+            <div className="px-6 py-4 border-b border-slate-700/30">
+                <div className="relative max-w-md mx-auto">
+                    <input
+                        type="text"
+                        placeholder="Buscar paciente por nome..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="w-full bg-slate-800 rounded-lg border border-slate-600 text-sm text-white pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 placeholder-slate-500"
+                    />
+                    <Activity className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                </div>
+            </div>
+
+            {/* Patient Grid */}
+            <div className="px-6 py-4 max-h-[50vh] overflow-y-auto">
+                {loadingPats ? (
+                    <div className="text-center py-10">
+                        <div className="animate-spin w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full mx-auto mb-2"></div>
+                        <p className="text-xs text-slate-500">Carregando pacientes...</p>
+                    </div>
+                ) : filtered.length === 0 ? (
+                    <div className="text-center py-10">
+                        <p className="text-sm text-slate-500">Nenhum paciente encontrado.</p>
+                        <p className="text-xs text-slate-600 mt-1">Tente selecionar pelo Prontuário.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {filtered.map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => onSelectPatient?.(p.id)}
+                                className="flex items-center gap-3 p-3 rounded-lg border border-slate-700/50 bg-slate-800/40 hover:bg-cyan-900/20 hover:border-cyan-600/40 transition-all text-left group"
+                            >
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500/20 to-emerald-500/20 flex items-center justify-center border border-cyan-500/20 shrink-0">
+                                    <span className="text-xs font-bold text-cyan-300">{p.name.charAt(0).toUpperCase()}</span>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-semibold text-white truncate group-hover:text-cyan-300 transition-colors">{p.name}</p>
+                                    {p.phone && <p className="text-[10px] text-slate-500 truncate">{p.phone}</p>}
+                                </div>
+                                <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-cyan-400 transition-colors shrink-0" />
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -209,6 +308,7 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
     patientId,
     patientAge = 40,
     patientGender = 'male',
+    onSelectPatient,
 }) => {
     // ─── State ──────────────────────────────────────────────────────────────
     const [loading, setLoading] = useState(false)
@@ -429,19 +529,9 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
         return 'bg-red-900/40 text-red-300 border-red-800'
     }
 
-    // ─── Empty State ────────────────────────────────────────────────────────
+    // ─── Empty State with Patient Selector ─────────────────────────────────────
     if (!patientId) {
-        return (
-            <div className="bg-[#0f172a] rounded-xl border border-slate-700/50 p-20 text-center flex flex-col items-center justify-center min-h-[400px]">
-                <div className="w-20 h-20 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 border border-emerald-500/20 shadow-lg shadow-emerald-500/5">
-                    <Activity className="w-10 h-10 text-emerald-400 opacity-60" />
-                </div>
-                <h3 className="text-2xl font-bold text-white tracking-tight mb-2">Módulo de Função Renal</h3>
-                <p className="text-slate-400 text-base max-w-sm mx-auto leading-relaxed opacity-70">
-                    Selecione um paciente para acessar a avaliação completa de risco renal (KDIGO + KFRE + Burden of CKD).
-                </p>
-            </div>
-        )
+        return <PatientSelectorEmpty onSelectPatient={onSelectPatient} />
     }
 
     // ─── Render ─────────────────────────────────────────────────────────────
@@ -1089,8 +1179,8 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
                                     <div className="space-y-1.5">
                                         {protocolResult.labResults.filter(r => r.value !== null).map(result => (
                                             <div key={result.key} className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${result.status === 'normal' ? 'border-slate-700/50 bg-slate-800/20' :
-                                                    result.status === 'critico' ? 'border-red-700/50 bg-red-900/15' :
-                                                        'border-yellow-700/50 bg-yellow-900/10'
+                                                result.status === 'critico' ? 'border-red-700/50 bg-red-900/15' :
+                                                    'border-yellow-700/50 bg-yellow-900/10'
                                                 }`}>
                                                 <span className="text-sm mt-0.5">{result.emoji}</span>
                                                 <div className="flex-1 min-w-0">
@@ -1101,9 +1191,9 @@ const RenalFunctionModule: React.FC<RenalFunctionModuleProps> = ({
                                                                 {typeof result.value === 'number' ? result.value : result.value} {result.unit}
                                                             </span>
                                                             <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${result.status === 'normal' ? 'bg-green-900/40 text-green-300' :
-                                                                    result.status === 'critico' ? 'bg-red-900/40 text-red-300' :
-                                                                        result.status === 'baixo' ? 'bg-blue-900/40 text-blue-300' :
-                                                                            'bg-yellow-900/40 text-yellow-300'
+                                                                result.status === 'critico' ? 'bg-red-900/40 text-red-300' :
+                                                                    result.status === 'baixo' ? 'bg-blue-900/40 text-blue-300' :
+                                                                        'bg-yellow-900/40 text-yellow-300'
                                                                 }`}>
                                                                 {result.status === 'normal' ? '✓ Normal' :
                                                                     result.status === 'critico' ? '🚨 Crítico' :

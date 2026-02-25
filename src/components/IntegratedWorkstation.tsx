@@ -65,7 +65,7 @@ const IntegratedWorkstation: React.FC<IntegratedWorkstationProps> = ({ initialTa
                 return (
                     <div className="h-full w-full overflow-hidden bg-[#0f172a] relative integrated-terminal-content">
                         <div className="absolute inset-0 overflow-y-auto overflow-x-hidden scrollbar-hide">
-                            <PatientsManagement embedded compact />
+                            <PatientsManagement embedded compact onPatientSelect={(id) => setActivePatientId(id)} />
                         </div>
                     </div>
                 )
@@ -83,7 +83,7 @@ const IntegratedWorkstation: React.FC<IntegratedWorkstationProps> = ({ initialTa
             case 'renal':
                 return (
                     <div className="h-full overflow-y-auto bg-[#0f172a]">
-                        <RenalFunctionModule patientId={activePatientId || undefined} />
+                        <RenalFunctionModule patientId={activePatientId || undefined} onSelectPatient={(id) => setActivePatientId(id)} />
                     </div>
                 )
             case 'prescriptions':
